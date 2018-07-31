@@ -1,0 +1,3 @@
+// loan,pay
+
+property <({loaned&!paid};{paid&!loaned})*>(!loaned&last);

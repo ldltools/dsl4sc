@@ -1,0 +1,3 @@
+// order (protocol-only)
+protocol order;;
+rule { on order do { console.log ("ordered!"); } }

@@ -1,0 +1,8 @@
+// order; ship
+
+property <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
+protocol order; ship;;
+
+rule
+on order when !ordered do ordered;
+on ship when !shipped do shipped;

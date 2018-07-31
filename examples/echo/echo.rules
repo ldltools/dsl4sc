@@ -1,0 +1,4 @@
+protocol
+ echo; echo*;;  // seq of "echo" events (1 or more times)
+rule
+ on echo do { console.log (_event.data[0]); }; // print out the param of the incoming "echo" event

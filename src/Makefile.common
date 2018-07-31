@@ -1,0 +1,109 @@
+# -*-Makefile-*-
+# $Id: $
+
+all::
+clean::
+veryclean::	clean
+
+BUILD_DIR	?= _build
+SRC_DIR		?= .
+SRC_DIRS	?= $(shell find $(SRC_DIRS) -type d | xargs -I {} bash -c "test -f {}/.ignore || echo {}")
+
+SED		?= sed
+AWK		?= awk
+
+SRCS_mli	:= $(shell find $(SRC_DIRS) -maxdepth 1 -name '*.mli' | $(SED) -r 's/^(\.\/)?//')
+SRCS_ml		:= $(shell find $(SRC_DIRS) -maxdepth 1 -name '*.ml'  | $(SED) -r 's/^(\.\/)?//')
+SRCS_mly	:= $(shell find $(SRC_DIRS) -maxdepth 1 -name '*.mly' | $(SED) -r 's/^(\.\/)?//')
+SRCS_mll	:= $(shell find $(SRC_DIRS) -maxdepth 1 -name '*.mll' | $(SED) -r 's/^(\.\/)?//')
+
+CMIS		:= $(SRCS_mli:%.mli=$(BUILD_DIR)/%.cmi)
+CMIS		+= $(SRCS_mll:%.mll=$(BUILD_DIR)/%.cmi)
+CMIS		+= $(SRCS_mly:%.mly=$(BUILD_DIR)/%.cmi)
+
+CMOS		:= $(SRCS_ml:%.ml=$(BUILD_DIR)/%.cmo)
+CMOS		+= $(SRCS_mly:%.mly=$(BUILD_DIR)/%.cmo)
+CMOS		+= $(SRCS_mll:%.mll=$(BUILD_DIR)/%.cmo)
+CMOS		:= $(shell echo $(CMOS) | $(SED) -r 's/[^ ]+_main.cmo//g')
+
+CMXS		:= $(CMOS:%.cmo=%.cmx)
+
+INC_DIRS	:= $(shell find $(SRC_DIRS) -type d)
+INC_FLAGS	:= $(addprefix -I $(BUILD_DIR)/,$(INC_DIRS))
+
+CAMLC		?= ocamlc.opt
+CAMLCFLAGS	?=
+CAMLCFLAGS	+= $(INC_FLAGS)
+
+CAMLLIBDIR	?= $(HOME)/.opam/system/lib
+
+CAMLOPT		?= ocamlopt.opt
+CAMLOPTFLAGS	?=
+CAMLOPTFLAGS	+= $(INC_FLAGS)
+
+CAMLLEX		?= ocamllex
+#CAMLYACC	?= ocamlyacc -v
+CAMLYACC	?= menhir -v
+
+.PRECIOUS:	%.cmi %.cmo
+
+#
+$(BUILD_DIR)/%.cmi: %.mli
+	$(MKDIR_P) $(dir $@)
+	$(CAMLC) $(CAMLCFLAGS) -c -o $@ $<
+$(BUILD_DIR)/%.cmo: %.ml
+	$(MKDIR_P) $(dir $@)
+	$(CAMLC) $(CAMLCFLAGS) -c -o $@ $<
+$(BUILD_DIR)/%.cmx: %.ml
+	$(MKDIR_P) $(dir $@)
+	$(CAMLOPT) $(CAMLOPTFLAGS) -c -o $@ $<
+
+# ocamllex
+$(BUILD_DIR)/%.cmi: %.mll
+	$(MKDIR_P) $(dir $@)
+	cp -fp $< $(dir $@)
+	$(CAMLLEX) $(BUILD_DIR)/$<
+	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).ml
+$(BUILD_DIR)/%.cmo: %.mll $(BUILD_DIR)/%.cmi
+	test -f $@ || exit 1
+$(BUILD_DIR)/%.cmx: %.mll $(BUILD_DIR)/%.cmi
+	$(CAMLOPT) $(CAMLOPTFLAGS) -c $(basename $@).ml
+
+# ocamlyacc
+$(BUILD_DIR)/%.cmi: %.mly
+	$(MKDIR_P) $(dir $@)
+	cp -fp $< $(dir $@)
+	$(CAMLYACC) $(BUILD_DIR)/$<
+	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).mli
+$(BUILD_DIR)/%.cmo: $(BUILD_DIR)/%.cmi
+	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).ml
+$(BUILD_DIR)/%.cmx: $(BUILD_DIR)/%.cmi
+	$(CAMLOPT) $(CAMLOPTFLAGS) -c $(basename $@).ml
+
+all::	$(CMIS) $(CMOS) $(CMXS)
+	@echo [SRC] $(SRCS_mli) $(SRCS_ml) $(SRCS_mll) $(SRCS_mly)
+	@echo [CMI] $(CMIS)
+	@echo [CMO] $(CMOS)
+	@echo [CMX] $(CMXS)
+
+#
+Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mll) $(SRCS_mly)
+	@rm -f $@ && touch $@
+	@echo "# SRC_DIRS = $(SRC_DIRS)" >> $@
+	ocamldep $(addprefix -I ,$(INC_DIRS)) $^ |\
+	while read LINE; do \
+	echo $$LINE | $(SED) -r 's/:/ : /g' |\
+	$(AWK) -v dir=$(BUILD_DIR) 'BEGIN{RS="[ \t\n]+"}/^[^:]/{printf("%s/%s ",dir,gensub(/^(\.\/)?(.*)/,"\\2","g",$$0));next}{printf("%s ",$$0)}END{printf("\n")}';\
+	done >> $@
+
+all::	Makefile.depend
+veryclean::
+	rm -f Makefile.depend
+-include Makefile.depend
+
+clean::
+	find . -name '*~' -or -name '*.cm*' -or -name '*.o' | xargs rm -f
+veryclean::
+	rm -rf $(BUILD_DIR)
+
+MKDIR_P ?= mkdir -p

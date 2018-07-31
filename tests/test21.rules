@@ -1,0 +1,11 @@
+// e1; e2 -- runtime state check (_trace_match) is needed
+
+protocol
+e1; e2;;
+
+property
+a;
+
+rule
+on e2 when <{a}>a do a { console.log ("a -> a -> !a"); };
+on e2 when <{a}>!a do a  { console.log ("a -> !a -> a"); };

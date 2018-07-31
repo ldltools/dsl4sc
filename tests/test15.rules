@@ -1,0 +1,19 @@
+// cancel + order; (cancel + ship)
+protocol
+cancel + order; (cancel + ship);;
+
+property
+[{<{!cancelled}*>last}?] <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
+
+!cancelled;
+[{true}*](cancelled -> last);
+
+// extra constraints -- each state changes only once
+  [{true}*][{ordered}][{true}*] ordered;
+  [{true}*][{shipped}][{true}*] shipped;
+  [{true}*][{cancelled}][{true}*] cancelled;
+
+rule
+on order when !ordered do ordered;
+on ship when !shipped do shipped;
+on cancel when !cancelled do cancelled;

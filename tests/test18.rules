@@ -1,0 +1,18 @@
+// update (x); _switch
+
+protocol
+(update_x; _switch; next)* ;;
+// _switch is internal
+
+property
+x_eq_1;
+
+rule
+
+// update x
+on update_x do raise _switch { js_update_x (); };
+
+on _switch when x_eq_1 { x == 1 } do x_eq_1 { console.log ("case: x = 1") };
+on _switch when !x_eq_1 { x != 1 } do !x_eq_1 { console.log ("case: x != 1") };
+
+on next do x_eq_1;

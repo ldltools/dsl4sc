@@ -1,0 +1,11 @@
+// {even}; {!even}; {even}; ...
+
+//protocol e*;;
+property
+even; // initial
+//[{true}*][{even}]!even; // alternating
+//[{true}*][{!even}]even;
+
+rule
+on e when even do !even { console.log ("even"); };
+on e when !even do even { console.log ("odd"); };

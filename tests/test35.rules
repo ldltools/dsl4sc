@@ -1,0 +1,3 @@
+event e1, e2, e3;
+protocol e1; _any;;
+rule on e1 raise e2;

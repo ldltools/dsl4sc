@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scxml version="1.0" datamodel="ecmascript" initial="1">
+  <datamodel>
+    <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
+    <data id="_trace"/>
+    <!-- _trace_matches (guard) examines whether _trace ⊨ [true*]guard holds or not -->
+    <data id="_trace_matches" expr="function (guard) { return true; }"/>
+    <!-- _trace_append (next_world) appends next_world to _trace -->
+    <data id="_trace_append" expr="function (next_world) { }"/>
+  </datamodel>
+  <!--proposition 0 _b0-->
+  <!--proposition 1 _b1-->
+  <state id="2">
+    <transition target="4" event="_accept">
+      <!--tid t15-->
+    </transition>
+    <transition target="5" event="ping">
+      <!--tid t17-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <raise event="pong"/>
+      <script>_trace_append (" true ");  console.log ("ping");  ;</script>
+      <!--rule: r13 event: ping certainty: 3-->
+      <!--rule/when: true-->
+      <!--rule/ensure: true-->
+    </transition>
+  </state>
+  <state id="1">
+    <transition target="2" event="_init">
+      <!--tid t18-->
+    </transition>
+  </state>
+  <state id="4"/>
+  <state id="5">
+    <transition target="2" event="pong">
+      <!--tid t25-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");  console.log ("pong");  ;</script>
+      <!--rule: r14 event: pong certainty: 3-->
+      <!--rule/when: true-->
+      <!--rule/ensure: true-->
+    </transition>
+  </state>
+</scxml>

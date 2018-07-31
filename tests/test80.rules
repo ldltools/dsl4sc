@@ -1,0 +1,78 @@
+//
+
+protocol
+purchase;
+confirmPurchase; purchaseConfirmed;
+confirmReceived; itemReceived
++ //added price propose/reject/accept
+purchase;
+(priceProposal; (priceReject+priceAccept))*;
+confirmPurchase; purchaseConfirmed;
+confirmReceived; itemReceived
+;;
+
+property
+!q0; !q1;
+  // t/f: created
+  // f/t: locked
+  // t/t: inactive
+rule
+
+// seller
+on purchase
+when !q0 & !q1 { _event.data.value % 2 = 0 }
+do q0 & !q1	// created
+{
+  pay(_event);
+  _data.seller = _event.data.sender;
+  _data.value = _event.data.value / 2;
+};
+
+// buyer
+on confirmPurchase
+when q0 & !q1	// created
+{ _event.data.value == (2 * _data.value) }
+do !q0 & q1,	// locked
+raise purchaseConfirmed
+{
+  pay(_event);
+  emit("purchaseConfirmed","");
+  _data.buyer = _event.data.sender;
+};
+
+// buyer
+on confirmReceived
+when !q0 & q1	// locked
+{ _event.data.sender == _data.buyer }
+do !q0 & q1,	// inactive
+raise itemReceived
+{
+  transfer(_data.buyer, _data.value);
+  transfer(_data.seller, _data.balance);
+};
+
+// price propose/reject/accept 
+property
+!r;
+
+rule
+on purchaseConfirmed, itemReceived preserve q0, q1;
+
+on priceProposal 
+do { _data.newPrice = _event.data.price; };
+
+on priceReject do r;
+
+on priceAccept do !r
+do { // revise the deposit
+    _data.oldPrice = _data.value;
+    transfer(_data.seller 2* (_data.oldPrice - _data.newPrice));
+    _data.value = _data.newPrice; };
+
+on confirmPurchase when r do false;
+
+on priceAccept,priceProposal,priceReject preserve q0, q1;
+on priceProposal preserve r;
+
+on purchase,confirmPurchase,confirmReceived,purchaseConfirmed, itemReceived preserve r;
+

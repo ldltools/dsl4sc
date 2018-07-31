@@ -1,0 +1,10 @@
+// order
+
+proposition ordered // this line is omittable
+property <{!ordered};{ordered}>last;
+
+event order // omittable
+protocol order;;
+
+rule
+on order when !ordered do ordered;

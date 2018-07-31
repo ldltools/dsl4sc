@@ -1,0 +1,14 @@
+RCS/
+_build/
+tmp/
+trash/
+obsolete/
+README.html
+.DS_Store
+*~
+*.cm*
+*.afw
+*.dfa
+*.dot
+*.png
+*.json

@@ -1,0 +1,17 @@
+// {even}; {!even}; {even}; ... (modal)
+
+//protocol e*;;
+property
+even;
+//[{true}*][{even}]!even;
+//[{true}*][{!even}]even;
+
+rule
+on e when <{!even}>even do !even { console.log ("even (<!even>even)"); };
+on e when <{even}>!even do even { console.log ("odd (<even>!even)"); };
+
+// ** note
+// the generated DFA has 2 alternating states -- state 3 for a and state 4 for !a.
+// to the transition from state 3 to state 4 (a;!a),
+// the first rule should not be applied when the trace position is 0.
+// we need to examine whether [true*]<!a;a>e holds or not in the state 3.

@@ -1,0 +1,26 @@
+# -*-makefile-*-
+
+TOP_DIR	?= $(shell readlink -f ..)
+
+include $(TOP_DIR)/tests/Makefile.common
+
+# RULES -> LDL
+out/%.ldl out/%.map:	%.rules
+	@mkdir -p out
+	$(RULES2LDL) $< -o out/$*.ldl -t json --map out/$*.map
+
+# RULES -> SCXML
+out/%.scxml:	%.rules
+	@mkdir -p out
+	$(RULES2SCXML) $< -o $@
+
+# RULES -> RULES (in xml)
+out/%.rules.xml:	%.rules
+	$(RULESPP) $< -t xml -o $@
+
+.PRECIOUS:	out/%.rules.xml out/%.ldl out/%.map
+.PRECIOUS:	%.dfa.dot %.dfa.xml
+
+install::
+clean::;	rm -f *~ *.png
+veryclean::;	rm -f out/*
