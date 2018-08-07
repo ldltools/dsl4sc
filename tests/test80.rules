@@ -63,7 +63,7 @@ do { _data.newPrice = _event.data.price; };
 
 on priceReject do r;
 
-on priceAccept do !r
+on priceAccept when !r
 do { // revise the deposit
     _data.oldPrice = _data.value;
     transfer(_data.seller 2* (_data.oldPrice - _data.newPrice));
