@@ -95,6 +95,8 @@ Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mll) $(SRCS_mly)
 	echo $$LINE | $(SED) -r 's/:/ : /g' |\
 	$(AWK) -v dir=$(BUILD_DIR) 'BEGIN{RS="[ \t\n]+"}/^[^:]/{printf("%s/%s ",dir,gensub(/^(\.\/)?(.*)/,"\\2","g",$$0));next}{printf("%s ",$$0)}END{printf("\n")}';\
 	done >> $@
+	@echo >> $@
+	@echo "# generated at: `date +%Y-%m-%dT%H:%M:%S%z`" >> $@
 
 all::	Makefile.depend
 veryclean::
