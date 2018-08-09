@@ -33,7 +33,8 @@ on init do {
     _data.expiredate = _event.data.expiredate; 
     _data.date = _event.data.date;
     };
-on day_close do { 
+on day_close raise _switch1 + _switch2 + _switch3
+{ 
     _data.price = _event.data.price; 
     if (_data.price > _data.ko_price) { __raiseEvent("_switch1","{}"); }
     else if (_data.price >= _data.s_price) { __raiseEvent("_switch2","{}"); }
@@ -45,14 +46,18 @@ on day_open do { _data.date = _data.date + 1;};
 on _switch1 when { _data.price > _data.ko_price } do gt_ko & !lt_strike { _data.cur_shares = max (_data.cur_shares, _data.g_shares); };
 
 // normal
-on _switch3 when { _data.price < _data.s_price } do !gt_ko & lt_strike {
+on _switch3 when { _data.price < _data.s_price }
+do (ensure !gt_ko & lt_strike, raise _terminate)
+{
      _data.cur_shares += _data.lev * _data.n_shares; 
      if (_data.date >= _data.expiredate) { __raiseEvent("_terminate","{}"); };
-     };
-on _switch2 when { _data.price >= _data.s_price } do !gt_ko & !lt_strike { 
+};
+on _switch2 when { _data.price >= _data.s_price }
+do (ensure !gt_ko & !lt_strike, raise _terminate)
+{ 
     _data.cur_shares += _data.lev * _data.n_shares; 
     if (_data.date >= _data.expiredate ) { __raiseEvent("_terminate","{}");};
-    };
+};
 
 // reset gt_ko and lt_strike
 on day_open when !gt_ko do !gt_ko & lt_strike { _data.date = _data.date + 1;}; // same as the initial conditions
