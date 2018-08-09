@@ -22,7 +22,7 @@ usage () {
     echo -e "\t-h\t\tdisplay this message<outfile>"
     echo -e "\t-v\t\tbecome verbose"
     echo -e "\t--until <stage>\tterminate when <stage> gets reached"
-    echo -e "\t\t\t<stage> ::= rules | ldl | mso | dfa | dfadot | dfa2 | dfa3"
+    echo -e "\t\t\t<stage> ::= rules | ldl | mso | dfa | dfadot | dfa2 | dfa3 | scxml"
     echo -e "\t--no-pp\t\tskip preprocessing (be careful)"
 }
 
@@ -87,16 +87,18 @@ cat $infile > $rulesfile
 ldlfile=$(tempfile -d /tmp/.dsl4sc -s .ldl)
 mapfile=$(tempfile -d /tmp/.dsl4sc -s .map)
 test $verbose -eq 1 && echo "** ${RULES2LDL} : $rulesfile -> (${ldlfile}, ${mapfile})" > /dev/stderr
-${RULES2LDL} $nopp $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $ldlfile $mapfile; exit 1; }
+${RULES2LDL} $nopp $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $rulesfile $ldlfile $mapfile; exit 1; }
 
-test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm -f $ldlfile $mapfile; exit 0; }
+test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm -f $rulesfile $ldlfile $mapfile; exit 0; }
 
 # --------------------------------------------------------------------------------
 # rules -> rules in xml (which carries code fragments)
 # --------------------------------------------------------------------------------
 xmlrulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules.xml)
 test $verbose -eq 1 && echo "** ${RULESPP} : $rulesfile -> $xmlrulesfile" > /dev/stderr
-${RULESPP} $rulesfile -o $xmlrulesfile -t xml || { echo "** ${RULESPP} crashed" > /dev/stderr; rm -f $xmlrulesfile; exit 1; }
+${RULESPP} $rulesfile -o $xmlrulesfile -t xml || { echo "** ${RULESPP} crashed" > /dev/stderr; rm -f $rulesfile $xmlrulesfile; exit 1; }
+
+rm -f $rulesfile
 
 # --------------------------------------------------------------------------------
 # ldl + map + rules in xml -> scxml
@@ -105,5 +107,5 @@ test $verbose -eq 1 && echo "** ${LDL2SCXML} : $ldlfile -> $mapfile -> $xmlrules
 
 ${LDL2SCXML} $ldlfile --map $mapfile --rules $xmlrulesfile --until $until -o $outfile || { echo "** ${LDL2SCXML} crashed"; rm -f $ldlfile $mapfile $xmlrulesfile; exit 1; }
 
-rm -f $rulesile $ldlfile $mapfile $xmlrulesfile
+rm -f $ldlfile $mapfile $xmlrulesfile
 true
