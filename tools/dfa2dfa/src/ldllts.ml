@@ -142,12 +142,17 @@ let read_in (ic : in_channel) =
 		      (fst rslt @ [Act_ensure (formula_of_string f)], snd rslt)
 		  | Xml.Element ("raise", attrs, _) ->
 		      (fst rslt @ [Act_raise (List.assoc "event" attrs)], snd rslt)
+		  | Xml.Element ("choice", _, elts') ->
+		      let names =
+			List.map
+			  (function
+			      Xml.Element ("raise", attrs, _) -> List.assoc "event" attrs
+			    | _ -> failwith "** illegal choice")
+			  elts' in
+		      (fst rslt @ [Act_raise_sum names], snd rslt)
 		  | Xml.Element ("script", _, [Xml.PCData s]) ->
 		      (fst rslt, Some s)
 		  | Xml.Element ("script", _, []) ->
-		      rslt
-		  | Xml.Element ("choice", _, _) ->
-		      eprintf "** choice action not supported (skipped)\n";
 		      rslt
 		  | Xml.Element (tag, _, _) ->
 		      failwith (sprintf "read_in: (action) %s" tag)
@@ -467,14 +472,20 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
   (* action *)
   let post : formula list =
     List.fold_left
-      (fun rslt -> function Act_ensure f -> rslt @ [f] | Act_raise _ -> rslt)
+      (fun rslt -> function Act_ensure f -> rslt @ [f] | _ -> rslt)
       [] a in
   out "<action>";
   out "<formula>";
   escape out (string_of_formula (simp (Ldl_conj post)));
   out "</formula>\n";
   List.iter
-    (function Act_raise e -> out (sprintf "<raise event=%S/>\n" e) | _ -> ())
+    (function
+      | Act_raise e -> out (sprintf "<raise event=%S/>\n" e)
+      | Act_raise_sum es ->
+	  out "<choice>";
+	  List.iter (fun e -> out @@ sprintf "<raise event=%S/>" e) es;
+	  out "</choice>\n"
+      | _ -> ())
     a;
   (match a_opt with Some str -> out "<script>"; escape out str; out "</script>\n" | None -> ());
   out "</action>\n";

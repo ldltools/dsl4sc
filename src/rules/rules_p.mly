@@ -718,8 +718,8 @@ rule_seq
 // --------------------------------------------------------------------------------
 rule	: ON rule_e WHEN rule_c do_action
 	  { $2 @ $4 @ $5 }
-	| ON rule_e WHEN rule_c
-	  { $2 @ $4 }
+//	| ON rule_e WHEN rule_c
+//	  { $2 @ $4 }
 	| ON rule_e do_action
 	  { $2 @ $3 }
 
@@ -738,29 +738,10 @@ do_action
 	;
 
 // event/condition/action
-/*
-rule_elt_seq
-	: rule_elt
-	  { $1 }
-	| rule_elt_seq rule_elt
-	  { $1 @ $2 }
-	;
-
-rule_elt
-	: ON rule_e
-	  { $2 }
-	| WHEN rule_c
-	  { $2 }
-	| DO rule_a
-	  { $2 }
-	;
-*/
-
-//
-rule_e	: NAME
-	  { [Elt_event (Ev_name $1)] }
-	| NAME LBRACE STRING RBRACE
-	  { [Elt_event (Ev_name $1); Elt_event_opt $3] }
+rule_e	: args
+	  { List.map (fun arg -> Elt_event (Ev_name arg)) $1 }
+	| args LBRACE STRING RBRACE
+	  { (List.map (fun arg -> Elt_event (Ev_name arg)) $1) @ [Elt_event_opt $3] }
 	;
 
 rule_c	: labelled_property
@@ -788,15 +769,15 @@ preserve_rule
 	;
 
 preserve_rule_e
-	: ON NAME COMMA args
-	  { [Elt_event (Ev_name_seq ($2 :: $4))] }
-	| ON LPAREN args RPAREN
-	  { [Elt_event (Ev_name_seq $3)] }
-	| ON HAT NAME
-	  { [Elt_event (Ev_name_seq_compl [$3])] }
-	| ON HAT LPAREN args RPAREN
-	  { [Elt_event (Ev_name_seq_compl $4)] }
-	| EXCEPT ON args
+//	: ON args
+//	  { List.map (fun arg -> Elt_event (Ev_name arg)) $1 }
+//	| ON LPAREN args RPAREN
+//	  { [Elt_event (Ev_name_seq $3)] }
+//	| ON HAT NAME
+//	  { [Elt_event (Ev_name_seq_compl [$3])] }
+//	| ON HAT LPAREN args RPAREN
+//	  { [Elt_event (Ev_name_seq_compl $4)] }
+	: EXCEPT ON args
 	  { [Elt_event (Ev_name_seq_compl $3)] }
 	| EXCEPT ON LPAREN args RPAREN
 	  { [Elt_event (Ev_name_seq_compl $4)] }

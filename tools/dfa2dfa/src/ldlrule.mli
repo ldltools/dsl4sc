@@ -16,7 +16,9 @@ and action_unit =
   | Act_ensure of Ldl.formula
 	(* post-condition *)
   | Act_raise of string
-	(* raise an event *)
+	(* raise e *)
+  | Act_raise_sum of string list
+	(* raise e1 + e2 + .. (choice) *)
 
 val applicable : rule -> Ldl.formula * Ldl.formula -> bool * int
 

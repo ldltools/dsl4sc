@@ -127,7 +127,17 @@ and find_undeclared1_rule (props, (events : string list), labs) (r : Rule.rule) 
     match fst r.event with
     | Ev_name e -> [e]
     | Ev_name_seq es -> es
-    | Ev_name_seq_compl es -> es
+    | Ev_name_seq_compl es -> es in
+  let es =
+    let a : action = fst r.action in
+    List.fold_left
+      (fun es -> function
+	| Act_raise es' ->
+	    List.fold_left
+	      (fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
+	      es es'
+	| _ -> es)
+      es (snd a)
   in
   let events' =
     List.fold_left
@@ -159,7 +169,7 @@ let rec apply_interleaving decls =
 
 let rec expand_any decls =
   let _, declared, _ = find_declared decls in
-  let user_events = List.filter (fun e -> e.[0] <> '_') declared in
+  let user_events = List.filter (fun e -> not @@ List.mem e ["_skip"; "_any"]) declared in
   let any_expanded =
     Proto_sum (List.map (fun e -> Proto_prop (PProp_event e)) user_events) in
   List.map

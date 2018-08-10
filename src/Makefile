@@ -140,12 +140,19 @@ ci::
 	done
 
 #
-Makefile.depend::	$(SRCS_mli) $(SRCS_ml)
-	@sleep 1
-	echo "$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi" >> $@
+Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mly)
+	@n=0; missing=0;\
+	while test $$n -lt 10; do \
+	 test -s Makefile.depend || { sleep 1s; continue; };\
+	 grep -q '^# generated at' Makefile.depend || { sleep 1s; continue; };\
+	 line=`tail -1 Makefile.depend | grep '^# generated at'`;\
+	 test ."$$line" = . && exit 0;\
+	 break;\
+	done;\
 	echo "$(BUILD_DIR)/rules/rules_p.cmi: $(BUILD_DIR)/rules/rules.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_l.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_p.cmx: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_l.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@
+	echo "$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi" >> $@
+	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@;\
+	echo "$(BUILD_DIR)/rules/rules_p.cmx: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@
 
 $(BUILD_DIR)/ppx:
 	$(CAMLOPT) $(CAML_INC_FLAGS) \

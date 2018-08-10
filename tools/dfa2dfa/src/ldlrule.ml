@@ -32,6 +32,7 @@ and action =
 and action_unit =
   | Act_ensure of Ldl.formula
   | Act_raise of string
+  | Act_raise_sum of string list
 
 [@@deriving show]
 
@@ -40,9 +41,11 @@ let applicable (r : rule) (w1, w2) =
   let rid, _, (c, _), (a, _) = r in
 
   if not (propositional c) then failwith ("rule_applicable: " ^ (string_of_formula c));
+
+  (* post-condition *)
   let post =
     List.fold_left
-      (fun rslt -> function Act_ensure f -> rslt @ [f] | Act_raise _ -> rslt)
+      (fun rslt -> function Act_ensure f -> rslt @ [f] | _ -> rslt)
       [] a in
   let post : formula = Ldl_conj post in
   assert (propositional post);
