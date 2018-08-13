@@ -52,7 +52,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
   for each of these packages,  
   run: `opam install <package>`
 - [ldlsat](https://github.com/ldltools/ldlsat)  
-  run: `git clone ssh://github.ibm.com/trl-ccflow/ldlsat`  
+  run: `git clone ssh://github.com/ldltools/ldlsat`  
   build & install the tool by running `make && make install` in the top directory.  
   By default, its library modules will be installed to `/usr/local/lib/ldlsat`.
 - [mona](http://www.brics.dk/mona/) (v1.4)  
@@ -60,7 +60,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
   expand the archive, and build/install the tool as is instructed.
 - [xqilla](http://xqilla.sourceforge.net/) and [xmllint](http://xmlsoft.org/)  
   run: `apt-get install xqilla libxml2-utils`
-- [scxmlrun](https://github.ibm.com/trl-ccflow/ccflow) (optional, for running/testing SCXML files)  
+- [scxmlrun](https://github.ibm.com/trl-ccflow/ccflow) (optional, for running/testing generated SCXML files)  
   run: `git clone ssh://github.ibm.com/trl-ccflow/ccflow`  
   build & install the tool as instructed.  
 - [graphviz](http://www.graphviz.org/) (optional)  
