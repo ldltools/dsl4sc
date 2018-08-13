@@ -40,6 +40,11 @@ and the following messages are printed out on your terminal.
 
 Take a look at [more examples](examples/README.md) if you are interested.
 
+# Installation on Docker
+
+- run `docker build -t ldltools/ldlsat .` in the ldlsat directory
+- run `docker build -t ldltools/dsl4sc .` in the this directory
+
 # Installation on Debian/Ubuntu
 ## Prerequisites
 - [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.0)  
