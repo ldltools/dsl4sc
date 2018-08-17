@@ -42,7 +42,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
 
 # Installation on Docker
 
-- run `docker build -t ldltools/ldlsat .` in the ldlsat directory
+- run `docker build --target builder -t ldltools/ldlsat-dev .` in the [ldlsat](https://github.com/ldltools/ldlsat) directory
 - run `docker build -t ldltools/dsl4sc .` in the this directory
 
 # Installation on Debian/Ubuntu
@@ -73,7 +73,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
 
 ## Build
 - run `make && make install` in the top directory  
-  Tools will be created and installed into `/usr/local/bin`.__
+  Tools will be created and installed into `/usr/local/bin`.  
   To change the installation directory,
   run `make PREFIX=<prefix> install` instead (default: `PREFIX=/usr/local`).
 

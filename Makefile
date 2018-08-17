@@ -29,8 +29,16 @@ tar:	veryclean
 	(dir=`basename $$PWD`; cd ..; tar cvJf dsl4sc`date +%y%m%d`.tar.xz --exclude=.git --exclude=_build --exclude=RCS --exclude=obsolete $$dir)
 
 # docker
-docker_build:
-	docker images | grep -q '^ldltools/ldlsat' || exit 1
-	docker build -t "ldltools/dsl4sc" .
-docker_run:
-	docker run -it "ldltools/dsl4sc"
+DOCKER_IMAGE	= ldltools/dsl4sc
+$(DOCKER_IMAGE)-dev:
+	docker images | grep -q '^ldltools/ldlsat-dev' || exit 1
+	docker images | grep -q "^$@ " && { echo "$@ exists"; exit 0; } ||\
+	docker build --target builder -t $@ .
+$(DOCKER_IMAGE):
+	docker images | grep -q "^$@ " && { echo "$@ exists"; exit 0; } ||\
+	docker build -t $@ .
+
+docker-build-all:	$(DOCKER_IMAGE)-dev $(DOCKER_IMAGE)
+docker-build:	$(DOCKER_IMAGE)
+docker-run:	$(DOCKER_IMAGE)
+	docker run -it --rm $<

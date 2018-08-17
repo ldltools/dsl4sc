@@ -1,12 +1,5 @@
-FROM ldltools/ldlsat
+FROM ldltools/ldlsat-dev as builder
 MAINTAINER LDL Tools development team <ldltools@outlook.com>
-
-ENV DEBIAN_FRONTEND noninteractive
-ENV DEBIAN_PRIORITY critical
-ENV DEBCONF_NOWARNINGS yes
-
-SHELL /bin/bash
-RUN apt-get update
 
 # dsl4sc
 ADD . /root/dsl4sc
@@ -19,5 +12,25 @@ RUN eval `opam config env`;\
 RUN apt-get install -y graphviz xqilla libxml2-utils
 
 #
+WORKDIR /root
+CMD ["/bin/bash"]
+
+# ====================
+# final image
+# ====================
+#FROM alpine:latest
+FROM debian:stable-slim
+
+RUN echo "dash dash/sh boolean false" | debconf-set-selections;\
+    dpkg-reconfigure -f noninteractive dash;\
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local-lib.conf
+RUN apt-get update;\
+    apt-get install -y gawk;\
+    apt-get install -y graphviz xqilla libxml2-utils
+
+WORKDIR /usr/local
+COPY --from=builder /usr/local .
+RUN ldconfig
+
 WORKDIR /root
 CMD ["/bin/bash"]
