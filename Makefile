@@ -4,7 +4,7 @@
 PREFIX		?= /usr/local
 LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
 
-SUBDIRS		= src scripts tools examples tests docs
+SUBDIRS		= src scripts tools examples tests
 
 all::
 	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) LDLSATLIBDIR=$(LDLSATLIBDIR) $@ || exit 1; done
@@ -30,12 +30,14 @@ tar:	veryclean
 
 # docker
 DOCKER_IMAGE	= ldltools/dsl4sc
+.PHONY:	$(DOCKER_IMAGE)-dev $(DOCKER_IMAGE)
 $(DOCKER_IMAGE)-dev:
 	docker images | grep -q '^ldltools/ldlsat-dev' || exit 1
-	docker images | grep -q "^$@ " && { echo "$@ exists"; exit 0; } ||\
+	docker images | grep -q "^$@ " && { echo "** $@ exists"; exit 0; } ||\
 	docker build --target builder -t $@ .
 $(DOCKER_IMAGE):
-	docker images | grep -q "^$@ " && { echo "$@ exists"; exit 0; } ||\
+	docker images | grep -q '^ldltools/ldlsat-dev' || exit 1
+	docker images | grep -q "^$@ " && { echo "** $@ exists"; exit 0; } ||\
 	docker build -t $@ .
 
 docker-build-all:	$(DOCKER_IMAGE)-dev $(DOCKER_IMAGE)

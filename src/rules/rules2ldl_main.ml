@@ -136,7 +136,7 @@ let output_formula oc (f : Ldl.formula) = function
 (* map out *)
 let output_map oc (m : Spec2ldl.event_map) = function
   | "xml" | "unspecified" ->
-      output_string oc "<mappings>\n";
+      output_string oc "<mappings xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
       List.iter
 	(function e, Ldl.Ldl_conj fs ->
 	  fprintf oc "<bits type=\"event\" name=%S>" e;

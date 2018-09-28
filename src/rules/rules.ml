@@ -250,7 +250,7 @@ let rec print_rules_in_xml out (rules : t) =
 	List.iter (p out) seq;
 	out ("</" ^ tag ^ ">\n")
   in    
-  out "<rules>\n";
+  out "<rules xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
 
   out "<preamble>\n";
   print "propositions"

@@ -1,5 +1,19 @@
 #! /bin/bash
 # $Id: mso2dfa.sh,v 1.1 2018/02/09 10:19:12 sato Exp sato $
+#
+# (C) Copyright IBM Corp. 2018.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 BINDIR=$(readlink -f `dirname $0`)
 LIBDIR=$BINDIR/mso2dfa_helpers
@@ -70,12 +84,12 @@ BEGIN {
 }
 /^Accepting states:/ {
   print ("<accepting>");
-  i = 3; while (i <= NF) { printf ("<id>%d</id>", $i); i++; }
+  i = 3; while (i <= NF) { printf ("<id>q%d</id>", $i); i++; }
   print ("\n</accepting>");
 }
 /^Rejecting states:/ {
   print ("<rejecting>");
-  i = 3; while (i <= NF) { printf ("<id>%d</id>", $i); i++; }
+  i = 3; while (i <= NF) { printf ("<id>q%d</id>", $i); i++; }
   print ("\n</rejecting>");
 }
 /^Transitions:/ { processing = 1; next; }
@@ -86,7 +100,9 @@ BEGIN {
    if (i <= state_id) next;
    state_id = i;
    if (i == 0) next;	# discard state 0
-   printf ("<state id=\"%d\"/>\n", state_id);
+   printf ("<state id=\"q%d\"", state_id);
+   printf ((state_id == 1) ? " initial=\"true\"" : "");
+   printf ("/>\n");
 }
 END { print ("</states>"); }'
 }
@@ -113,14 +129,14 @@ BEGIN {
      j = $5 + 0; lbl = "";
    }
    if (i == 0 && j == 1) next;	# discard transition 0->1
-   printf ("<transition from=\"%d\" to=\"%d\" label=\"%s\"/>\n", i, j, lbl);
+   printf ("<transition from=\"q%d\" to=\"q%d\" label=\"%s\"/>\n", i, j, lbl);
 }
 END { print ("</transitions>"); }'
 }
 
 #
 echo -n					>  ${dfa0file}
-echo "<dfa generatedBy=\"mso\">"	>> ${dfa0file}
+echo "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">"	>> ${dfa0file}
 
 cat ${monaoutfile} | print_props	>> ${dfa0file}
 cat ${monaoutfile} | print_states	>> ${dfa0file}
@@ -139,6 +155,7 @@ xq_script=$LIBDIR/adjust_labels.xq
 test -f ${xq_script} || { echo "${xq_script} not found" > /dev/stderr; exit 1; }
 
 cat <<EOF | xqilla /dev/stdin -i ${dfa0file} -o $outfile || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa0file}; exit 1; }
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 `cat ${xq_script}`
 local:adjust_labels (.)
 EOF

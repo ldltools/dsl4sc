@@ -1,5 +1,19 @@
 #! /bin/bash
 # $Id: dfa2scxml.sh,v 1.1 2018/02/09 10:19:12 sato Exp sato $
+#
+# (C) Copyright IBM Corp. 2018.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 BINDIR=$(readlink -f `dirname $0`)
 LIBDIR=$BINDIR/dfa2scxml_helpers
@@ -78,6 +92,7 @@ test -f "$xmlrulesfile" || { echo "** spurious rules ($xmlrulesfile)" > /dev/std
 dfa2file=$(tempfile -d /tmp/.dsl4sc -s .dfa2)
 #echo "preprocess : $infile -> ${dfa2file}"
 cat <<EOF | xqilla /dev/stdin -i $infile -o ${dfa2file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa2file}; exit 1; }
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
 `cat ${decode_events}`
 declare variable \$rules := doc("`readlink -f $xmlrulesfile`")//rules/rule;
@@ -103,17 +118,15 @@ rm -f ${dfa2file}
 test $until = "dfa3" && { xmllint --format ${dfa3file} > $outfile; rm -f ${dfa3file}; exit 0; }
 
 # --------------------------------------------------------------------------------
-# dfa3 -> dfa4 -> scxml (postprocessing)
+# dfa3 -> dfa4 (postprocessing)
 # --------------------------------------------------------------------------------
 #
 elim_rejecting=$LIBDIR/elim_rejecting.xq
 insert_rules=$LIBDIR/insert_rules.xq
 merge_rules=$LIBDIR/merge_rules.xq
 attach_transitions=$LIBDIR/attach_transitions.xq
-print_in_scxml=$LIBDIR/print_in_scxml.xq
 test -f ${insert_rules} || { echo "${insert_rules} not found" > /dev/stderr; exit 1; }
 test -f ${attach_transitions} || { echo "${attach_transitions} not found" > /dev/stderr; exit 1; }
-test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
 #echo "dfa2scxml : $infile -> $outfile" > /dev/stderr
 
 main1="local:elim_rejecting (.)"
@@ -121,7 +134,7 @@ main2="local:insert_rules (.)"
 main3="local:merge_rules (local:insert_rules (.))"
 main4="local:attach_transitions (.)"
 main2="local:merge_rules (local:insert_rules (.))"
-main99="local:print_in_scxml (local:attach_transitions (local:insert_rules (local:elim_rejecting (.))))"
+main99="local:attach_transitions (local:insert_rules (local:elim_rejecting (.)))"
 
 case $until in
     dfa4-1) main=${main1} ;;
@@ -131,19 +144,38 @@ case $until in
     *) main=${main99} ;;
 esac
 
-scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
-cat <<EOF | xqilla /dev/stdin -i ${dfa3file} -o $scxmlfile || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa3file} $scxmlfile; exit 1; }
+dfa4file=$(tempfile -d /tmp/.dsl4sc -s .dfa4)
+cat <<EOF | xqilla /dev/stdin -i ${dfa3file} -o ${dfa4file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa3file} ${dfa4file}; exit 1; }
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 `cat ${elim_rejecting}`
 `cat ${insert_rules}`
 `cat ${merge_rules}`
 `cat ${attach_transitions}`
-`cat ${print_in_scxml}`
 $main
 EOF
 
-test $until = "scxml" || { xmllint --format $scxmlfile > $outfile; rm -f ${dfa3file} $scxmlfile; exit 0; }
+rm -f ${dfa3file}
 
-cat $scxmlfile > $outfile
+test $until = "dfa4" && { xmllint --format ${dfa4file} > $outfile; rm -f ${dfa4file}; exit 0; }
 
-rm -f ${dfa3file} $scxmlfile
-true
+# --------------------------------------------------------------------------------
+# dfa4 -> scxml
+# --------------------------------------------------------------------------------
+print_in_scxml=$LIBDIR/print_in_scxml.xq
+test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
+
+scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
+
+cat <<EOF | xqilla /dev/stdin -i ${dfa4file} -o ${scxmlfile} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa4file} ${scxmlfile}; exit 1; }
+`cat ${print_in_scxml}`
+local:print_in_scxml (.)
+EOF
+
+rm -f ${dfa4file}
+
+test $until = "scxml" && { xmllint --format $scxmlfile > $outfile; rm -f ${dfa4file} $scxmlfile; exit 0; }
+
+#
+echo "** unknown output format: $until" > /dev/stderr
+rm -f $scxmlfile
+false

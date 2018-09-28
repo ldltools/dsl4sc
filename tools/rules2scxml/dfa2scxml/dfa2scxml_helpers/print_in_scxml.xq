@@ -14,14 +14,21 @@
  * limitations under the License.
  :)
 
+declare default element namespace "http://www.w3.org/2005/07/scxml";
+declare namespace dsl4sc = "https://github.com/ldltools/dsl4sc";
+
 declare function local:list_states ($states, $transitions, $propositions)
 {
   for $q in $states
+  let $tr_seq := $q/dsl4sc:transition
+
   return
+    if (empty ($tr_seq))
+    then element final { $q/@id }
+    else
     element state {
       $q/@id,
 
-      let $tr_seq := $q/transition
       for $tr in $tr_seq
 
       let $ev := 
@@ -35,7 +42,7 @@ declare function local:list_states ($states, $transitions, $propositions)
 
       return
 	(: transition with no rule :)
-        if (empty ($tr/rule)) then
+        if (empty ($tr/dsl4sc:rule)) then
           element transition { attribute target { $tr/@to }, $ev,
             comment { "tid", data ($tr/@id) }
           }
@@ -44,32 +51,32 @@ declare function local:list_states ($states, $transitions, $propositions)
         else
           let $target := $states[@id = $tr/@to]
 
-          for $r in $tr/rule
+          for $r in $tr/dsl4sc:rule
 
           let $certainty := data ($r/@certainty) cast as xs:integer
-	  let $c := $r/condition
+	  let $c := $r/dsl4sc:condition
           let $c_omittable :=
             $certainty = 3 or $certainty = 7 or $certainty = 15
 	  let $cond :=
-	    if ($c_omittable and empty ($c/script)) then
+	    if ($c_omittable and empty ($c/dsl4sc:script)) then
               ()
             else if ($c_omittable) then
-	      $c/script/text ()
-            else if (empty ($c/script)) then
-              ("_trace_matches (&quot;", $c/formula/text (), "&quot;)")
+	      $c/dsl4sc:script/text ()
+            else if (empty ($c/dsl4sc:script)) then
+              ("_trace_matches (&quot;", $c/dsl4sc:formula/text (), "&quot;)")
             else
-              ("_trace_matches (&quot;", $c/formula/text (), "&quot;)",
-              "&amp;&amp;", $c/script/text ())
+              ("_trace_matches (&quot;", $c/dsl4sc:formula/text (), "&quot;)",
+              "&amp;&amp;", $c/dsl4sc:script/text ())
 (:
 	  let $cond :=
             if (not ($ev_appears_many))
 	    then $cond
 	    else (data ($states[@id = $tr/@from]/formula), $cond)
  :)
-	  let $a := $r/action
+	  let $a := $r/dsl4sc:action
 	  let $action :=
-            ("_trace_append (&quot;", data ($tr/formula), "&quot;);",
-             if (empty ($a/script)) then () else (data ($a/script), ";"))
+            ("_trace_append (&quot;", data ($tr/dsl4sc:formula), "&quot;);",
+             if (empty ($a/dsl4sc:script)) then () else (data ($a/dsl4sc:script), ";"))
 
           return
           element transition { attribute target { $tr/@to }, $ev,
@@ -82,9 +89,9 @@ declare function local:list_states ($states, $transitions, $propositions)
 
             (: action :)
             comment { "transition:",
-                      "curr_world:", data ($q/formula),
-                      "label:", data ($tr/formula),
-                      "next_world:", data ($target/formula) },
+                      "curr_world:", data ($q/dsl4sc:formula),
+                      "label:", data ($tr/dsl4sc:formula),
+                      "next_world:", data ($target/dsl4sc:formula) },
             (:$a/raise,:)
             element script { $action },
 
@@ -92,12 +99,12 @@ declare function local:list_states ($states, $transitions, $propositions)
             comment { "rule:", data ($r/@rid),
                       "event:", data ($r/@event),
                       "certainty:", $certainty },
-            comment { "rule.when:", data ($c/formula) },
-            comment { "rule.ensure:", data ($a/formula) },
-	    if (empty ($a/raise)) then () else
-            comment { "rule.raise:", data ($a/raise/@event) },
-	    if (empty ($a/choice)) then () else
-            comment { "rule.raise_sum:", $a/choice/raise/@event },
+            comment { "rule.when:", data ($c/dsl4sc:formula) },
+            comment { "rule.ensure:", data ($a/dsl4sc:formula) },
+	    if (empty ($a/dsl4sc:raise)) then () else
+            comment { "rule.raise:", data ($a/dsl4sc:raise/@event) },
+	    if (empty ($a/dsl4sc:choice)) then () else
+            comment { "rule.raise_sum:", $a/dsl4sc:choice/dsl4sc:raise/@event },
 
             ()
           }
@@ -117,14 +124,20 @@ declare function local:list_propositions ($propositions)
 
 declare function local:print_in_scxml ($doc)
 {
-  let $propositions := $doc//propositions/proposition
-  let $states := $doc//states/state
-  let $transitions := $doc//transitions/transition
+  let $propositions := $doc//dsl4sc:propositions/dsl4sc:proposition
+  let $states := $doc//dsl4sc:states/dsl4sc:state
+  let $transitions := $doc//dsl4sc:transitions/transition
+  (:
+  let $propositions := $doc//node()[local-name(.)="proposition"]
+  let $states := $doc//node()[local-name(.)="state"]
+  let $transitions := $doc//node()[local-name(.)="transition"]
+   :)
+  let $initial := $states[1]/@id
   return
 
   <scxml version="1.0"
-	 datamodel="ecmascript"
-	 initial="1">
+	 datamodel="ecmascript">
+  { attribute initial { $initial } }
   <datamodel>
     <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
     <data id="_trace"/>

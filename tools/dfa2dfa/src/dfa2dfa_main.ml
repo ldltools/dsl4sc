@@ -23,7 +23,7 @@ let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 
 let synopsis prog =
-  printf "usage: %s <rules_file>\n" (Filename.basename prog)
+  printf "usage: %s <dfa_file>\n" (Filename.basename prog)
 
 let input_nfa ic = function
   | "xml" | "unspecified" ->
@@ -92,7 +92,7 @@ let main argc argv =
 
   (* output (in xml) *)
   let out s = output_string oc s in
-  out "<dfa>\n";
+  out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
   out (Xml.to_string props); out "\n";
   Ldllts.print_states_in_xml out m;
   Ldllts.print_transitions_in_xml out m;

@@ -90,7 +90,8 @@ scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
 #echo "ldl2scxml.dfa2scxml : $dfafile -> $scxmlfile" > /dev/stderr
 ${DFA2SCXML} ${dfafile} --map "$mapfile" --rules "$xmlrulesfile" -u $until -o $scxmlfile || { echo "** ${DFA2SCXML} crashed"; rm -f $dfafile $scxmlfile; exit 1; }
 
-xmllint --format --encode utf-8 $scxmlfile > $outfile
+#xmllint --format --encode utf-8 $scxmlfile > $outfile
+cat $scxmlfile > $outfile
 
 rm -f $dfafile $scxmlfile
 true

@@ -52,6 +52,15 @@ and tokenize_rec str i len rslt =
 let formula_of_string str =
   Ldl_p.formula Ldl_l.token (Lexing.from_string str)
 
+let state_name (m : t) (i : int) =
+  let name, _, _ = Nfa.get_state m i in name
+
+let state_index_by_name (states : (int * state) list) (name : string) =
+  try
+    let i, _ = List.find (function (_, (name', _, _)) -> name' = name) states
+    in i
+  with Not_found -> failwith ("state_index_by_name: " ^ name)
+
 (* id *)
 let _id = ref 0
 let gen_id (prefix : string) =
@@ -80,16 +89,19 @@ let read_in (ic : in_channel) =
   List.iter
     (function Xml.Element ("state", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
-      let id = List.assoc "id" attrs in
+      let id : string = List.assoc "id" attrs in
       Nfa.add_state m
 	(id, List.mem_assoc "accepting" attrs, Ldl_atomic "false")
-	(Some (int_of_string id));
+	None;
       ())
     (Xml.children nodes);
   (* transitions *)
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
-      let n1, n2 = List.assoc "from" attrs, List.assoc "to" attrs
+      let n1, n2 =
+	let q1, q2 = List.assoc "from" attrs, List.assoc "to" attrs 
+	and states = Nfa.alist_of_states m
+	in state_index_by_name states q1, state_index_by_name states q2
       and lab = List.assoc "label" attrs
       and events =
 	if not (List.mem_assoc "event" attrs) then [] else
@@ -104,7 +116,7 @@ let read_in (ic : in_channel) =
 	  [] (tokenize lab)
       in
       Nfa.add_transition m
-	(int_of_string n1, Some (gen_id "t", props, events), int_of_string n2);
+	(n1, Some (gen_id "t", props, events), n2);
       ())
     (Xml.children edges);
 
@@ -167,12 +179,12 @@ let read_in (ic : in_channel) =
 (* collect_transitions m returns [(qid1, l, qid2); ..] *)
 
 let collect_transitions m =
-  let edges = Nfa.alist_of_delta m in
+  let edges : (int * (int option * int) list) list = Nfa.alist_of_delta m in
   List.fold_left
     (fun (rslt : (string * label * string) list) (i, nexts) ->
       List.fold_left
 	(fun rslt (lab_opt, j) ->
-	  let qid1, qid2 = string_of_int i, string_of_int j in
+	  let qid1, qid2 = state_name m i, state_name m j in
 	  match lab_opt with
 	  | None -> failwith "collect_transitions"
 	  | Some k -> rslt @ [qid1, Nfa.sigma_get m k, qid2])
@@ -383,7 +395,7 @@ and escape_rec str prev curr len (rslt : string list) =
 
 let print_states_in_xml out (m : t) =
   out "<states>\n";
-  let final = detect_final m in
+  let final : int list = detect_final m in
   List.iter
     (fun (i, (id, acc, w)) ->
       out (sprintf "<state id=%S %s=\"true\"%s>"
@@ -410,9 +422,11 @@ let rec print_transitions_in_xml out (m : t) =
 	    | None -> failwith "print_transitions_in_xml" in
 	  assert (List.length es = 1);
 	  let e = List.hd es in
-	  out (sprintf "<transition id=%S from=\"%d\" to=\"%d\" event=%S%s>"
-		 id i j e
-		 (match subst_event_name m final (i, j) e with
+	  let qid1, qid2 = state_name m i, state_name m j in
+	  out (sprintf "<transition id=%S from=\"%s\" to=\"%s\" event=%S%s>"
+		 id qid1 qid2 e
+		 (* _skip -> _init/_accept/_reject *)
+		 (match subst_event_name m 0 final (i, j) e with
 		 | None -> ""
 		 | Some e' -> sprintf " alt_event=%S" e'));
 	  out "<formula>";
@@ -424,13 +438,13 @@ let rec print_transitions_in_xml out (m : t) =
   out "</transitions>\n";
   ()
 
-and subst_event_name m final (i, j) e =
+and subst_event_name m (initial: int) (final : int list) (i, j) e =
   if e <> "_skip" then None else
   let _, acc, _ = Nfa.get_state m j in
   if List.mem j final then
     Some (if acc then "_accept" else "_reject")
   else
-    if i = 1 && j <> 1 then Some "_init" else None
+    if i = initial && j <> initial then Some "_init" else None
 
 (* alist = [(rid, [tid; ...]); ..] *)
 let rec print_rules_in_xml out (m : t) alist (rs : rule list) =
@@ -524,11 +538,11 @@ let debug_print m =
   output_string stderr "[transitions]\n";
   List.iter
     (fun (i, delta) ->
-      output_string stderr ((string_of_int i) ^ ":");
+      output_string stderr ((state_name m i) ^ ":");
       List.iter
 	(function
-	  | None, j   -> eprintf " %d" j
-	  | Some l, j -> eprintf " %s%d" (show_label (Nfa.sigma_get m l)) j)
+	  | None, j   -> eprintf " %s" (state_name m j)
+	  | Some l, j -> eprintf " %s -> %s" (show_label (Nfa.sigma_get m l)) (state_name m j))
 	delta;
       output_string stderr "\n")
     (Nfa.alist_of_delta m);
