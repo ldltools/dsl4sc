@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="s1">
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q1">
   <datamodel>
     <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
     <data id="_trace"/>
@@ -9,37 +9,33 @@
     <data id="_trace_append" expr="function (next_world) { }"/>
   </datamodel>
   <!--proposition 0 _b0-->
-
-  <state id="s1">
-    <transition target="s2" event="_init">
+  <state id="q1">
+    <transition target="q2" event="_init">
       <!--tid t12-->
     </transition>
   </state>
-
-  <state id="s2">
-    <transition target="s4" event="echo">
-      <!--tid t11-->
-      <!--transition: curr_world: true label: true next_world: true-->
-      <script>_trace_append (" true ");  console.log (_event.data);  ;</script>
-      <!--rule: r9 event: echo certainty: 15-->
-      <!--rule/when: true-->
-      <!--rule/ensure: true-->
-    </transition>
-  </state>
-
-  <state id="s4">
-    <transition target="s5" event="_accept">
-      <!--tid t14-->
-    </transition>
-    <transition target="s4" event="echo">
+  <state id="q2">
+    <transition target="q4" event="echo">
       <!--tid t15-->
       <!--transition: curr_world: true label: true next_world: true-->
       <script>_trace_append (" true ");  console.log (_event.data);  ;</script>
       <!--rule: r9 event: echo certainty: 15-->
-      <!--rule/when: true-->
-      <!--rule/ensure: true-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
     </transition>
   </state>
-
-  <final id="s5"/>
+  <final id="q5"/>
+  <state id="q4">
+    <transition target="q5" event="_accept">
+      <!--tid t18-->
+    </transition>
+    <transition target="q4" event="echo">
+      <!--tid t19-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");  console.log (_event.data);  ;</script>
+      <!--rule: r9 event: echo certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
 </scxml>

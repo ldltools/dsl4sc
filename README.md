@@ -1,39 +1,48 @@
 # Summary
-[*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language
-for concisely defining [_smart contracts_](https://en.wikipedia.org/wiki/Smart\_contract) and translating them to executable forms.
-Each smart contract can be defined as a set of _protocols_, _properties_ and _rules_:
-Protocols define (regular expression-like) patterns of *events*,
-whereas properties define logical constraints among internal states
-in [LDL](https://www.cs.rice.edu/~vardi/) that the contract needs to meet.
-Rules on the other hand define how particular incoming events should be processed
-in the [_event-condtion-action_](https://en.wikipedia.org/wiki/Event_condition_action) style.  
-*dsl4sc* translates each smart contract definition
-to [SCXML](https://www.w3.org/TR/scxml/), which can be either directly executed
-by running those SCXML interpreters
-such as [_scxmlrun_](https://github.ibm.com/trl-ccflow/ccflow) and [JSScxml](https://jsscxml.org/),
-or compiled to a semantically-equivalent [_chaincode_](http://hyperledger-fabric.readthedocs.io/en/latest/chaincode.html) in the [go](https://golang.org/) language
-by using the [_ccflow_](https://github.ibm.com/trl-ccflow/ccflow) SCXML processor
-for execution on the [Hyperledger](https://www.hyperledger.org/projects/fabric) blockchain platform.
+[*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
+based on [LDL](https://www.cs.rice.edu/~vardi/),
+for defining, verifying, and running event-processing systems.
 
-![diagram](docs/images/diagram.png).
+In *dsl4sc*,
+each system is defined as a set of rules
+in the [_event-condtion-action_](https://en.wikipedia.org/wiki/Event_condition_action) style.  
+Then, it can be
+(1) statically verified against particular formal properties in LDL, and/or
+(2) translated int a statechart in [SCXML](https://www.w3.org/TR/scxml/)
+and run as an executable program using a SCXML processor such as
+[_scxmlrun_](https://github.com/ldltools/scxmlrun).
 
 # Example: [echo](examples/echo/README.md)
 
-[*echo.rules*](examples/echo/echo.rules) is defined as follows.
+(1) [*echo.rules*](examples/echo/echo.rules) is defined in *dsl4sc* as follows.
 
 &ensp; **protocol**  
-&ensp;&ensp; echo; echo\*;;  // seq of *echo* events (repeated 1 or more times)  
+&ensp;&ensp; echo; echo\*;;  
+&ensp;&ensp;&ensp; // sequence of *echo* events (repeated 1 or more times)  
 &ensp; **rule**  
-&ensp;&ensp; **on** echo **do** { console.log (_event.data[0]); }; // prints out the first parameter of each incoming *echo* event
+&ensp;&ensp; **on** echo **do** { console.log (_event.data); };  
+&ensp;&ensp;&ensp; // upon each incoming *echo* event, print out its parameter
 
-To generate, from [*echo.rules*](examples/echo/echo.rules), a statechart in [SCXML](https://www.w3.org/TR/scxml/)
-as [*echo.scxml*](examples/echo/out/echo.scxml),  
-run: `make -C examples/echo scxml` after installation is complete.
+(2) [*echo.scxml*](examples/echo/out/echo.scxml) can be generated
+from [*echo.rules*](examples/echo/echo.rules) as a semantically-equivalent
+statechart in the [SCXML](https://www.w3.org/TR/scxml/) format.
 
-To execute [*echo.scxml*](examples/echo/out/echo.scxml) using scxmlrun,  
-run: `make -C examples/echo run`  
-This raises 2 *echo* events -- echo("hello") and echo ("world") -- which are consumed by [*echo.scxml*](examples/echo/out/echo.scxml)
-and the following messages are printed out on your terminal.
+run: `rules2scxml echo.rules -o echo.scxml`
+
+![statechart](examples/echo/echo.svg)
+
+(3) [echo.in](examples/echo/out/echo.in) is defined as an input scenario,
+which includes the following input events
+
+&ensp; {"event" : {"name" : "echo", "data" : "hello"}}  
+&ensp; {"event" : {"name" : "echo", "data" : "world"}}
+
+(4) To test *echo.scxml* against *echo.in*
+using [scxmlrun](https://github.com/ldltools/scxmlrun), our SCXML interperter,
+
+run: `scxmlrun echo.scxml echo.in`
+
+The following messages should appear on your terminal.
 
 &ensp; hello  
 &ensp; world  
@@ -43,7 +52,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
 # Installation on Docker
 
 - run `docker build --target builder -t ldltools/ldlsat-dev .` in the [ldlsat](https://github.com/ldltools/ldlsat) directory
-- run `docker build -t ldltools/dsl4sc .` in the this directory
+- run `docker build -t ldltools/dsl4sc .` in this directory
 
 # Installation on Debian/Ubuntu
 ## Prerequisites
@@ -57,7 +66,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
   for each of these packages,  
   run: `opam install <package>`
 - [ldlsat](https://github.com/ldltools/ldlsat)  
-  run: `git clone ssh://github.com/ldltools/ldlsat`  
+  run: `git clone https://github.com/ldltools/ldlsat`  
   build & install the tool by running `make && make install` in the top directory.  
   By default, its library modules will be installed to `/usr/local/lib/ldlsat`.
 - [mona](http://www.brics.dk/mona/) (v1.4)  
@@ -65,9 +74,10 @@ Take a look at [more examples](examples/README.md) if you are interested.
   expand the archive, and build/install the tool as is instructed.
 - [xqilla](http://xqilla.sourceforge.net/) and [xmllint](http://xmlsoft.org/)  
   run: `apt-get install xqilla libxml2-utils`
-- [scxmlrun](https://github.ibm.com/trl-ccflow/ccflow) (optional, for running/testing generated SCXML files)  
-  run: `git clone ssh://github.ibm.com/trl-ccflow/ccflow`  
-  build & install the tool as instructed.  
+- [scxmlrun](https://github.com/ldltools/scxmlrun) (optional, for running/testing generated SCXML files)  
+  run: `git clone https://github.com/ldltools/scxmlrun`  
+  build & install the tool by running `make && make install` in the top directory.  
+  By default, the binaries will be installed into `/usr/local/bin`.
 - [graphviz](http://www.graphviz.org/) (optional)  
   run: `apt-get install graphviz`
 

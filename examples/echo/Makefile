@@ -3,7 +3,6 @@
 usage:
 	@echo "usage: make <target>"
 	@echo "where <target> can be either of the following"
-	@echo -e "\tdfa\tgenerate \"$(testcase).dfa.png\" (in ./out)"
 	@echo -e "\tscxml\tgenerate \"$(testcase).scxml\" (in ./out)"
 	@echo -e "\trun\trun \"$(testcase).scxml\""
 
@@ -19,6 +18,8 @@ scxml:	out/$(testcase).scxml
 uml:	out/$(testcase).uml
 svg:	out/$(testcase).svg
 run:
+	$(SCXMLRUN) echo.scxml echo.in
+run_ccflow:
 	scxml=$${scxml:-out/echo.scxml}; test -f $$scxml || exit 1;\
 	input='["_init"]\n["echo", "hello"]\n["echo", "world"]';\
 	echo -e $$input | $(SCXMLRUN) $$scxml 2> /dev/null
