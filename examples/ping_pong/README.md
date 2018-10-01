@@ -60,7 +60,7 @@ which includes the following input events
 
 ##(5) To test *ping\_pong2.scxml* against *ping\_pong2.in*, run [_scxmlrun_](https://github.com/ldltools/scxmlrun), our SCXML interperter
 
-run: `scxmlrun ping\_pong2.scxml ping\_pong2.in`
+run: `scxmlrun ping_pong2.scxml ping_pong2.in`
 
 The following messages should appear on your terminal.
 
