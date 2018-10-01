@@ -8,7 +8,7 @@ each system is defined as a set of rules
 in the [_event-condtion-action_](https://en.wikipedia.org/wiki/Event_condition_action) style.  
 Then, it can be
 (1) statically verified against particular formal properties in LDL, and/or
-(2) translated int a statechart in [SCXML](https://www.w3.org/TR/scxml/)
+(2) translated into a statechart in the [SCXML](https://www.w3.org/TR/scxml/) format
 and run as an executable program using a SCXML processor such as
 [_scxmlrun_](https://github.com/ldltools/scxmlrun).
 
@@ -21,7 +21,7 @@ and run as an executable program using a SCXML processor such as
 &ensp;&ensp;&ensp; // sequence of *echo* events (repeated 1 or more times)  
 &ensp; **rule**  
 &ensp;&ensp; **on** echo **do** { console.log (_event.data); };  
-&ensp;&ensp;&ensp; // upon each incoming *echo* event, print out its parameter
+&ensp;&ensp;&ensp; // upon each incoming *echo* event, print out its parameter string
 
 (2) [*echo.scxml*](examples/echo/out/echo.scxml) can be generated
 from [*echo.rules*](examples/echo/echo.rules) as a semantically-equivalent
@@ -31,7 +31,7 @@ run: `rules2scxml echo.rules -o echo.scxml`
 
 ![statechart](examples/echo/echo.svg)
 
-(3) [echo.in](examples/echo/out/echo.in) is defined as an input scenario,
+(3) [echo.in](examples/echo/echo.in) is defined as an input scenario,
 which includes the following input events
 
 &ensp; {"event" : {"name" : "echo", "data" : "hello"}}  

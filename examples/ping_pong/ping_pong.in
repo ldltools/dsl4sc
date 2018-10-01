@@ -1,0 +1,6 @@
+{"event" : {"name" : "_init"}}
+{"event" : {"name" : "ping", "data" : 1}}
+{"event" : {"name" : "pong", "data" : 1}}
+{"event" : {"name" : "ping", "data" : 2}}
+{"event" : {"name" : "pong", "data" : 2}}
+{"event" : {"name" : "_accept"}}

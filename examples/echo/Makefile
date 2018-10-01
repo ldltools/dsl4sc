@@ -17,7 +17,9 @@ dfa:	out/$(testcase).dfa.png
 scxml:	out/$(testcase).scxml
 uml:	out/$(testcase).uml
 svg:	out/$(testcase).svg
+
 run:
+	@test -f echo.scxml -a -f echo.in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
 	$(SCXMLRUN) echo.scxml echo.in
 run_ccflow:
 	scxml=$${scxml:-out/echo.scxml}; test -f $$scxml || exit 1;\

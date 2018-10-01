@@ -22,10 +22,11 @@
     <transition target="q5" event="ping">
       <!--tid t23-->
       <!--transition: curr_world: true label: true next_world: true-->
-      <script>_trace_append (" true ");  console.log ("ping", _event.data);  ;</script>
+      <script>_trace_append (" true ");  console.log ("ping", _event.data); __raiseEvent ("pong", \_event.data);  ;</script>
       <!--rule: r13 event: ping certainty: 15-->
       <!--rule.when: true-->
       <!--rule.ensure: true-->
+      <!--rule.raise: pong-->
     </transition>
   </state>
   <state id="q5">

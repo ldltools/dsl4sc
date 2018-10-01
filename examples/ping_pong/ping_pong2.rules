@@ -1,0 +1,9 @@
+protocol
+ (ping; pong)*;;
+ // pairs of _ping_ and _pong_ events (repeated 0 or more times)
+
+rule
+ on ping do raise pong { console.log ("ping", _event.data); __raiseEvent ("pong", \_event.data); };
+ // Each incoming _ping_ event is responded with _pong_
+ // Note: "**raise** pong" (spec) in _dsl4sc_ needs to be _implemented_ within the "{...}" block
+ on pong do { console.log ("pong", _event.data); };

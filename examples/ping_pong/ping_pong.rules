@@ -1,5 +1,7 @@
 protocol
  (ping; pong)*;;
+ // pairs of *ping* and *pong* events (repeated 0 or more times)
+
 rule
- on ping do raise pong { console.log ("ping"); };
- on pong do { console.log ("pong"); };
+ on ping do { console.log ("ping", _event.data); };
+ on pong do { console.log ("pong", _event.data); };
