@@ -132,7 +132,7 @@ declare function local:print_in_scxml ($doc)
   let $states := $doc//node()[local-name(.)="state"]
   let $transitions := $doc//node()[local-name(.)="transition"]
    :)
-  let $initial := $states[1]/@id
+  let $initial := $states[@initial]/@id
   return
 
   <scxml version="1.0"

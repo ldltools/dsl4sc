@@ -404,8 +404,9 @@ let print_states_in_xml out (m : t) =
   let final : int list = detect_final m in
   List.iter
     (fun (i, (id, acc, w)) ->
-      out (sprintf "<state id=%S %s=\"true\"%s>"
+      out (sprintf "<state id=%S %s=\"true\"%s%s>"
 	     id (if acc then "accepting" else "rejecting")
+	     (if i = 0 then " initial=\"true\"" else "")
 	     (if List.mem i final then " final=\"true\"" else ""));
       out "<formula>";
       escape out (string_of_formula (simp w));
