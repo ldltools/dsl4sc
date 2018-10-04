@@ -90,11 +90,17 @@ let read_in (ic : in_channel) =
     (function Xml.Element ("state", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
       let id : string = List.assoc "id" attrs in
+      (*eprintf "** add_state: %s\n" id;*)
       Nfa.add_state m
 	(id, List.mem_assoc "accepting" attrs, Ldl_atomic "false")
 	None;
       ())
     (Xml.children nodes);
+  if !verbose > 0 then
+    (eprintf "** states:";
+     List.iter (fun (i, (id, _, _)) -> eprintf " (%d,%s)" i id) (Nfa.alist_of_states m);
+     eprintf "\n");
+
   (* transitions *)
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
@@ -194,7 +200,7 @@ let collect_transitions m =
 (* detect_final *)
 
 let rec detect_final (m : t) =
-  let _, final = detect_final_rec m ([], []) 1 in final
+  let _, final = detect_final_rec m ([], []) 0 in final
 
 and detect_final_rec m (visited, final) i =
   if List.mem i visited then (visited, final) else
