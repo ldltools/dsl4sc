@@ -1,13 +1,13 @@
 # Summary
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
-based on [LDL](https://www.cs.rice.edu/~vardi/),
+based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
 for defining, verifying, and running event-processing systems.
 
 In *dsl4sc*,
 each system is defined as a set of rules
 in the [_event-condtion-action_](https://en.wikipedia.org/wiki/Event_condition_action) style.  
-Then, it can be
-(1) statically verified against particular formal properties in LDL, and/or
+Then, the system can be
+(1) statically verified against particular formal properties in LDL<sub>f</sub>, and/or
 (2) translated into a statechart in the [SCXML](https://www.w3.org/TR/scxml/) format
 and run as an executable program using a SCXML processor such as
 [_scxmlrun_](https://github.com/ldltools/scxmlrun).
@@ -32,7 +32,7 @@ run: `rules2scxml echo.rules -o echo.scxml`
 ![statechart](examples/echo/echo.svg)
 
 (3) [echo.in](examples/echo/echo.in) is defined as an input scenario,
-which includes the following input events
+which includes the following lines.
 
 &ensp; {"event" : {"name" : "echo", "data" : "hello"}}  
 &ensp; {"event" : {"name" : "echo", "data" : "world"}}
