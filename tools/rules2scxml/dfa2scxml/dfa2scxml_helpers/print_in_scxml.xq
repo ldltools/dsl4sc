@@ -23,7 +23,7 @@ declare function local:list_states ($states, $transitions, $propositions)
   let $tr_seq := $q/dsl4sc:transition
 
   return
-    if (empty ($tr_seq))
+    if (exists ($q/@final))
     then element final { $q/@id }
     else
     element state {
@@ -44,7 +44,7 @@ declare function local:list_states ($states, $transitions, $propositions)
 	(: transition with no rule :)
         if (empty ($tr/dsl4sc:rule)) then
           element transition { attribute target { $tr/@to }, $ev,
-            comment { "tid", data ($tr/@id) }
+            comment { "tid", data ($tr/@tid) }
           }
 
 	(: transition with 1 or more rules :)
@@ -82,7 +82,7 @@ declare function local:list_states ($states, $transitions, $propositions)
           element transition { attribute target { $tr/@to }, $ev,
             if (empty ($cond)) then () else attribute cond { $cond },
 
-            comment { "tid", data ($tr/@id) },
+            comment { "tid", data ($tr/@tid) },
 
             (: condition :)
             if (empty ($cond)) then () else comment { "condition:", $cond },

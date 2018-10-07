@@ -14,47 +14,55 @@
  * limitations under the License.
  :)
 
-declare function local:attach_transitions_rec ($tr_seq as element (transition)*, $nodes as node()*)
+declare function local:attach_error_transitions_rec ($nodes as node()*)
 {
   for $n in $nodes
   return
     typeswitch ($n)
     case document-node ()
-      return local:attach_transitions_rec ($tr_seq, $n/node ())
+      return local:attach_error_transitions_rec ($n/node ())
+
+    case element (dfa)
+      return
+        element {name ($n)} {
+          $n/@*,
+          local:attach_error_transitions_rec ($n/node ())
+        }
+
+    case element (states)
+      return
+        element {name ($n)} {
+          $n/@*,
+          local:attach_error_transitions_rec ($n/node ()),
+
+          <state id="_rejected" final="true">
+            <onentry><raise event="error.execution"/></onentry>
+          </state>
+        }
 
     case element (state)
       return
         element state {
 	  $n/@*, $n/node (),
 
-          let $id := data ($n/@id) cast as xs:string
-          for $tr in $tr_seq
-          where data ($tr/@from) = $id
-          return
-	    element transition {
-	      attribute tid { data ($tr/@id) },
-	      $tr/@*[name (.) != "id"],
-	      $tr/node ()
-	    }
+          if (data ($n/@final) = "true")
+          then
+            ()
+          else
+            <transition event="*" to="_rejected"/>
         }
-
-    case element (transitions)
-      return ()
-
-    case element (rules)
-      return ()
 
     case element (*)
       return
         element {name ($n)} {
-          $n/@*, local:attach_transitions_rec ($tr_seq, $n/node ())
+          $n/@*, local:attach_error_transitions_rec ($n/node ())
         }
 
     default
       return $n
 };
 
-declare function local:attach_transitions ($doc)
+declare function local:attach_error_transitions ($doc)
 {
-  local:attach_transitions_rec ($doc//transitions/transition, $doc)
+  local:attach_error_transitions_rec ($doc)
 };

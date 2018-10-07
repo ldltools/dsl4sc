@@ -26,6 +26,7 @@ xmlrulesfile=/dev/null
 outfile=/dev/stdout
 verbose=0
 until="scxml"
+reject_invalid_events=${reject_invalid_events:-0}
 
 while test $# -gt 0
 do
@@ -53,6 +54,14 @@ do
 	-v | --verbose)
 	    verbose=1
 	    ;;
+
+	--ignore*)
+	    reject_invalid_events=0
+	    ;;
+	--reject*)
+	    reject_invalid_events=1
+	    ;;
+
 	-*)
 	    echo "** unknow option: $1"
 	    exit 1
@@ -125,6 +134,7 @@ elim_rejecting=$LIBDIR/elim_rejecting.xq
 insert_rules=$LIBDIR/insert_rules.xq
 merge_rules=$LIBDIR/merge_rules.xq
 attach_transitions=$LIBDIR/attach_transitions.xq
+attach_error_transitions=$LIBDIR/attach_error_transitions.xq
 test -f ${insert_rules} || { echo "${insert_rules} not found" > /dev/stderr; exit 1; }
 test -f ${attach_transitions} || { echo "${attach_transitions} not found" > /dev/stderr; exit 1; }
 #echo "dfa2scxml : $infile -> $outfile" > /dev/stderr
@@ -133,14 +143,17 @@ main1="local:elim_rejecting (.)"
 main2="local:insert_rules (.)"
 main3="local:merge_rules (local:insert_rules (.))"
 main4="local:attach_transitions (.)"
-main2="local:merge_rules (local:insert_rules (.))"
+main5="local:attach_error_transitions (.)"
+main11="local:merge_rules (local:insert_rules (.))"
 main99="local:attach_transitions (local:insert_rules (local:elim_rejecting (.)))"
+test ${reject_invalid_events} -ne 0 && main99="local:attach_error_transitions (${main99})"
 
 case $until in
     dfa4-1) main=${main1} ;;
     dfa4-2) main=${main2} ;;
     dfa4-3) main=${main3} ;;
     dfa4-4) main=${main4} ;;
+    dfa4-5) main=${main5} ;;
     *) main=${main99} ;;
 esac
 
@@ -151,15 +164,21 @@ declare default element namespace "https://github.com/ldltools/dsl4sc";
 `cat ${insert_rules}`
 `cat ${merge_rules}`
 `cat ${attach_transitions}`
+`cat ${attach_error_transitions}`
 $main
 EOF
 
 rm -f ${dfa3file}
 
-test $until = "dfa4" && { xmllint --format ${dfa4file} > $outfile; rm -f ${dfa4file}; exit 0; }
+#test $until = "dfa4" && { xmllint --format ${dfa4file} > $outfile; rm -f ${dfa4file}; exit 0; }
+case $until in
+dfa4*) 
+    xmllint --format ${dfa4file} > $outfile; rm -f ${dfa4file}; exit 0
+    ;;
+esac
 
 # --------------------------------------------------------------------------------
-# dfa4 -> scxml
+# dfa4 -> scxml (printing)
 # --------------------------------------------------------------------------------
 print_in_scxml=$LIBDIR/print_in_scxml.xq
 test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
