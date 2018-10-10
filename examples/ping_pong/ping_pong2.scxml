@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q1">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
   <datamodel>
     <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
     <data id="_trace"/>
@@ -10,11 +10,6 @@
   </datamodel>
   <!--proposition 0 _b0-->
   <!--proposition 1 _b1-->
-  <state id="q1">
-    <transition target="q2" event="_init">
-      <!--tid t18-->
-    </transition>
-  </state>
   <state id="q2">
     <transition target="q4" event="_accept">
       <!--tid t21-->
@@ -22,7 +17,9 @@
     <transition target="q5" event="ping">
       <!--tid t23-->
       <!--transition: curr_world: true label: true next_world: true-->
-      <script>_trace_append (" true ");  console.log ("ping", _event.data); __raiseEvent ("pong", \_event.data);  ;</script>
+      <script>_trace_append (" true ");   console.log ("ping", _event.data);
+  // Note: The above "raise pong" action in _dsl4sc_ needs to be _refined/implemented_ within the "{...}" block using SCXML.raise
+  SCXML.raise ({"event" : {"name" : "pong", "data" : _event.data}}); ;</script>
       <!--rule: r13 event: ping certainty: 15-->
       <!--rule.when: true-->
       <!--rule.ensure: true-->

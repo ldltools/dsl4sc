@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel>
+    <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
+    <data id="_trace"/>
+    <!-- _trace_matches (guard) examines whether _trace ⊨ [true*]guard holds or not -->
+    <data id="_trace_matches" expr="function (guard) { return true; }"/>
+    <!-- _trace_append (next_world) appends next_world to _trace -->
+    <data id="_trace_append" expr="function (next_world) { }"/>
+  </datamodel>
+  <!--proposition 0 _b0-->
+  <!--proposition 1 _b1-->
+  <!--proposition 2 _b2-->
+  <!--proposition 3 _b3-->
+  <state id="q2">
+    <transition target="q4" event="init">
+      <!--tid t81-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     SCXML.send ({"event" : _event}); // to external processes
+    // knockout price
+    _data.ko_price = _event.data.ko_price;
+    // strike price that affects leveraged stock purchase at the end of each day
+    _data.strike_price = _event.data.strike_price;
+    _data.share_per_day = _event.data.share_per_day;
+    _data.leverage = _event.data.leverage;
+    _data.purchased = 0;
+    _data.expiry_date = _event.data.expiry_date;
+    _data.date = 1; ;</script>
+      <!--rule: r47 event: init certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
+  <state id="q5">
+    <transition target="q6" event="_not_knockout">
+      <!--tid t88-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     if (_data.price &gt;= _data.strike_price)
+        SCXML.raise ({"event" : {"name" : "_over_strike"}});
+    else
+        SCXML.raise ({"event" : {"name" : "_under_strike"}}); ;</script>
+      <!--rule: r51 event: _not_knockout certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+      <!--rule.raise_sum: _over_strike _under_strike-->
+    </transition>
+    <transition target="q7" event="_knockout">
+      <!--tid t90-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     SCXML.send ({"event" : {"name" : "knockout"}});
+    console.log ("knockout: ", _data.price);
+    console.log ("purchased: ", _data.purchased); ;</script>
+      <!--rule: r50 event: _knockout certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
+  <state id="q7">
+    <transition target="q9" event="_accept">
+      <!--tid t95-->
+    </transition>
+  </state>
+  <state id="q10">
+    <transition target="q4" event="day_open">
+      <!--tid t106-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     SCXML.send ({"event" : _event});
+    _data.date = _data.date + 1;
+    console.log ("open: ", _data.date); ;</script>
+      <!--rule: r48 event: day_open certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
+  <state id="q8">
+    <transition target="q7" event="_terminate">
+      <!--tid t122-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     SCXML.send ({"event" : {"name" : "terminate"}});
+    console.log ("terminate: ", _data.date);
+    console.log ("purchased: ", _data.purchased); ;</script>
+      <!--rule: r54 event: _terminate certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+    <transition target="q10" event="_not_terminate">
+      <!--tid t123-->
+    </transition>
+  </state>
+  <final id="q9"/>
+  <state id="q6">
+    <transition target="q8" event="_over_strike">
+      <!--tid t138-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     // purchase shares
+    console.log ("purchase: ", _data.share_per_day);
+    _data.purchased = _data.purchased + _data.share_per_day;
+    if (_data.date &gt;= _data.expiry_date)
+        SCXML.raise ({"event" : {"name" : "_terminate"}});
+    else
+        SCXML.raise ({"event" : {"name" : "_not_terminate"}}); ;</script>
+      <!--rule: r52 event: _over_strike certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+      <!--rule.raise_sum: _terminate _not_terminate-->
+    </transition>
+    <transition target="q8" event="_under_strike">
+      <!--tid t139-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     // purchase shares (leveraged)
+    console.log ("purchase: ", _data.leverage * _data.share_per_day);
+    _data.purchased = _data.purchased + _data.leverage * _data.share_per_day;
+    if (_data.date &gt;= _data.expiry_date)
+        SCXML.raise ({"event" : {"name" : "_terminate"}});
+    else
+        SCXML.raise ({"event" : {"name" : "_not_terminate"}}); ;</script>
+      <!--rule: r53 event: _under_strike certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+      <!--rule.raise_sum: _terminate _not_terminate-->
+    </transition>
+  </state>
+  <state id="q4">
+    <transition target="q5" event="day_close">
+      <!--tid t154-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>_trace_append (" true ");     SCXML.send ({"event" : _event});
+    console.log ("close: ", _data.date, _event.data.price);
+    _data.price = _event.data.price;
+    if (_event.data.price &gt;= _data.ko_price)
+        SCXML.raise ({"event" : {"name" : "_knockout"}});
+    else
+        SCXML.raise ({"event" : {"name" : "_not_knockout"}}); ;</script>
+      <!--rule: r49 event: day_close certainty: 15-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+      <!--rule.raise_sum: _knockout _not_knockout-->
+    </transition>
+  </state>
+</scxml>

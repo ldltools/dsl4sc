@@ -6,9 +6,14 @@ usage:
 	@echo -e "\tscxml\tgenerate \"$(testcase).scxml\" (in ./out)"
 	@echo -e "\trun\trun \"$(testcase).scxml\""
 
-testcase = echo
+all::
+install::
+clean::
+veryclean::
 
-# overrides defs in ..//Makefile.common
+testcase = accumulator
+
+# overrides defs in ../Makefile.common
 TOP_DIR	= $(shell readlink -f ../..)
 -include ../Makefile.common
 
@@ -19,8 +24,4 @@ svg:	out/$(testcase).svg
 
 run:
 	@test -f $(testcase).scxml -a -f $(testcase).in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
-	$(SCXMLRUN) $(testcase).scxml $(testcase).in
-
-install::
-clean::
-veryclean::
+	$(SCXMLRUN) $(testcase).scxml $(testcase).in -o /dev/null

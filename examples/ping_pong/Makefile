@@ -3,12 +3,11 @@
 usage:
 	@echo "usage: make <target>"
 	@echo "where <target> can be either of the following"
-	@echo -e "\tscxml\tgenerate \"$(testcase).scxml\" (in ./out)"
-	@echo -e "\trun\trun \"$(testcase).scxml\" (needs: scxmlrun)"
+	@echo -e "  scxml\t\tgenerate \"$(testcase).scxml\" (in ./out)"
+	@echo -e "  run\t\trun \"$(testcase).scxml\" (needs: scxmlrun)"
 
 # overrides defs in ..//Makefile.common
 TOP_DIR	= $(shell readlink -f ../..)
-
 include ../Makefile.common
 
 testcase = ping_pong2
@@ -21,10 +20,6 @@ svg:	out/$(testcase).svg
 run:
 	@test -f $(testcase).scxml -a -f $(testcase).in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
 	$(SCXMLRUN) $(testcase).scxml $(testcase).in
-run_ccflow:
-	scxml=$${scxml:-out/ping_pong.scxml}; test -f $$scxml || exit 1;\
-	input='["_init"]\n["ping"]\n["ping"]';\
-	echo -e $$input | $(SCXMLRUN) $$scxml 2> /dev/null | sed '/^{/d'
 
 install::
 clean::

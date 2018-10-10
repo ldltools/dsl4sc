@@ -7,9 +7,9 @@
 &ensp;&ensp;&ensp; // pairs of *ping* and *pong* events (repeated 0 or more times)  
 &ensp; **rule**  
 &ensp;&ensp; **on** ping  
-&ensp;&ensp; **do** **raise** pong { console.log ("ping", \_event.data); \_\_raiseEvent ("pong", \_event.data); };  
+&ensp;&ensp; **raise** pong { console.log ("ping", \_event.data); \_\_raiseEvent ("pong", \_event.data); };  
 &ensp;&ensp;&ensp; // Each incoming *ping* event is responded with _pong_  
-&ensp;&ensp;&ensp; // Note: "**raise** pong" (spec) in *dsl4sc* needs to be _implemented_ within the "{...}" block  
+&ensp;&ensp;&ensp; // Note: The above "**raise** _pong_" action in _dsl4sc_ needs to be _refined/implemented_ within the "{...}" block using `SCXML.raise`  
 &ensp;  
 &ensp;&ensp; **on** pong  
 &ensp;&ensp; **do** { console.log ("pong", \_event.data); };  

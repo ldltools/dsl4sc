@@ -24,6 +24,9 @@ all::
 # ================================================================================
 
 # RULES
+%.scxml:	%.rules
+	$(RULES2SCXML) $< -o $@
+
 %.ldl %.map:	%.rules
 	$(RULES2LDL) $< -o $*.ldl --map $*.map || { rm -f $*.ldl $*.map; exit 1; }
 %.rules.xml:	%.rules
@@ -45,13 +48,15 @@ all::
 	$(LDL2SCXML) $< -o $@ -u dfa || { rm -f $@; exit 1; }
 %.dfa.dot:	%.ldl
 	$(LDL2SCXML) $< -o $@ -u dfadot || { rm -f $@; exit 1; }
+
+# obsolete -- use "rules2scxml" instead
 # <transition label=..> -> <transition event="..">
 # <transition event="e"> carry <rule><event name="e"/></rule> elements
-%.dfa2.xml:	%.ldl %.map %.rules
-	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ --u dfa2 || { rm -f $@; exit 1; }
-
-%.scxml:	%.ldl %.map %.rules
-	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ || { rm -f $@; exit 1; }
+#%.dfa2.xml:	%.ldl %.map %.rules
+#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ --u dfa2 || { rm -f $@; exit 1; }
+#
+#%.scxml:	%.ldl %.map %.rules
+#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ || { rm -f $@; exit 1; }
 
 # DOT -- optional
 %.png:	%.dot
