@@ -80,6 +80,8 @@ mkdir -p /tmp/.dsl4sc
 
 # --------------------------------------------------------------------------------
 # dfa -> dfa2 (preprocessing)
+#
+# dfa2 combines dfa, map (event->bits), and rules that carry code
 # --------------------------------------------------------------------------------
 decode_events=$LIBDIR/decode_events.xq
 include_rules=$LIBDIR/include_rules.xq
@@ -118,6 +120,15 @@ esac
 
 # --------------------------------------------------------------------------------
 # dfa2 -> dfa3
+#
+# information introduced to dfa3
+# [state]
+# - <formula> indicates possible worlds that correspond with the sate.
+# [transition]
+# - <formula>
+# - <alt_event>, namely, _init, _accept, or _reject
+# [rule]
+# - <applicable> includes the transitions to which each rule can be applied.
 # --------------------------------------------------------------------------------
 dfa3file=$(tempfile -d /tmp/.dsl4sc -s .dfa3)
 ${DFA2DFA} ${dfa2file} -o ${dfa3file} || { echo "** ${DFA2DFA} crashed"; rm -f ${dfa2file} ${dfa3file}; exit 1; }
@@ -128,6 +139,9 @@ test $until = "dfa3" && { xmllint --format ${dfa3file} > $outfile; rm -f ${dfa3f
 
 # --------------------------------------------------------------------------------
 # dfa3 -> dfa4 (postprocessing)
+#
+# - to each transition, insert the applicable rules
+# - to each state, associate the transitions
 # --------------------------------------------------------------------------------
 #
 elim_rejecting=$LIBDIR/elim_rejecting.xq
