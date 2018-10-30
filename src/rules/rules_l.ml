@@ -66,8 +66,8 @@ let any_string = [%sedlex.regexp? Star (Compl ('\n' | '\r'))]
 
 let token_queue = Queue.create ()
 let mode = ref 0
-(* 0: normal
-   1: in proposition/event. switch to mode=2 when encountering '{'
+(* 0: normal (dsl4sc top-level)
+   1: in proposition/event/variable. switch to mode=2 when encountering '{'
    2: in read_string. return to mode=1 when encountering '}'
    10: in rule.
    11: in on/when/do.
@@ -138,7 +138,7 @@ and token_rec (buf : lexbuf) =
   (* proposition/property *)
   | "proposition"	-> mode := 1; PROPOSITION
   | "variable"
-  | "var"		-> mode := 0; VARIABLE
+  | "var"		-> mode := 1; VARIABLE
   | "property"		-> mode := 0; PROPERTY
 
   (* logical connectives *)
@@ -166,10 +166,12 @@ and token_rec (buf : lexbuf) =
   | "except"		-> EXCEPT
 
   | ";;"		-> SEMISEMI
+(*
   | "=="		-> EQ
   | "!="		-> NE
   | "<="		-> LE
   | ">="		-> GE
+ *)
 
   | '~'			-> TILDE
   | '<'			-> incr depth_angle; LT
@@ -181,14 +183,16 @@ and token_rec (buf : lexbuf) =
   | ':'			-> COLON
   | ';'			-> SEMI
   | ','			-> COMMA
-  | '.'			-> DOT
+(*| '.'			-> DOT*)
   | '@'			-> AT
   | '='			-> EQUAL
   | '+'			-> PLUS
   | '-'			-> MINUS
   | '*'			-> STAR
+(*
   | '/'			-> SLASH
   | '%'			-> PERCENT
+ *)
   | '?'			-> QUESTION
   | '^'			-> HAT
   | '$'			-> DOLLAR

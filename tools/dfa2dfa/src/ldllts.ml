@@ -69,19 +69,19 @@ let gen_id (prefix : string) =
 (* in_channel -> t * rule list *)
 let read_in (ic : in_channel) =
   let xml = Xml.parse_in ic in
-  let elts : Xml.xml list =
-    (* elts = [propositions; states; transitions; rules] *)
-    let rec trav (rslt : Xml.xml list) = function
+  let alist : (string * Xml.xml) list =
+    (* elts = [propositions; states; transitions; variables; rules] *)
+    let rec trav (rslt : (string * Xml.xml) list) = function
       | Xml.Element ("dfa", _, children) ->
-	  children
+	  List.map
+	    (fun child -> match child with Xml.Element (name, _, _) -> name, child)
+	    children
       | Xml.Element (_, _, children) ->
 	  List.fold_left (Xml.fold trav) rslt children
       | _ -> rslt
     in trav [] xml in
-  assert (List.length elts = 4);
-  let props, nodes, edges, rules =
-    (match elts with [props; nodes; edges; rules] -> props, nodes, edges, rules)
-  in
+  assert (List.length alist = 5);
+  let nodes, edges = (List.assoc "states" alist), List.assoc "transitions" alist in
 
   (* xml -> t *)
   let m : t = Nfa.make () in
@@ -178,9 +178,9 @@ let read_in (ic : in_channel) =
 		([], None) elts
 	in
 	gen_id "r", e, c, a)
-      (Xml.children rules)
+      (Xml.children (List.assoc "rules" alist))
   in      
-  props, m, rs
+  alist, m, rs
 
 (* collect_transitions m returns [(qid1, l, qid2); ..] *)
 

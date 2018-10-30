@@ -52,6 +52,8 @@ and variable_spec =
 and variable_type =
   | VT_bool
   | VT_range of int * int
+  | VT_impl of string option
+    (** for implementation only. no corresponding proposition *)
 
 (** property *)
 and property_spec =

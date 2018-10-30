@@ -73,13 +73,13 @@ let main argc argv =
 
   (* read dfa (in xml) from file into m *)
   let ic = open_in !infile in
-  let props, (m : Ldllts.t), (rs : Ldllts.rule list) = Ldllts.read_in ic in
+  let alist, (m : Ldllts.t), (rs : Ldllts.rule list) = Ldllts.read_in ic in
   if !opt_verbose then
     (eprintf "** parsed from %S\n" !infile;
      Ldllts.debug_print m; List.iter Ldllts.debug_print_rule rs);
 
   (* update m to m' *)
-  let m', (alist : (string * string list) list) = Ldllts.update m rs in
+  let m', (alist' : (string * string list) list) = Ldllts.update m rs in
   if !opt_verbose then
     (eprintf "** updated\n";
      Ldllts.debug_print m';
@@ -88,15 +88,16 @@ let main argc argv =
 	 eprintf "%s:" rid;
 	 List.iter (eprintf " %s") tid_seq;
 	 output_string stderr "\n")
-       alist);
+       alist');
 
   (* output (in xml) *)
   let out s = output_string oc s in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
-  out (Xml.to_string props); out "\n";
+  out (Xml.to_string (List.assoc "propositions" alist)); out "\n";
   Ldllts.print_states_in_xml out m;
   Ldllts.print_transitions_in_xml out m;
-  Ldllts.print_rules_in_xml out m alist rs;
+  out (Xml.to_string (List.assoc "variables" alist)); out "\n";
+  Ldllts.print_rules_in_xml out m alist' rs;
   out "</dfa>\n";
 
   (* clean-up *)

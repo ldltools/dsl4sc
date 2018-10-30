@@ -151,8 +151,8 @@ Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mly)
 	done;\
 	echo "$(BUILD_DIR)/rules/rules_p.cmi: $(BUILD_DIR)/rules/rules.cmi" >> $@
 	echo "$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@;\
-	echo "$(BUILD_DIR)/rules/rules_p.cmx: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@
+	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi $(BUILD_DIR)/rules/rules_l.cmi" >> $@;\
+	echo "$(BUILD_DIR)/rules/rules_p.cmx: $(BUILD_DIR)/rules/rules.cmx $(BUILD_DIR)/rules/rules_p.cmi $(BUILD_DIR)/rules/rules_l.cmi" >> $@
 
 $(BUILD_DIR)/ppx:
 	$(CAMLOPT) $(CAML_INC_FLAGS) \

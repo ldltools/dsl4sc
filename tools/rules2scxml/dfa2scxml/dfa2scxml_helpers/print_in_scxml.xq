@@ -142,12 +142,17 @@ declare function local:print_in_scxml ($doc)
   let $states := $doc//node()[local-name(.)="state"]
   let $transitions := $doc//node()[local-name(.)="transition"]
    :)
+
+  let $variables := $doc//dsl4sc:variables/dsl4sc:variable
   return
 
   <scxml version="1.0"
 	 datamodel="ecmascript">
   { attribute initial { $initial } }
   <datamodel>
+    {for $v in $variables
+     return element data { attribute id {$v/@name}, attribute expr {$v/text ()} }}
+
     <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
     <data id="_trace"/>
     <!-- _trace_matches (guard) examines whether _trace ⊨ [true*]guard holds or not -->

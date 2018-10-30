@@ -66,11 +66,11 @@ all::
 
 # UML -- optional
 LANDSCAPE	?= 0
-%.uml:	%.scxml
+%.puml:	%.scxml
 #	scxml2uml.sh $< -o $@ -nocond
 	landscape=`test $(LANDSCAPE) -ne 0 && echo -e "\x2dlandscape"`; \
 	scxml2uml.sh $< -o $@ $$landscape
-%.svg:	%.uml
+%.svg:	%.puml
 	plantuml.sh $< -tsvg
 %.png:	%.svg
 	convert $< $@
@@ -79,6 +79,6 @@ LANDSCAPE	?= 0
 .PRECIOUS:	%.dfa.xml %.dfa2.xml
 .PRECIOUS:	%.scxml
 .PRECIOUS:	%.dfa.dot %.mso.dot
-.PRECIOUS:	%.uml %.svg
+.PRECIOUS:	%.puml %.svg
 
 

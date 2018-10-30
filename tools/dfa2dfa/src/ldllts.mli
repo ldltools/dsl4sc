@@ -19,8 +19,8 @@ type rule = Ldlrule.rule
 type label = string * Ldl.formula list * string list
       (* (id, next_world, event_name list) *)
 
-val read_in : in_channel -> Xml.xml * t * rule list
-    (* (props, lts, rules) *)
+val read_in : in_channel -> (string * Xml.xml) list * t * rule list
+    (* (dfa elts, lts, rules) *)
 
 val update : t -> rule list -> t * (string * string list) list
     (** returns (m, alist)

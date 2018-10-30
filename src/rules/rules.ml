@@ -50,6 +50,7 @@ and variable_spec =
 and variable_type =
   | VT_bool
   | VT_range of int * int
+  | VT_impl of string option
 
 (** property *)
 and property_spec =
@@ -147,6 +148,7 @@ let print_rules out (rs : t) =
       out "protocol\n";
       List.iter
 	(function
+	  (*
 	  | None, p ->
 	      out " { "; Rule.print_protocol out p; out " }\n"
 	  | Some (name, []), p ->
@@ -155,7 +157,10 @@ let print_rules out (rs : t) =
 	  | Some (name, arg :: args), p ->
 	      out " "; out name;
 	      out " ("; out arg; List.iter (fun arg -> out ", "; out arg) args; out ")";
-	      out " { "; Rule.print_protocol out p; out " }\n")
+	      out " { "; Rule.print_protocol out p; out " }\n"
+	   *)
+	  | _, p ->
+	      out " "; Rule.print_protocol out p; out ";;\n")
 	rs.proto_decls;
     end;
 
@@ -169,7 +174,20 @@ let print_rules out (rs : t) =
       out " ;\n";
     end;
 
+  (* variable *)
+  if rs.var_decls <> [] then
+    begin
+      out "variable\n";
+      List.iter
+	(function
+	  | (x, VT_impl _), Some e ->
+	      out " { "; out x; out " = "; out e; out "; }\n"
+	  | _ -> ())
+	rs.var_decls;
+    end;
+
   (* label *)
+(*
   let ls = rs.label_decls in
   if ls <> [] then
     begin
@@ -178,6 +196,7 @@ let print_rules out (rs : t) =
       List.iter	(function l -> out ", "; out l) (List.tl ls);
       out " ;\n";
     end;
+ *)
 
   (* propery *)
   if rs.prop_decls <> [] then
@@ -185,6 +204,7 @@ let print_rules out (rs : t) =
       out "property\n";
       List.iter
 	(function
+	  (*
 	  | None, p ->
 	      out " { "; Rule.print_labelled_property out p; out " }\n"
 	  | Some (name, []), p ->
@@ -193,7 +213,10 @@ let print_rules out (rs : t) =
 	  | Some (name, arg :: args), p ->
 	      out " "; out name;
 	      out " ("; out arg; List.iter (fun arg -> out ", "; out arg) args; out ")";
-	      out " { "; Rule.print_labelled_property out p; out " }\n")
+	      out " { "; Rule.print_labelled_property out p; out " }\n"
+	   *)
+	  | _, p ->
+	      out " "; Rule.print_labelled_property out p; out ";\n")
 	rs.prop_decls;
     end;
 
@@ -203,6 +226,7 @@ let print_rules out (rs : t) =
       out "rule\n";
       List.iter
 	(function
+	  (*
 	  | None, r ->
 	      out " { "; Rule.print_rule out r; out " }\n"
 	  | Some (name, []), r ->
@@ -211,7 +235,10 @@ let print_rules out (rs : t) =
 	  | Some (name, arg :: args), r ->
 	      out " "; out name;
 	      out " ("; out arg; List.iter (fun arg -> out ", "; out arg) args; out ")";
-	      out " { "; Rule.print_rule out r; out " }\n")
+	      out " { "; Rule.print_rule out r; out " }\n"
+	   *)
+	  | _, r ->
+	      out " "; Rule.print_rule out r; out "\n")
 	rs.rule_decls;
     end;
 
@@ -253,18 +280,6 @@ let rec print_rules_in_xml out (rules : t) =
   out "<rules xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
 
   out "<preamble>\n";
-  print "propositions"
-    rules.pvar_decls
-    print_proposition_in_xml;
-  print "properties"
-    rules.prop_decls
-    print_property_in_xml;
-  print "paths"
-    rules.path_decls
-    print_path_in_xml;
-  print "labels"
-    rules.label_decls
-    print_label_in_xml;
 
   print "events"
     rules.event_decls
@@ -272,6 +287,27 @@ let rec print_rules_in_xml out (rules : t) =
   print "protocols"
     rules.proto_decls
     print_protocol_in_xml;
+
+  print "propositions"
+    rules.pvar_decls
+    print_proposition_in_xml;
+  print "properties"
+    rules.prop_decls
+    print_property_in_xml;
+
+  print "variables"
+    rules.var_decls
+    print_variable_in_xml;
+
+  (* deprecated *)
+  print "paths"
+    rules.path_decls
+    print_path_in_xml;
+  (* deprecated *)
+  print "labels"
+    rules.label_decls
+    print_label_in_xml;
+
   out "</preamble>\n";
 
   (* rule -- strip off the special "_skip" rule and its successors.
@@ -312,7 +348,7 @@ let rec print_rules_in_xml out (rules : t) =
   in
 *)
 
-and print_proposition_in_xml out (str, opt) =
+and print_proposition_in_xml out ((str, opt) : proposition_spec) =
   out "<proposition variable=\""; out str; out "\"";
   match opt with
   | None -> out "/>\n"
@@ -372,7 +408,7 @@ and print_label_in_xml out l =
   out l;
   out "\"/>\n"
 
-and print_event_in_xml out (str, opt) =
+and print_event_in_xml out ((str, opt) : event_spec) =
   out "<event name=\""; out str; out "\"";
   match opt with
   | None -> out "/>\n"
@@ -380,7 +416,7 @@ and print_event_in_xml out (str, opt) =
       out ">\n<script>"; escape out str'; out "</script>\n";
       out "</event>\n"
 
-and print_protocol_in_xml out (name_opt, p) =
+and print_protocol_in_xml out ((name_opt, p) : protocol_spec) =
   out "<protocol";
   let _ =
     match name_opt with
@@ -391,7 +427,7 @@ and print_protocol_in_xml out (name_opt, p) =
   escape out (Rule.string_of_protocol p);
   out "</protocol>\n"
 
-and print_rule_in_xml out (name_opt, r) =
+and print_rule_in_xml out ((name_opt, r) : rule_spec) =
       out "<rule";
       let _ =
 	match name_opt with
@@ -575,3 +611,22 @@ and print_rule_in_xml out (pspecs : proposition_spec list) (r : rule_spec) =
   out "</rule>\n"
 
 *)
+
+and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
+  assert (name <> "");
+  out "<variable name=\"";
+  out (if name <> "" then name else invalid_arg "variable with no name");
+  out "\"";
+  let _ =
+    match ty with
+    | VT_bool ->
+	out " type=\"bool\""
+    | VT_range (i, j) ->
+	out (Printf.sprintf " type=\"range(%d,%d)\"" i j)
+    | VT_impl None -> ()
+    | VT_impl (Some str) ->
+	out " type=\""; escape out str; out "\""
+  in ();
+  match init_opt with
+  | None -> out "/>\n"
+  | Some str -> out ">"; out str; out "</variable>\n"

@@ -107,6 +107,7 @@ declare default element namespace "https://github.com/ldltools/dsl4sc";
 declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
 `cat ${decode_events}`
 declare variable \$rules := doc("`readlink -f $xmlrulesfile`")//rules/rule;
+declare variable \$vars := doc("`readlink -f $xmlrulesfile`")//variables/variable;
 `cat ${include_rules}`
 $main
 EOF

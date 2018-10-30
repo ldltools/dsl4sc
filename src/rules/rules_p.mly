@@ -73,37 +73,35 @@ and expand_prop_spec_rec rslt = function
 %token	PROPERTY
 
 %token	RULE
-%token	ON IF WHEN DO THEN END
+%token	ON WHEN DO
 %token	RAISE ENSURE
 %token	PRESERVE EXCEPT
 
 // modified
 %token	<int> CONST
-%token	<string> TYPE XU
-%token	<string> NAME UNAME PNAME INAME
+%token	<string> NAME
 %token	<string> STRING
-%token	<string * string list> NAME_WITH_ARGS
+//%token	<string * string list> NAME_WITH_ARGS
 
 %left	IMPLIES
-%right	EQUAL
-%left	EQ NE
-%left	GT LT GE LE
-%right	UMIN NEG NOT EXCLAM
-%left	DOT
+%left	GT LT
+//%right	UMIN NEG
+%right	NOT EXCLAM
 %left	STAR
 %left	QUESTION
 %left	OR
 %left	AND
 
-// added
+%token	NOT
 %token	OR
 %token	AND
-%token	IMPLIES EQUAL
+%token	IMPLIES
+%token	EQUAL
+%token	GT LT
 
-%token	EQ NE
-%token	GT LT GE LE
-%token	TILDE NEG NOT EXCLAM DOT DOLLAR HAT
-%token	PLUS MINUS SLASH PERCENT
+%token	TILDE
+%token 	EXCLAM DOLLAR HAT
+%token	PLUS MINUS
 %token	QUESTION
 %token	STAR
 
@@ -111,7 +109,6 @@ and expand_prop_spec_rec rslt = function
 %token	LPAREN RPAREN LBRACE RBRACE LBRACK RBRACK
 %token	SEMI COLON COMMA AT
 %token	SEMISEMI
-%token	SKIP
 %token	EOF
 
 %%
@@ -167,8 +164,9 @@ decl	: EVENT event_spec_seq
 	  // rules enclosed by braces
 	  { List.map (fun s -> Rules.Decl_rule s) $2 }
 
-	| error
-	  { raise @@ Rules_l.ParseError "decl" }
+// **conflict
+//	| error
+//	  { raise @@ Rules_l.ParseError "decl" }
 	;
 
 // ================================================================================
@@ -218,25 +216,26 @@ range	: LBRACK CONST RBRACK
 var_spec_seq
 	: var_spec_seq1
 	  { $1 }
-	| var_spec_seq SEMI var_spec_seq1
-	  { $1 @ $3 }
-	| var_spec_seq SEMI
-	  { $1 }
+	| var_spec_seq var_spec_seq1
+	  { $1 @ $2 }
+//	| var_spec_seq SEMI
+//	  { $1 }
+	| error
+	  { raise @@ Rules_l.ParseError "variable_spec" }
 	;
 
+// variables of the same type
 var_spec_seq1
-	: var_spec_seq2
+	: var_spec_seq2 SEMI
 	  { List.map (fun (name, code) -> (name, Rules.VT_bool), code) $1 }
-	| var_spec_seq2 COLON var_type
+	| var_spec_seq2 COLON var_type SEMI
 	  { List.map (fun (name, code) -> (name, $3), code) $1 }
-	;
 
-var_type
-	: NAME
-	  { assert ($1 = "bool"); Rules.VT_bool }
-	| NAME LPAREN CONST COMMA CONST RPAREN
-	  { assert ($1 = "range");
-	    Rules.VT_range ($3, $5) }
+	// code-only, with no corresponding proposition.
+	| LBRACE STRING RBRACE
+	  { [("", Rules.VT_impl None), Some $2] }
+	    // the contents of $2 will be scanned/parsed later by rulespp.
+	    // we do not do that here, since it is datamodel-dependent.
 	;
 
 var_spec_seq2
@@ -246,6 +245,16 @@ var_spec_seq2
 	  { $1 @ $3 }
 	;
 
+var_type
+	: NAME
+	  { assert ($1 = "bool"); Rules.VT_bool }
+	| NAME LPAREN CONST COMMA CONST RPAREN
+	  // range type
+	  { assert ($1 = "range");
+	    Rules.VT_range ($3, $5) }
+	;
+
+// single variable specification
 var_spec
 	: NAME
 	  { [$1, None] }
@@ -270,14 +279,16 @@ property_spec_seq
 	;
 
 property_spec
-	: NAME LPAREN param_seq RPAREN LBRACE labelled_property RBRACE
+	: property_or_pcall SEMI
+	  { None, $1 }
+
+	// deprecated
+	| NAME LPAREN param_seq RPAREN LBRACE labelled_property RBRACE
 	  { let args =
 	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
 	    in Some ($1, args), $6 }
 	| LBRACE property_or_pcall RBRACE
 	  { None, $2 }
-	| property_or_pcall SEMI
-	  { None, $1 }
 	;
 
 property_or_pcall
@@ -586,19 +597,23 @@ protocol_spec_seq
 	;
 
 protocol_spec
-	: NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
+	: protocol_or_pcall SEMISEMI
+	  { None, $1 }
+
+	// deprecated
+	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
 	  { let args =
 	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
 	    in Some ($1, args), $6 }
 	| LBRACE protocol_or_pcall RBRACE
 	  { None, $2 }
-	| protocol_or_pcall SEMISEMI
-	  { None, $1 }
 	;
 
 protocol_or_pcall
 	: protocol
 	  { $1 }
+
+	// deprecated
 	| NAME LPAREN param_seq RPAREN
 	  { raise @@ Rules_l.ParseError "protocol_or_pcall" }
 	;
@@ -684,22 +699,30 @@ rule_spec_seq
 	;
 
 rule_spec
-	: NAME LPAREN param_seq RPAREN LBRACE rule RBRACE
+	: rule
+	  { None, genrule $1 }
+	| rule_spec SEMI
+	  { $1 }
+
+	// deprecated
+/*
+	| LBRACE rule RBRACE
+	  { None, genrule $2 }
+	| NAME LPAREN param_seq RPAREN LBRACE rule RBRACE
 	  { let args =
 	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "rule_spec") $3
 	    in Some ($1, args), genrule $6 }
-	| LBRACE rule_or_rcall RBRACE
-	  { None, genrule $2 }
-	| rule_or_rcall SEMI
-	  { None, genrule $1 }
+*/
 	;
 
+/*
 rule_or_rcall
 	: rule
 	  { $1 }
 	| NAME LPAREN param_seq RPAREN
 	  { raise @@ Rules_l.ParseError "rule_or_rcall" }
 	;
+*/
 
 /*
 // naked rules
@@ -716,25 +739,15 @@ rule_seq
 // --------------------------------------------------------------------------------
 // eca rule
 // --------------------------------------------------------------------------------
-rule	: ON rule_e WHEN rule_c do_action
+rule	: ON rule_e WHEN rule_c rule_a
 	  { $2 @ $4 @ $5 }
-//	| ON rule_e WHEN rule_c
-//	  { $2 @ $4 }
-	| ON rule_e do_action
+	| ON rule_e rule_a
+	  // condition = true
 	  { $2 @ $3 }
 
 // special case
 	| preserve_rule
 	  { $1 }
-	;
-
-do_action
-	: DO rule_a
-	  { $2 }
-	| action1
-	  { [Elt_action (None, [$1])] }
-	| action1 LBRACE STRING RBRACE
-	  { [Elt_action (None, [$1]); Elt_action_opt $3] }
 	;
 
 // event/condition/action
@@ -752,15 +765,101 @@ rule_c	: labelled_property
 	  { [Elt_condition_opt $2] }
 	;
 
-rule_a	: action
-	  { [Elt_action $1] }
-	| action LBRACE STRING RBRACE
-	  { [Elt_action $1; Elt_action_opt $3] }
-	| LBRACE STRING RBRACE
-	  { [Elt_action_opt $2] }
+rule_a	: action_seq
+	  { $1 }
 	;
 
-// special case
+// ------
+// action
+// ------
+	    
+action_seq
+	: action
+	  { $1 }
+	| action_seq action
+	  { $1 @ $2 }
+	;
+	    
+action	: action1
+	  { [Elt_action (None, [$1])] }
+	| action1 LBRACE STRING RBRACE
+	  { [Elt_action (None, [$1]); Elt_action_opt $3] }
+	| DO LBRACE STRING RBRACE
+	  { [Elt_action_opt $3] }
+	;
+
+action1	: action_ensure
+	  { $1 }
+	| action_raise
+	  { $1 }
+	| DO action1
+	  { $2 }
+	;
+
+// -------------
+// action_ensure
+// -------------
+action_ensure
+	: ENSURE state
+	  { Act_ensure $2 }
+	;
+
+// post-state proposition
+state	: state0
+	  { $1 }
+	| state0 IMPLIES state
+	  { Prop_disj [Prop_neg $1; $3] }
+	| error
+	  { raise @@ Rules_l.ParseError "state" }
+	;
+
+state0	: state1
+	  { $1 }
+	| state0 OR state1
+	  { match $1 with Prop_disj s -> Prop_disj (s @ [$3]) | _ -> Prop_disj [$1; $3] }
+	;
+
+state1	: state2
+	  { $1 }
+	| state1 AND state2
+	  { match $1 with Prop_conj s -> Prop_conj (s @ [$3]) | _ -> Prop_conj [$1; $3] }
+	;
+
+state2	: NAME
+	  { Prop_atomic $1 }
+	| neg state2
+	  { Prop_neg $2 }
+	| LPAREN state RPAREN
+	  { $2 }
+	| label_use
+	  { Prop_label $1 }
+	;
+
+// ------------
+// action_raise
+// ------------
+action_raise
+	: RAISE event_sum
+	  { Act_raise $2 }
+	;
+
+event_sum
+	: event_sum1
+	  { $1 }
+	| event_sum PLUS event_sum1
+	  { $1 @ $3 }
+	;
+
+event_sum1
+	: NAME
+	  { [$1] }
+	| LPAREN event_sum RPAREN
+	  { $2 }
+	;
+
+// ----------------------
+// special case: preserve
+// ----------------------
 preserve_rule
 	: ON rule_e preserve_rule_a
 	  { $2 @ $3 }
@@ -806,91 +905,6 @@ args	: NAME
 	  { $1 @ [$3] }
 	;
  
-// --------------------------------------------------------------------------------
-// action ::= state | modal_path? action1_seq
-// --------------------------------------------------------------------------------
-action	: action1
-	  { None, [$1] }
-	| action1_seq
-	  { None, $1 }
-/*
-	| modal_path state2
-	  { assert (fst $1 = Mod_ex); Some (fst (snd $1)), [Act_ensure $2] }
-	| modal_path action1
-	  { assert (fst $1 = Mod_ex); Some (fst (snd $1)), [$2] }
-	| modal_path LPAREN action1_seq RPAREN
-	  { assert (fst $1 = Mod_ex); Some (fst (snd $1)), $3 }
-*/
-	;
-
-action1_seq
-	: action1 COMMA action1
-	  { [$1; $3] }
-	| action1_seq COMMA action1
-	  { $1 @ [$3] }
-	| LPAREN action1_seq RPAREN
-	  { $2 }
-	;
-
-action0	: ENSURE state
-	  { Act_ensure $2 }
-	| RAISE event_sum
-	  { Act_raise $2 }
-	| LPAREN action0 RPAREN
-	  { $2 }
-	;
-
-event_sum
-	: event_sum1
-	  { $1 }
-	| event_sum PLUS event_sum1
-	  { $1 @ $3 }
-	;
-
-event_sum1
-	: NAME
-	  { [$1] }
-	| LPAREN event_sum RPAREN
-	  { $2 }
-	;
-
-action1	: action0
-	  { $1 }
-	| state
-	  { Act_ensure $1 }
-	;
-
-// post-state proposition
-state	: state0
-	  { $1 }
-	| state0 IMPLIES state
-	  { Prop_disj [Prop_neg $1; $3] }
-	| error
-	  { raise @@ Rules_l.ParseError "state" }
-	;
-
-state0	: state1
-	  { $1 }
-	| state0 OR state1
-	  { match $1 with Prop_disj s -> Prop_disj (s @ [$3]) | _ -> Prop_disj [$1; $3] }
-	;
-
-state1	: state2
-	  { $1 }
-	| state1 AND state2
-	  { match $1 with Prop_conj s -> Prop_conj (s @ [$3]) | _ -> Prop_conj [$1; $3] }
-	;
-
-state2	: NAME
-	  { Prop_atomic $1 }
-	| neg state2
-	  { Prop_neg $2 }
-	| LPAREN state RPAREN
-	  { $2 }
-	| label_use
-	  { Prop_label $1 }
-	;
-
 // --------------------------------------------------------------------------------
 // term
 // --------------------------------------------------------------------------------

@@ -348,7 +348,34 @@ let expand_preserve (events : string list) (decls : decl list) =
       | _ -> rslt @ [decl])
     [] decls
 
-(** preprocess : Rules.t -> Rules.t *)
+(** variables_declare *)
+
+let variables_declare decls =
+  List.fold_left
+    (fun (rslt : decl list) decl ->
+      match decl with
+      | Decl_variable (("", VT_impl None), Some str) ->
+	  (* str = "x1=e1; x2=e2; ...;" *)
+	  List.fold_left
+	    (fun (rslt : decl list) str' ->
+	      let pair = String.split_on_char '=' str' in
+	      match List.length pair with
+	      | 1 ->
+		  let x :: _ = pair in
+		  let x = String.trim x in
+		  rslt @ if x = "" then [] else [Decl_variable ((x, VT_impl None), None)]
+	      | 2 ->
+		  let x :: e :: _ = pair in
+		  let x = String.trim x in
+		  rslt @ if x = "" then [] else [Decl_variable ((x, VT_impl None), Some (String.trim e))]
+	      | _ -> failwith "variables_declare 1")
+	    rslt (String.split_on_char ';' str)
+      | Decl_variable (("", VT_impl _), _) ->
+	  failwith "variables_declare 2"
+      | _ -> rslt @ [decl])
+    [] decls
+
+(** preprocess : Rules.decl list -> Rules.decl list *)
 
 let rec preprocess
     ?(macro_expand = true)
@@ -392,6 +419,8 @@ let rec preprocess
   |> (if protocol_relax then relax_protocols else identity)
   |> (if proposition_align then align_propositions else identity)
   |> (if code_discard then discard_codes else identity)
+
+  |> variables_declare
 
   (* move "preserve" rules to the last part *)
   |> (fun decls ->

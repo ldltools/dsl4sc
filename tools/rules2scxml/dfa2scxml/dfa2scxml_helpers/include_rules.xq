@@ -2,6 +2,7 @@
 
 (:
 declare variable $rules := doc("${infile_rules}")//rules/rule;
+declare variable $vars := doc("${infile_rules}")//variables/variable;
  :)
 
 declare function local:include_rules_rec ($nodes as node()*)
@@ -14,7 +15,10 @@ declare function local:include_rules_rec ($nodes as node()*)
 
     case element (dfa)
       return
-        element dfa { $n/@*, $n/node (), <rules>{$rules}</rules> }
+        element dfa { $n/@*, $n/node (),
+          <variables>{$vars}</variables>,
+          <rules>{$rules}</rules>
+        }
 
     case element (*)
       return
