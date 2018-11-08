@@ -16,8 +16,9 @@ declare function local:include_rules_rec ($nodes as node()*)
     case element (dfa)
       return
         element dfa { $n/@*, $n/node (),
-          <variables>{$vars}</variables>,
-          <rules>{$rules}</rules>
+          (:<variables>{$vars}</variables>,:)
+          <rules>{$rules}</rules>,
+          $impl
         }
 
     case element (*)

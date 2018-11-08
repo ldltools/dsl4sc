@@ -12,8 +12,8 @@ declare variable $alist := doc("${infile_map}")//assoc;
 declare function local:lookup_prop ($propositions, $i)
 {
   for $p in $propositions
-  where data ($p/@name) = $i
-  return data ($p/@variable)
+  where data ($p/@number) = $i
+  return data ($p/@name)
 };
 
 declare function local:label2props ($propositions, $l) as xs:string*
@@ -150,6 +150,6 @@ declare function local:decode_events_rec ($propositions, $nodes as node()*)
 
 declare function local:decode_events ($doc)
 {
-  let $propositions := $doc//propositions/proposition
+  let $propositions := $doc//variables/variable[data (@type) = "prop"]
   return local:decode_events_rec ($propositions, $doc)
 };

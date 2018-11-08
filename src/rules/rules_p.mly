@@ -69,8 +69,9 @@ and expand_prop_spec_rec rslt = function
 
 %token	EVENT
 %token	PROTOCOL
-%token	PROPOSITION VARIABLE
+%token	VARIABLE
 %token	PROPERTY
+%token	IMPLEMENTATION
 
 %token	RULE
 %token	ON WHEN DO
@@ -141,28 +142,31 @@ decl	: EVENT event_spec_seq
 //	  // naked protocols
 //	  { List.map (fun p -> Rules.Decl_protocol (None, p)) $2 }
 
-	| PROPOSITION proposition_spec_seq
-	  { List.map (fun s -> Rules.Decl_proposition s) $2 }
 	| VARIABLE var_spec_seq
 	  { List.map
 	      (fun ((name, t), code) ->
 		match t with
-		| Rules.VT_bool -> Rules.Decl_proposition (name, code)
+		| Rules.VT_prop -> Rules.Decl_variable ((name, Rules.VT_prop), code)
 		| _ -> Rules.Decl_variable ((name, t), code))
 	      $2 }
-
 	| PROPERTY property_spec_seq
 	  // properties enclosed by braces
 	  { List.map (fun s -> Rules.Decl_property s) $2 }
 //	| PROPERTY property_seq
 //	  // naked properties
 //	  { List.map (fun p -> Rules.Decl_property (None, p)) $2 }
-//	| PATH path_spec_seq
-//	  { List.map (fun s -> Rules.Decl_path s) $2 }
 
 	| RULE rule_spec_seq
 	  // rules enclosed by braces
 	  { List.map (fun s -> Rules.Decl_rule s) $2 }
+
+	| IMPLEMENTATION LBRACE STRING RBRACE
+	  { [Rules.Decl_impl $3] }
+
+//	| PROPOSITION proposition_spec_seq
+//	  { List.map (fun s -> Rules.Decl_proposition s) $2 }
+//	| PATH path_spec_seq
+//	  { List.map (fun s -> Rules.Decl_path s) $2 }
 
 // **conflict
 //	| error
@@ -170,45 +174,115 @@ decl	: EVENT event_spec_seq
 	;
 
 // ================================================================================
-// proposition
+// event
 // ================================================================================
-proposition_spec_seq
-	: proposition_spec_seq1
-	  { $1 }
-	| proposition_spec_seq SEMI proposition_spec_seq1
-	  { $1 @ $3 }
-	| proposition_spec_seq SEMI
-	  { $1 }
-	;
 
-proposition_spec_seq1
-	: proposition_spec
+event_spec_seq
+	: proposition_spec_seq
 	  { $1 }
-	| proposition_spec_seq1 proposition_spec
-	  { $1 @ $2 }
-	| proposition_spec_seq1 COMMA proposition_spec
-	  { $1 @ $3 }
-	;
+ 	;
 
-proposition_spec
-	: NAME
-	  { [$1, None] }
-	| NAME range_seq
-	  { List.map (fun x -> x, None) (expand_prop_spec $1 $2) }
-	| NAME LBRACE STRING RBRACE
-	  { [$1, Some $3] }
-	;
-
-range_seq
-	: range
+// ================================================================================
+// protocol
+// ================================================================================
+protocol_spec_seq
+	: protocol_spec
 	  { [$1] }
-	| range_seq range
+	| protocol_spec_seq protocol_spec
 	  { $1 @ [$2] }
 	;
 
-range	: LBRACK CONST RBRACK
-	  { $2 }
+protocol_spec
+	: protocol_or_pcall SEMISEMI
+	  { None, $1 }
+
+	// deprecated
+	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
+	  { let args =
+	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
+	    in Some ($1, args), $6 }
+	| LBRACE protocol_or_pcall RBRACE
+	  { None, $2 }
 	;
+
+protocol_or_pcall
+	: protocol
+	  { $1 }
+
+	// deprecated
+	| NAME LPAREN param_seq RPAREN
+	  { raise @@ Rules_l.ParseError "protocol_or_pcall" }
+	;
+
+/*
+// naked protocols
+protocol_seq
+	: protocol_or_pcall
+	  { [$1] }
+	| protocol_seq SEMISEMI protocol_or_pcall 
+	  { $1 @ [$3] }
+	// ** the following rule causes a shift/reduce conflict (harmless)
+	| protocol_seq SEMISEMI
+	  { $1 }
+	;
+*/
+
+// --------------------------------------------------------------------------------
+// protocol
+// --------------------------------------------------------------------------------
+// precedence: grouping (()) < *, ? < concat (;) < choice (+)
+
+protocol
+	: protocol1
+	  { $1 }
+	| protocol PLUS protocol1
+	  { Proto_sum [$1; $3] }
+	| error
+	  { raise @@ Rules_l.ParseError "protocol" }
+	;
+
+protocol1
+	: protocol2
+	  { $1 }
+	| protocol1 SEMI protocol2
+	  { match $1, $3 with
+	    | Proto_seq s, _ -> Proto_seq (s @ [$3])
+	    | _, Proto_seq s -> Proto_seq ($1 :: s)
+	    | _ -> Proto_seq [$1; $3]
+	  }
+	;
+
+protocol2
+	: protocol3
+	  { $1 }
+	| protocol3 QUESTION
+	  { Proto_test $1 }
+	| protocol3 QUESTION protocol3
+	  { Proto_seq [Proto_test $1; $3] }
+	| protocol3 STAR
+	  { Proto_star $1 }
+	;
+
+protocol3
+	: NAME
+	  { Proto_prop (PProp_event $1) }
+	| neg NAME
+	  { Proto_prop (PProp_neg (PProp_event $2)) }
+//	| neg protocol3
+//	  { assert (match $2 with Proto_event _ -> true | _ -> false);
+//	    Proto_neg $2 }
+	| LPAREN protocol RPAREN
+	  { $2 }
+	;	
+
+/*
+protocol_prop
+	: NAME
+	  { PProp_event $1 }
+	| neg protocol_prop
+	  { PProp_neg $2 }
+	;	
+*/
 
 // ================================================================================
 // variable
@@ -227,15 +301,17 @@ var_spec_seq
 // variables of the same type
 var_spec_seq1
 	: var_spec_seq2 SEMI
-	  { List.map (fun (name, code) -> (name, Rules.VT_bool), code) $1 }
+	  { List.map (fun (name, code) -> (name, Rules.VT_prop), code) $1 }
 	| var_spec_seq2 COLON var_type SEMI
 	  { List.map (fun (name, code) -> (name, $3), code) $1 }
 
+/*
 	// code-only, with no corresponding proposition.
 	| LBRACE STRING RBRACE
 	  { [("", Rules.VT_impl None), Some $2] }
 	    // the contents of $2 will be scanned/parsed later by rulespp.
 	    // we do not do that here, since it is datamodel-dependent.
+*/
 	;
 
 var_spec_seq2
@@ -247,7 +323,7 @@ var_spec_seq2
 
 var_type
 	: NAME
-	  { assert ($1 = "bool"); Rules.VT_bool }
+	  { assert ($1 = "prop"); Rules.VT_prop }
 	| NAME LPAREN CONST COMMA CONST RPAREN
 	  // range type
 	  { assert ($1 = "range");
@@ -262,6 +338,49 @@ var_spec
 	  { List.map (fun x -> x, None) (expand_prop_spec $1 $2) }
 	| NAME LBRACE STRING RBRACE
 	  { [$1, Some $3] }
+	;
+
+// ================================================================================
+// proposition (deprecated)
+// ================================================================================
+// proposition_spec_seq = (string * string option) list
+proposition_spec_seq
+	: proposition_spec_seq1
+	  { $1 }
+	| proposition_spec_seq SEMI proposition_spec_seq1
+	  { $1 @ $3 }
+	| proposition_spec_seq SEMI
+	  { $1 }
+	;
+
+proposition_spec_seq1
+	: proposition_spec
+	  { $1 }
+	| proposition_spec_seq1 proposition_spec
+	  { $1 @ $2 }
+	| proposition_spec_seq1 COMMA proposition_spec
+	  { $1 @ $3 }
+	;
+
+// proposition_spec = (string * string option) list
+proposition_spec
+	: NAME
+	  { [$1, None] }
+	| NAME range_seq
+	  { List.map (fun x -> x, None) (expand_prop_spec $1 $2) }
+	| NAME LBRACE STRING RBRACE
+	  { [$1, Some $3] }
+	;
+
+range_seq
+	: range
+	  { [$1] }
+	| range_seq range
+	  { $1 @ [$2] }
+	;
+
+range	: LBRACK CONST RBRACK
+	  { $2 }
 	;
 
 // ================================================================================
@@ -576,117 +695,6 @@ label_use
 	| AT NAME
 	  { $2 }
 	;
-
-// ================================================================================
-// event
-// ================================================================================
-
-event_spec_seq
-	: proposition_spec_seq
-	  { $1 }
- 	;
-
-// ================================================================================
-// protocol
-// ================================================================================
-protocol_spec_seq
-	: protocol_spec
-	  { [$1] }
-	| protocol_spec_seq protocol_spec
-	  { $1 @ [$2] }
-	;
-
-protocol_spec
-	: protocol_or_pcall SEMISEMI
-	  { None, $1 }
-
-	// deprecated
-	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
-	  { let args =
-	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
-	    in Some ($1, args), $6 }
-	| LBRACE protocol_or_pcall RBRACE
-	  { None, $2 }
-	;
-
-protocol_or_pcall
-	: protocol
-	  { $1 }
-
-	// deprecated
-	| NAME LPAREN param_seq RPAREN
-	  { raise @@ Rules_l.ParseError "protocol_or_pcall" }
-	;
-
-/*
-// naked protocols
-protocol_seq
-	: protocol_or_pcall
-	  { [$1] }
-	| protocol_seq SEMISEMI protocol_or_pcall 
-	  { $1 @ [$3] }
-	// ** the following rule causes a shift/reduce conflict (harmless)
-	| protocol_seq SEMISEMI
-	  { $1 }
-	;
-*/
-
-// --------------------------------------------------------------------------------
-// protocol
-// --------------------------------------------------------------------------------
-// precedence: grouping (()) < *, ? < concat (;) < choice (+)
-
-protocol
-	: protocol1
-	  { $1 }
-	| protocol PLUS protocol1
-	  { Proto_sum [$1; $3] }
-	| error
-	  { raise @@ Rules_l.ParseError "protocol" }
-	;
-
-protocol1
-	: protocol2
-	  { $1 }
-	| protocol1 SEMI protocol2
-	  { match $1, $3 with
-	    | Proto_seq s, _ -> Proto_seq (s @ [$3])
-	    | _, Proto_seq s -> Proto_seq ($1 :: s)
-	    | _ -> Proto_seq [$1; $3]
-	  }
-	;
-
-protocol2
-	: protocol3
-	  { $1 }
-	| protocol3 QUESTION
-	  { Proto_test $1 }
-	| protocol3 QUESTION protocol3
-	  { Proto_seq [Proto_test $1; $3] }
-	| protocol3 STAR
-	  { Proto_star $1 }
-	;
-
-protocol3
-	: NAME
-	  { Proto_prop (PProp_event $1) }
-	| neg NAME
-	  { Proto_prop (PProp_neg (PProp_event $2)) }
-//	| neg protocol3
-//	  { assert (match $2 with Proto_event _ -> true | _ -> false);
-//	    Proto_neg $2 }
-	| LPAREN protocol RPAREN
-	  { $2 }
-	;	
-
-/*
-protocol_prop
-	: NAME
-	  { PProp_event $1 }
-	| neg protocol_prop
-	  { PProp_neg $2 }
-	;	
-*/
 
 // ================================================================================
 // rule

@@ -1,6 +1,6 @@
 (: $Id: adjust_labels.xq,v 1.1 2018/01/23 02:59:23 sato Exp sato $ :)
 
-declare variable $propositions := root()//proposition/@name;
+declare variable $propositions := data (root()//variable[data(@type)="prop"]);
 declare variable $nproposition := count ($propositions);
 
 (: replaces $label (label="X01..." -> label="l1 l2 ...") :)
@@ -10,7 +10,7 @@ declare function local:construct_proposition ($label, $i, $result)
   then $result
   else
     let $ch := substring ($label, $i, 1)
-    let $p := $propositions[$i]
+    (:let $p := $propositions[$i]:)
     let $sep := if ($result = "") then "" else " "
     return
       if ($ch = "1") then
@@ -33,6 +33,7 @@ declare function local:adjust_labels_transition ($n as element (transition))
 	attribute from { data ($n/@from) },
 	attribute to { data ($n/@to) },
 	attribute label0 { data ($n/@label) },
+
 	if (contains ($label, "0") or contains ($label, "1"))
 	then attribute label { local:construct_proposition ($label, 1, "") }
 	else attribute label { "T" }

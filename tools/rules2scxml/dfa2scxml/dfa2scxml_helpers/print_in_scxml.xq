@@ -143,15 +143,17 @@ declare function local:print_in_scxml ($doc)
   let $transitions := $doc//node()[local-name(.)="transition"]
    :)
 
-  let $variables := $doc//dsl4sc:variables/dsl4sc:variable
+  (:let $variables := $doc//dsl4sc:variables/dsl4sc:variable:)
+  let $variables := $doc//dsl4sc:implementation/dsl4sc:datamodel/dsl4sc:data
   return
 
   <scxml version="1.0"
 	 datamodel="ecmascript">
   { attribute initial { $initial } }
+
   <datamodel>
     {for $v in $variables
-     return element data { attribute id {$v/@name}, attribute expr {$v/text ()} }}
+     return element data { attribute id {$v/@id}, attribute expr {$v/@expr} }}
 
     <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
     <data id="_trace"/>
@@ -162,6 +164,7 @@ declare function local:print_in_scxml ($doc)
     <data id="_trace_append"
 	  expr="function (next_world) {{ }}"/>
   </datamodel>
+
   {local:list_propositions ($propositions),
    local:list_states ($states, $transitions, $propositions)
   }

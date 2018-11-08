@@ -93,11 +93,13 @@ let main argc argv =
   (* output (in xml) *)
   let out s = output_string oc s in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
-  out (Xml.to_string (List.assoc "propositions" alist)); out "\n";
-  Ldllts.print_states_in_xml out m;
-  Ldllts.print_transitions_in_xml out m;
   out (Xml.to_string (List.assoc "variables" alist)); out "\n";
-  Ldllts.print_rules_in_xml out m alist' rs;
+  Ldllts.print_states_in_xml out m;		(* states *)
+  Ldllts.print_transitions_in_xml out m;	(* transitions *)
+  (*out (Xml.to_string (List.assoc "variables" alist)); out "\n";*)
+  Ldllts.print_rules_in_xml out m alist' rs;	(* rules *)
+  if List.mem_assoc "implementation" alist then
+    (out (Xml.to_string (List.assoc "implementation" alist)); out "\n");
   out "</dfa>\n";
 
   (* clean-up *)

@@ -8,7 +8,6 @@
     <!-- _trace_append (next_world) appends next_world to _trace -->
     <data id="_trace_append" expr="function (next_world) { }"/>
   </datamodel>
-  <!--proposition 0 _b0-->
   <state id="q2">
     <transition target="q4" event="echo">
       <!--tid t15-->

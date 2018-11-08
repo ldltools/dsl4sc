@@ -65,13 +65,13 @@ print_props ()
 gawk '
 BEGIN {
   processing = 0; count = 0;
-  print ("<propositions>");
+  print ("<variables>");
 }
 /^A satisfying example/ { processing = 1; next; }
 /^$/ { if (processing) exit; }
 { if (!processing) next; }
-{ printf ("<proposition name=\"%d\" variable=\"%s\"/>\n", count++, $1); }
-END { print ("</propositions>"); }'
+{ printf ("<variable name=\"%s\" type=\"prop\" number=\"%d\"/>\n", $1, count++); }
+END { print ("</variables>"); }'
 }
 
 print_states ()

@@ -135,11 +135,13 @@ and token_rec (buf : lexbuf) =
   | "event"		-> mode := 1; EVENT
   | "protocol"		-> mode := 0; PROTOCOL
 
-  (* proposition/property *)
-  | "proposition"	-> mode := 1; PROPOSITION
+  (* proposition/property/implementation *)
   | "variable"
   | "var"		-> mode := 1; VARIABLE
+  | "proposition"	-> mode := 1; VARIABLE
   | "property"		-> mode := 0; PROPERTY
+
+  | "implementation"	-> mode := 1; IMPLEMENTATION
 
   (* logical connectives *)
   | "not"		-> NOT

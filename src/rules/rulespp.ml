@@ -36,15 +36,20 @@ let rec find_declared decls =
   in (props @ ["_idle"], events @ ["_skip"; "_any"], labs)
 
 and find_declared1 ((props : string list), (events : string list), (labs : string list)) = function
-  | Decl_proposition (p, _) ->
-      (*Printf.printf "(proposition:%s)" p;*)
-      (props @ [p], events, labs)
   | Decl_event (e, _) ->
       (*Printf.printf "(event:%s)" e;*)
       (props, events @ [e], labs)
+  | Decl_variable ((p, _), _) ->
+      (*Printf.printf "(proposition:%s)" p;*)
+      (props @ [p], events, labs)
+(*
   | Decl_label l ->
       (*Printf.printf "(label:%s)" l;*)
       (props, events, labs  @ [l])
+  | Decl_proposition (p, _) ->
+      (*Printf.printf "(proposition:%s)" p;*)
+      (props @ [p], events, labs)
+ *)
   | _ -> (props, events, labs)
 
 (* find_undeclared -- propositions/events/labels *)
@@ -150,7 +155,7 @@ let add_undeclared (decls : Rules.decl list) =
   let (props : string list), (events : string list), (labs : string list) = find_undeclared decls in
   let decls' =
     decls
-    @ (List.map (fun p -> Decl_proposition (p, None)) props)
+    @ (List.map (fun p -> Decl_variable ((p, VT_prop), None)) props)
     @ (List.map (fun e -> Decl_event (e, None) ) events)
     @ (List.map (fun l -> Decl_label l) labs)
   in  decls'

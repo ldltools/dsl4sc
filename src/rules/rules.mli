@@ -19,14 +19,16 @@ type rules =
     { event_decls : event_spec list;
       proto_decls : protocol_spec list;
 
-      pvar_decls : proposition_spec list;	(* propositional variable *)
-      var_decls : variable_spec list;		(* enumerable variable *)
+      var_decls : variable_spec list;
       prop_decls : property_spec list;
 
       rule_decls : rule_spec list;
+      impl_decls : string list;
 
-      path_decls : path_spec list;	(* deprecated *)
-      label_decls : string list;	(* deprecated *)
+      (* deprecated *)
+      pvar_decls : proposition_spec list;	(* propositional variable *)
+      path_decls : path_spec list;	
+      label_decls : string list;
     }
 
 (** event *)
@@ -39,18 +41,13 @@ and protocol_spec =
     (string * string list) option * Rule.protocol
     (* (name, args), protocol *)
 
-(** proposition *)
-and proposition_spec =
-    (* name, code *)
-    string * string option
-
 (** variable *)
 and variable_spec =
     (* (name, type), code *)
     (string * variable_type) * string option
 
 and variable_type =
-  | VT_bool
+  | VT_prop
   | VT_range of int * int
   | VT_impl of string option
     (** for implementation only. no corresponding proposition *)
@@ -64,6 +61,11 @@ and property_spec =
 and rule_spec =
     (string * string list) option * Rule.rule
     (* (name, args), rule *)
+
+(** proposition -- deprecated *)
+and proposition_spec =
+    (* name, code *)
+    string * string option
 
 (** path -- deprecated *)
 and path_spec =
@@ -79,15 +81,18 @@ type decl =
   | Decl_protocol of protocol_spec
 
   (* property *)
-  | Decl_proposition of proposition_spec
   | Decl_variable of variable_spec
   | Decl_property of property_spec
 
   (* eca rule *)
   | Decl_rule of rule_spec
 
-  | Decl_path of path_spec	(* deprecated *)
-  | Decl_label of string	(* deprecated *)
+  (* extras *)
+  | Decl_impl of string
+
+  | Decl_proposition of proposition_spec	(* deprecated *)
+  | Decl_path of path_spec			(* deprecated *)
+  | Decl_label of string			(* deprecated *)
 
 val decls_to_rules : ?event_sort:bool -> decl list -> t
 

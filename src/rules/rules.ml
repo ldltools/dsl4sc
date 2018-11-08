@@ -19,14 +19,16 @@ type rules =
     { event_decls : event_spec list;
       proto_decls : protocol_spec list;
 
-      pvar_decls : proposition_spec list;
       var_decls : variable_spec list;
       prop_decls : property_spec list;
 
       rule_decls : rule_spec list;
+      impl_decls : string list;
 
-      path_decls : path_spec list;	(* deprecated *)
-      label_decls : string list;	(* deprecated *)
+      (* deprecated *)
+      pvar_decls : proposition_spec list;
+      path_decls : path_spec list;	
+      label_decls : string list;
     }
 
 (** event *)
@@ -37,18 +39,13 @@ and event_spec =
 and protocol_spec =
     (string * string list) option * Rule.protocol
 
-(** proposition *)
-and proposition_spec =
-    (* name, exp *)
-    string * string option
-
 (** variable *)
 and variable_spec =
     (* (name, type), code *)
     (string * variable_type) * string option
 
 and variable_type =
-  | VT_bool
+  | VT_prop
   | VT_range of int * int
   | VT_impl of string option
 
@@ -61,6 +58,11 @@ and property_spec =
 and rule_spec =
     (string * string list) option * Rule.rule
     (* (name, args), rule *)
+
+(** proposition -- deprecated *)
+and proposition_spec =
+    (* name, exp *)
+    string * string option
 
 (** path -- deprecated *)
 and path_spec =
@@ -78,47 +80,58 @@ type decl =
   | Decl_protocol of protocol_spec
 
   (* property *)
-  | Decl_proposition of proposition_spec
   | Decl_variable of variable_spec
   | Decl_property of property_spec
 
   (* eca rule *)
   | Decl_rule of rule_spec
 
-  | Decl_path of path_spec	(* deprecated *)
-  | Decl_label of string	(* deprecated *)
+  (* extras *)
+  | Decl_impl of string
+
+  | Decl_proposition of proposition_spec	(* deprecated *)
+  | Decl_path of path_spec			(* deprecated *)
+  | Decl_label of string			(* deprecated *)
 
 
 (* decls to rules *)
 let rec decls_to_rules ?(event_sort = true) (decls : decl list) =
-  let events, protos, pvars, vars, props, rules =
+  let events, protos, vars, props, rules, impls =
     List.fold_left decls_to_rules_rec ([], [], [], [], [], []) decls
   in
   { event_decls =
       if event_sort then List.sort (fun (e1, _) (e2, _) -> compare e1 e2) events else events;
     proto_decls = protos;
-    pvar_decls = pvars; var_decls = vars; prop_decls = props;
+
+    var_decls = vars;
+    prop_decls = props;
+
     rule_decls = rules;
-    path_decls = []; label_decls = [];	(* deprecated *)
+    impl_decls = impls;
+
+    (* deprecated *)
+    pvar_decls = []; path_decls = []; label_decls = [];
   }
 
-and decls_to_rules_rec (events, protos, pvars, vars, props, rules) = function
+and decls_to_rules_rec (events, protos, vars, props, rules, impls) = function
   | Decl_event ev ->
-      (events @ [ev], protos, pvars, vars, props, rules)
+      (events @ [ev], protos, vars, props, rules, impls)
   | Decl_protocol proto ->
-      (events, protos @ [proto], pvars, vars, props, rules)
+      (events, protos @ [proto], vars, props, rules, impls)
 
-  | Decl_proposition pvar ->
-      (events, protos, pvars @ [pvar], vars, props, rules)
   | Decl_variable var ->
-      (events, protos, pvars, vars @ [var], props, rules)
+      (events, protos, vars @ [var], props, rules, impls)
   | Decl_property prop ->
-      (events, protos, pvars, vars, props @ [prop], rules)
+      (events, protos, vars, props @ [prop], rules, impls)
 
   | Decl_rule rule ->
-      (events, protos, pvars, vars, props, rules @ [rule])
+      (events, protos, vars, props, rules @ [rule], impls)
+  | Decl_impl impl ->
+      (events, protos, vars, props, rules, impls @ [impl])
 
 (*
+  | Decl_proposition pvar ->
+      (events, protos, pvars @ [pvar], vars, props, rules)
   | Decl_path path ->
       (pvars, props, paths @ [path], labs, events, protos, rules)
   | Decl_label lab ->
@@ -164,16 +177,6 @@ let print_rules out (rs : t) =
 	rs.proto_decls;
     end;
 
-  (* proposition *)
-  let ps : string list = List.map fst rs.pvar_decls in
-  if ps <> [] then
-    begin
-      out "proposition ";
-      out (List.hd ps);
-      List.iter	(function p -> out ", "; out p) (List.tl ps);
-      out " ;\n";
-    end;
-
   (* variable *)
   if rs.var_decls <> [] then
     begin
@@ -185,18 +188,6 @@ let print_rules out (rs : t) =
 	  | _ -> ())
 	rs.var_decls;
     end;
-
-  (* label *)
-(*
-  let ls = rs.label_decls in
-  if ls <> [] then
-    begin
-      out "label ";
-      out (List.hd ls);
-      List.iter	(function l -> out ", "; out l) (List.tl ls);
-      out " ;\n";
-    end;
- *)
 
   (* propery *)
   if rs.prop_decls <> [] then
@@ -241,6 +232,37 @@ let print_rules out (rs : t) =
 	      out " "; Rule.print_rule out r; out "\n")
 	rs.rule_decls;
     end;
+
+  (* implementation *)
+  if rs.impl_decls <> [] then
+    begin
+      out "implementation\n";
+      out "{\n";
+      List.iter out rs.impl_decls;
+      out "}\n";
+    end;
+
+(*
+  (* proposition *)
+  let ps : string list = List.map fst rs.pvar_decls in
+  if ps <> [] then
+    begin
+      out "proposition ";
+      out (List.hd ps);
+      List.iter	(function p -> out ", "; out p) (List.tl ps);
+      out " ;\n";
+    end;
+
+  (* label *)
+  let ls = rs.label_decls in
+  if ls <> [] then
+    begin
+      out "label ";
+      out (List.hd ls);
+      List.iter	(function l -> out ", "; out l) (List.tl ls);
+      out " ;\n";
+    end;
+ *)
 
   ()
 
@@ -288,22 +310,20 @@ let rec print_rules_in_xml out (rules : t) =
     rules.proto_decls
     print_protocol_in_xml;
 
-  print "propositions"
-    rules.pvar_decls
-    print_proposition_in_xml;
+  print "variables"
+    rules.var_decls
+    print_variable_in_xml;
   print "properties"
     rules.prop_decls
     print_property_in_xml;
 
-  print "variables"
-    rules.var_decls
-    print_variable_in_xml;
-
   (* deprecated *)
+  print "propositions"
+    rules.pvar_decls
+    print_proposition_in_xml;
   print "paths"
     rules.path_decls
     print_path_in_xml;
-  (* deprecated *)
   print "labels"
     rules.label_decls
     print_label_in_xml;
@@ -329,6 +349,10 @@ let rec print_rules_in_xml out (rules : t) =
       (false, []) rules.rule_decls
   in
   List.iter (print_rule_in_xml out) r_specs;
+
+  print "implementation"
+    rules.impl_decls
+    (fun out -> out);
 
   out "</rules>\n"
 
@@ -619,10 +643,11 @@ and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
   out "\"";
   let _ =
     match ty with
-    | VT_bool ->
-	out " type=\"bool\""
+    | VT_prop ->
+	out " type=\"prop\""
     | VT_range (i, j) ->
 	out (Printf.sprintf " type=\"range(%d,%d)\"" i j)
+
     | VT_impl None -> ()
     | VT_impl (Some str) ->
 	out " type=\""; escape out str; out "\""

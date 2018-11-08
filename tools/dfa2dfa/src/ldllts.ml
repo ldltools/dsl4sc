@@ -80,12 +80,13 @@ let read_in (ic : in_channel) =
 	  List.fold_left (Xml.fold trav) rslt children
       | _ -> rslt
     in trav [] xml in
-  assert (List.length alist = 5);
-  let nodes, edges = (List.assoc "states" alist), List.assoc "transitions" alist in
+  assert (List.length alist >= 3);
 
   (* xml -> t *)
   let m : t = Nfa.make () in
   (* states *)
+  let nodes = List.assoc "states" alist in
+  if !verbose > 0 then eprintf "** states: %d\n" (List.length (Xml.children nodes));
   List.iter
     (function Xml.Element ("state", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
@@ -102,6 +103,8 @@ let read_in (ic : in_channel) =
      eprintf "\n");
 
   (* transitions *)
+  let edges = List.assoc "transitions" alist in
+  if !verbose > 0 then eprintf "** edges: %d\n" (List.length (Xml.children edges));
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
       let n1, n2 =
@@ -115,6 +118,7 @@ let read_in (ic : in_channel) =
       let props : formula list =
 	List.fold_left
 	  (fun rslt str ->
+	    assert (String.length str > 0);
 	    let i = if str.[0] = '!' then 1 else 0 in
 	    if String.length str >= i + 2 && String.sub str i 2 = "_b"
 	    then rslt (* skip events *)
@@ -127,6 +131,8 @@ let read_in (ic : in_channel) =
     (Xml.children edges);
 
   (* xml -> rule list *)
+  let rules = List.assoc "rules" alist in
+  if !verbose > 0 then eprintf "** rules: %d\n" (List.length (Xml.children rules));
   let rs : rule list =
     List.map
       (function Xml.Element ("rule", _, [e_elt; c_elt; a_elt]) ->

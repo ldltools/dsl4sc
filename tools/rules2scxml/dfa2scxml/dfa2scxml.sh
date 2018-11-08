@@ -27,6 +27,7 @@ outfile=/dev/stdout
 verbose=0
 until="scxml"
 reject_invalid_events=${reject_invalid_events:-0}
+accept_transition=${accept_transition:-_accept}
 
 while test $# -gt 0
 do
@@ -108,6 +109,7 @@ declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
 `cat ${decode_events}`
 declare variable \$rules := doc("`readlink -f $xmlrulesfile`")//rules/rule;
 declare variable \$vars := doc("`readlink -f $xmlrulesfile`")//variables/variable;
+declare variable \$impl := doc("`readlink -f $xmlrulesfile`")//implementation;
 `cat ${include_rules}`
 $main
 EOF
@@ -150,6 +152,7 @@ insert_rules=$LIBDIR/insert_rules.xq
 merge_rules=$LIBDIR/merge_rules.xq
 attach_transitions=$LIBDIR/attach_transitions.xq
 attach_error_transitions=$LIBDIR/attach_error_transitions.xq
+rename_acc_transitions=$LIBDIR/rename_acc_transitions.xq
 test -f ${insert_rules} || { echo "${insert_rules} not found" > /dev/stderr; exit 1; }
 test -f ${attach_transitions} || { echo "${attach_transitions} not found" > /dev/stderr; exit 1; }
 #echo "dfa2scxml : $infile -> $outfile" > /dev/stderr
@@ -160,7 +163,7 @@ main3="local:merge_rules (local:insert_rules (.))"
 main4="local:attach_transitions (.)"
 main5="local:attach_error_transitions (.)"
 main11="local:merge_rules (local:insert_rules (.))"
-main99="local:attach_transitions (local:insert_rules (local:elim_rejecting (.)))"
+main99="local:attach_transitions (local:insert_rules (local:elim_rejecting (local:rename_acc_transitions (.))))"
 test ${reject_invalid_events} -ne 0 && main99="local:attach_error_transitions (${main99})"
 
 case $until in
@@ -175,6 +178,8 @@ esac
 dfa4file=$(tempfile -d /tmp/.dsl4sc -s .dfa4)
 cat <<EOF | xqilla /dev/stdin -i ${dfa3file} -o ${dfa4file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa3file} ${dfa4file}; exit 1; }
 declare default element namespace "https://github.com/ldltools/dsl4sc";
+declare variable \$accept_transition := "${accept_transition}";
+`cat ${rename_acc_transitions}`
 `cat ${elim_rejecting}`
 `cat ${insert_rules}`
 `cat ${merge_rules}`
