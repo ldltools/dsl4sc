@@ -352,7 +352,7 @@ let rec print_rules_in_xml out (rules : t) =
 
   print "implementation"
     rules.impl_decls
-    (fun out -> out);
+    (fun out -> escape out);
 
   out "</rules>\n"
 

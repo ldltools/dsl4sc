@@ -136,8 +136,7 @@ and token_rec (buf : lexbuf) =
   | "protocol"		-> mode := 0; PROTOCOL
 
   (* proposition/property/implementation *)
-  | "variable"
-  | "var"		-> mode := 1; VARIABLE
+  | "variable"		-> mode := 1; VARIABLE
   | "proposition"	-> mode := 1; VARIABLE
   | "property"		-> mode := 0; PROPERTY
 

@@ -324,10 +324,10 @@ var_spec_seq2
 var_type
 	: NAME
 	  { assert ($1 = "prop"); Rules.VT_prop }
-	| NAME LPAREN CONST COMMA CONST RPAREN
+	| NAME LPAREN CONST RPAREN
 	  // range type
-	  { assert ($1 = "range");
-	    Rules.VT_range ($3, $5) }
+	  { assert ($1 = "nat");
+	    Rules.VT_range (0, $3) }
 	;
 
 // single variable specification

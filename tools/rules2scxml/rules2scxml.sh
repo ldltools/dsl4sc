@@ -59,6 +59,10 @@ do
 	    outfile=$2
 	    shift
 	    ;;
+	--monitor)
+	    # pass down to dfa2scxml.sh
+	    export generate_monitor=1
+	    ;;
 	-*)
 	    echo "** unknow option: $1"
 	    exit 1
