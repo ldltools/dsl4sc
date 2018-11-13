@@ -38,7 +38,7 @@ and event_spec =
 
 (** protocol *)
 and protocol_spec =
-    (string * string list) option * Rule.protocol
+    (string * string list) option * Protocol.t
     (* (name, args), protocol *)
 
 (** variable *)

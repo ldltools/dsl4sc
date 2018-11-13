@@ -14,6 +14,8 @@
  * limitations under the License.
  *)
 
+open Protocol
+
 (** term *)
 type _ term_t =
   | Ty_int : int term_t
@@ -39,6 +41,8 @@ let term_to_yojson tm =
   failwith "term_to_yojson"
 
 (** protocol *)
+type protocol = Protocol.t
+(*
 type protocol =
   | Proto_prop of protocol_prop
   | Proto_seq of protocol list
@@ -52,6 +56,7 @@ and protocol_prop =
   | PProp_neg of protocol_prop
 
 [@@deriving show, yojson, eq]
+ *)
 
 (** property *)
 type property =
@@ -313,6 +318,7 @@ and path_prec = function
   | Path_star r -> 30
   | Path_label _ -> 0
 
+(*
 let rec print_protocol out ?(fancy=false) (p : protocol) =
   print_protocol_rec out ~fancy p
 
@@ -366,7 +372,9 @@ and print_protocol_rec out ?(fancy=false) (p : protocol) =
 and print_protocol_prop out ?(fancy=false) (f : protocol_prop) =
   match f with
   | PProp_event ev -> out ev
+(*
   | PProp_neg f' -> out "!"; print_protocol_prop out ~fancy f'
+ *)
   | _ ->
       failwith "print_protocol_prop"
 
@@ -377,6 +385,7 @@ and proto_prec = function
   | Proto_sum _  -> 200
   | Proto_test _ -> 50
   | Proto_star _ -> 30
+*)
 
 let rec print_rule out ?(fancy=false) (r : rule) =
   out "on ";
@@ -463,6 +472,3 @@ let string_of_labelled_path lp =
 
 let string_of_action =
   to_string print_action
-
-let string_of_protocol =
-  to_string (print_protocol ~fancy:false)

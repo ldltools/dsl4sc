@@ -37,7 +37,7 @@ and event_spec =
 
 (** protocol *)
 and protocol_spec =
-    (string * string list) option * Rule.protocol
+    (string * string list) option * Protocol.protocol
 
 (** variable *)
 and variable_spec =
@@ -92,7 +92,6 @@ type decl =
   | Decl_proposition of proposition_spec	(* deprecated *)
   | Decl_path of path_spec			(* deprecated *)
   | Decl_label of string			(* deprecated *)
-
 
 (* decls to rules *)
 let rec decls_to_rules ?(event_sort = true) (decls : decl list) =
@@ -173,7 +172,7 @@ let print_rules out (rs : t) =
 	      out " { "; Rule.print_protocol out p; out " }\n"
 	   *)
 	  | _, p ->
-	      out " "; Rule.print_protocol out p; out ";;\n")
+	      out " "; Protocol.print_protocol out p; out ";;\n")
 	rs.proto_decls;
     end;
 
@@ -448,7 +447,7 @@ and print_protocol_in_xml out ((name_opt, p) : protocol_spec) =
     | Some (str', _) ->
 	out " name=\""; out str'; out "\">"
   in
-  escape out (Rule.string_of_protocol p);
+  escape out (Protocol.string_of_protocol p);
   out "</protocol>\n"
 
 and print_rule_in_xml out ((name_opt, r) : rule_spec) =

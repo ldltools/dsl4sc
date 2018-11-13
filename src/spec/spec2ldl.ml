@@ -15,6 +15,7 @@
  *)
 
 open Rules
+open Protocol
 open Rule
 open Ldl
 open Ldlsimp
@@ -30,7 +31,7 @@ open Printf
 type event_map = (string * Ldl.formula) list
 
 (* Rule.protocol -> Ldl.formula *)
-let rec translate_protocol nbit (es : string list) (p : Rule.protocol) =
+let rec translate_protocol nbit (es : string list) (p : Protocol.protocol) =
   let _idle : formula = protocol_prop_to_formula nbit es (PProp_event "_skip") in
   let r = protocol_to_path nbit es p
   in
@@ -85,7 +86,7 @@ and genmap nbit (es : string list) =
   List.map (fun e -> e, event_to_formula_aux nbit es e) es
 
 (* Rule.protocol -> Ldl.path *)
-and protocol_to_path nbit (es : string list) (p : Rule.protocol) =
+and protocol_to_path nbit (es : string list) (p : Protocol.protocol) =
   match p with
   | Proto_prop f -> Ldl.Path_prop (protocol_prop_to_formula nbit es f)
   | Proto_seq ps -> Ldl.Path_seq (List.map (protocol_to_path nbit es) ps)
@@ -100,7 +101,7 @@ and protocol_to_path nbit (es : string list) (p : Rule.protocol) =
 and protocol_prop_to_formula nbit (es : string list) f =
   match f with
   | PProp_event e -> event_to_formula_aux nbit es e
-  | PProp_neg f' ->Ldl_neg (protocol_prop_to_formula nbit es f')
+(*| PProp_neg f' ->Ldl_neg (protocol_prop_to_formula nbit es f')*)
   | _ -> failwith "protocol_prop_to_formula"
 
 (* event list (disjunctive) -> formula *)

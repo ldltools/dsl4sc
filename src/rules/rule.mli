@@ -28,6 +28,7 @@ type _ term =
   | Tm_app : ('a -> 'b) term * 'a term -> 'b term
 
 (** protocol *)
+(*
 type protocol =
   | Proto_prop of protocol_prop
   | Proto_seq of protocol list
@@ -39,6 +40,7 @@ and protocol_prop =
   | PProp_event of string
   | PProp_event_elt of string * int term list
   | PProp_neg of protocol_prop
+ *)
 
 (** property *)
 type property =
@@ -122,13 +124,13 @@ val equal_property : property -> property -> bool
 val print_labelled_property : (string -> unit) -> labelled_property -> unit
 val print_property : (string -> unit) -> ?fancy:bool -> property -> unit
 val print_labelled_path : (string -> unit) -> labelled_path -> unit
-val print_protocol : (string -> unit) -> ?fancy:bool -> protocol -> unit
+(*val print_protocol : (string -> unit) -> ?fancy:bool -> protocol -> unit*)
 val print_rule : (string -> unit) -> ?fancy:bool -> rule -> unit
 val print_action : (string -> unit) -> action -> unit
 
 val string_of_labelled_property : labelled_property -> string
 val string_of_labelled_path : labelled_path -> string
-val string_of_protocol : protocol -> string
+(*val string_of_protocol : protocol -> string*)
 val string_of_action : action -> string
 
 (** pretty-printing -- ppx-generated *)
@@ -137,11 +139,11 @@ val pp_property : Format.formatter -> property -> unit
 val pp_path : Format.formatter -> path -> unit
 val pp_labelled_property : Format.formatter -> labelled_property -> unit
 val pp_labelled_path : Format.formatter -> labelled_path -> unit
-val pp_protocol : Format.formatter -> protocol -> unit
+(*val pp_protocol : Format.formatter -> protocol -> unit*)
 val pp_term : Format.formatter -> 'a term -> unit
 val pp_rule : Format.formatter -> rule -> unit
 
-val show_protocol : protocol -> string
+(*val show_protocol : protocol -> string *)
 val show_event : event -> string
 val show_action : action -> string
 val show_rule : rule -> string
@@ -150,8 +152,10 @@ val labelled_property_of_yojson : Yojson.Safe.json -> (labelled_property, string
 val labelled_property_to_yojson : labelled_property ->  Yojson.Safe.json
 val labelled_path_of_yojson : Yojson.Safe.json -> (labelled_path, string) Result.result
 val labelled_path_to_yojson : labelled_path ->  Yojson.Safe.json
+(*
 val protocol_of_yojson : Yojson.Safe.json -> (protocol, string) Result.result
 val protocol_to_yojson : protocol ->  Yojson.Safe.json
+ *)
 val term_of_yojson : Yojson.Safe.json -> ('a term, string) Result.result
 val term_to_yojson : 'a term ->  Yojson.Safe.json
 val rule_of_yojson : Yojson.Safe.json -> (rule, string) Result.result

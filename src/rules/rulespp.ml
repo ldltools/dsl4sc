@@ -15,6 +15,7 @@
  *)
 
 open Rules
+open Protocol
 open Rule
 
 (** macro_expand *)
@@ -111,20 +112,22 @@ and find_undeclared1_path (props, events, labs) = function
   | _ -> (props, events, labs)
 
 and find_undeclared1_protocol (props, events, labs) = function
-  | Rule.Proto_prop f -> find_undeclared1_protocol_prop (props, events, labs) f
-  | Rule.Proto_seq ps ->
+  | Protocol.Proto_prop f -> find_undeclared1_protocol_prop (props, events, labs) f
+  | Protocol.Proto_seq ps ->
       List.fold_left find_undeclared1_protocol (props, events, labs) ps
-  | Rule.Proto_sum ps ->
+  | Protocol.Proto_sum ps ->
       List.fold_left find_undeclared1_protocol (props, events, labs) ps
-  | Proto_test p ->
+  | Protocol.Proto_test p ->
       find_undeclared1_protocol (props, events, labs) p
-  | Proto_star p ->
+  | Protocol.Proto_star p ->
       find_undeclared1_protocol (props, events, labs) p
   | _ -> failwith "find_undeclared1_protocol"
 
 and find_undeclared1_protocol_prop (props, events, labs) = function
-  | PProp_event e when not (List.mem e events) -> (props, events @ [e], labs)
+  | Protocol.PProp_event e when not (List.mem e events) -> (props, events @ [e], labs)
+(*
   | PProp_neg f -> find_undeclared1_protocol_prop (props, events, labs) f
+ *)
   | _ -> (props, events, labs)
 
 and find_undeclared1_rule (props, (events : string list), labs) (r : Rule.rule) =
@@ -198,8 +201,10 @@ and expand_any_prop any_expanded prop =
   match prop with
   | PProp_event "_any" -> any_expanded
   | PProp_event e -> Proto_prop prop
+(*
   | PProp_event_elt (e, _) when e <> "_any" -> Proto_prop prop
   | PProp_neg (PProp_event e) when e <> "_any"-> Proto_prop prop
+ *)
   | _ -> failwith "expand_any_prop"
 
 (** protocol_relax *)
@@ -214,10 +219,10 @@ let rec relax_protocols decls =
     [] decls
 
 (* Rule.protocol -> Rule.protocol *)
-and relax_protocol (p : Rule.protocol) =
+and relax_protocol (p : Protocol.t) =
   relax_protocol_rec p |> flatten_protocol |> elim_dup
 
-and relax_protocol_rec (p : Rule.protocol) =
+and relax_protocol_rec (p : Protocol.t) =
   let filler = Proto_star (Proto_prop (PProp_event "_skip")) in
   match p with
   | Proto_prop _ -> Proto_seq [filler; p; filler]

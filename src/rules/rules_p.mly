@@ -14,6 +14,7 @@
 // limitations under the License.
 
 %{
+open Protocol
 open Rule
 open Printf
 
@@ -266,8 +267,8 @@ protocol2
 protocol3
 	: NAME
 	  { Proto_prop (PProp_event $1) }
-	| neg NAME
-	  { Proto_prop (PProp_neg (PProp_event $2)) }
+//	| neg NAME
+//	  { Proto_prop (PProp_neg (PProp_event $2)) }
 //	| neg protocol3
 //	  { assert (match $2 with Proto_event _ -> true | _ -> false);
 //	    Proto_neg $2 }

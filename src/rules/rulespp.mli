@@ -60,7 +60,7 @@ val apply_interleaving : Rules.decl list -> Rules.decl list
 (** protocol_relax *)
 
 val relax_protocols : Rules.decl list -> Rules.decl list
-val relax_protocol : Rule.protocol -> Rule.protocol
+val relax_protocol : Protocol.t -> Protocol.t
 
 (** proposition_align
     for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
