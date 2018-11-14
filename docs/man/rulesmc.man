@@ -1,0 +1,57 @@
+'\" t
+.\" Manual page created with latex2man on Wed Nov 14 15:14:29 JST 2018
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "RULESMC" "1" "November 2018" "LDL Tools " "LDL Tools "
+.SH NAME
+
+rulesmc \-\- model\-checker for dsl4sc 
+.PP
+.SH SYNOPSIS
+
+rulesmc <option>* <model_file>? <infile> 
+.PP
+.SH DESCRIPTION
+
+rulesmc reads a model M (from <model_file>) and a set of requirements φ (from <infile>), 
+examines if M ⊨ φ (i.e., ⊨ M → φ) holds or not, and then 
+returns either "claim holds" (M ⊨ φ holds) or "claim does not hold" 
+.PP
+.SH OPTIONS
+
+.TP
+\fB\-\-model\fP <model_file>
+ reads a model from <model_file> 
+.TP
+\fB\-\-reachability\fP
+ check reachability (i.e., M ∧ φ ≠ empty), instead of entailment. 
+.TP
+\fB\-v\fP, \fB\-\-verbose\fP
+ become verbose 
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+ show usage 
+.PP
+.SH SEE ALSO
+
+rulessat, ldlmc 
+.PP
+.SH AUTHOR
+
+\fBhttps://ldltools.github.io\fP
+.br
+\fBldltools@outlook.com\fP
+.PP
+.SH COPYRIGHT
+
+(C) Copyright IBM Corp. 2018. 
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

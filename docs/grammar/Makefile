@@ -25,7 +25,8 @@ veryclean::	clean
 	latexml $< > $@
 
 TARGETS = $(shell echo {core_,}grammar.{pdf,svg,html})
-all::	$(TARGETS)
+grammar:	$(TARGETS)
+
 install::
 
 clean::

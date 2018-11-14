@@ -1,8 +1,16 @@
 #
-SUBDIRS = grammar
+all::
+clean::;	rm -f *~
+install::
+
+TOP_DIR	= $(shell readlink -f ..)
+PREFIX	?= $(TOP_DIR)/_build/install
+SUBDIRS	= grammar man
 
 all::
 	for d in $(SUBDIRS); do make -C $$d $@ || exit 1; done
-clean::;	rm -f *~
+install::	all
+	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) $@; done
+clean::
+	for d in $(SUBDIRS); do make -C $$d $@ || exit 1; done
 veryclean::
-install::

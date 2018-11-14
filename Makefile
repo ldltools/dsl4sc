@@ -4,7 +4,7 @@
 PREFIX		?= /usr/local
 LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
 
-SUBDIRS		= src scripts tools examples tests
+SUBDIRS		= src scripts tools examples tests docs
 
 all::
 	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) LDLSATLIBDIR=$(LDLSATLIBDIR) $@ || exit 1; done

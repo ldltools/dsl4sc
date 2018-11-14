@@ -1,0 +1,43 @@
+\documentclass[fancy]{article}
+\setDate{November 2018}
+\begin{document}
+
+\begin{Name}{1}{rulesmc}{author}{LDL Tools}{title}
+rulesmc -- model-checker for dsl4sc
+\end{Name}
+
+\section{Synopsis}
+rulesmc <option>* <model_file>? <infile>
+
+\section{Description}
+rulesmc reads a model M (from <model_file>) and a set of requirements φ (from <infile>),
+examines if M ⊨ φ (i.e., ⊨ M → φ) holds or not, and then
+returns either "claim holds" (M ⊨ φ holds) or "claim does not hold" 
+
+\section{Options}
+\begin{description}
+%
+\item[\Opt{--model} <model_file>]
+reads a model from <model_file>
+%
+\item[\Opt{--reachability}]
+check reachability (i.e., M ∧ φ ≠ empty), instead of entailment.
+%
+\item[\Opt{-v}, \Opt{--verbose}]
+become verbose
+%
+\item[\Opt{-h}, \Opt{--help}]
+show usage
+\end{description}
+
+\section{See Also}
+rulessat, ldlmc
+
+\section{Author}
+\URL{https://ldltools.github.io}\\
+\Email{ldltools@outlook.com}
+
+\section{Copyright}
+(C) Copyright IBM Corp. 2018.
+
+\end{document}

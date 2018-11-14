@@ -1,0 +1,52 @@
+'\" t
+.\" Manual page created with latex2man on Wed Nov 14 14:45:07 JST 2018
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "RULES2SCXML" "1" "November 2018" "LDL Tools " "LDL Tools "
+.SH NAME
+
+rulessat \-\- SAT solver for dsl4sc 
+.PP
+.SH SYNOPSIS
+
+rulessat <option>* <infile> 
+.PP
+.SH DESCRIPTION
+
+rulessat reads a set of dsl4sc declarations from <infile>, 
+converts them to a LDL formula φ, 
+examines if φ is satisfiable or not, and then 
+returns either "valid" (¬φ is unsatisfiable), "satisfiable", or "unsatisfiable" 
+.PP
+.SH OPTIONS
+
+.TP
+\fB\-v\fP, \fB\-\-verbose\fP
+ become verbose 
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+ show usage 
+.PP
+.SH SEE ALSO
+
+rulesmc, ldlsat 
+.PP
+.SH AUTHOR
+
+\fBhttps://ldltools.github.io\fP
+.br
+\fBldltools@outlook.com\fP
+.PP
+.SH COPYRIGHT
+
+(C) Copyright IBM Corp. 2018. 
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

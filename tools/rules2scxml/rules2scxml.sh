@@ -19,11 +19,12 @@ usage () {
     echo "usage: `basename $0` <option>* <rules_file>"
     echo "options:"
     echo -e "\t-o <out_file>\toutput to <out_file>"
-    echo -e "\t-h\t\tdisplay this message<outfile>"
-    echo -e "\t-v\t\tbecome verbose"
     echo -e "\t--until <stage>\tterminate when <stage> gets reached"
-    echo -e "\t\t\t<stage> ::= rules | ldl | mso | dfa | dfadot | dfa2 | dfa3 | scxml"
+    echo -e "\t\t\t<stage> ::= rules | ldl | mso | dfa | dfadot | dfa[2-4] | scxml"
+    echo -e "\t--monitor\tgenerate monitor"
     echo -e "\t--no-pp\t\tskip preprocessing (be careful)"
+    echo -e "\t-v\t\tbecome verbose"
+    echo -e "\t-h\t\tdisplay this message<outfile>"
 }
 
 RULESPP=rulespp

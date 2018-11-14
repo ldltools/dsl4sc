@@ -1,0 +1,60 @@
+'\" t
+.\" Manual page created with latex2man on Wed Nov 14 12:55:05 JST 2018
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "RULES2SCXML" "1" "November 2018" "LDL Tools " "LDL Tools "
+.SH NAME
+
+rules2scxml \-\- translate dsl4sc script to scxml 
+.PP
+.SH SYNOPSIS
+
+rules2scxml <option>* <infile> 
+.PP
+.SH DESCRIPTION
+
+rules2scxml reads a dsl4sc script from <infile> and translate it to scxml. 
+.PP
+.SH OPTIONS
+
+.TP
+\fB\-o\fP <outfile>
+ output to <outfile> 
+.TP
+\fB\-\-until\fP <stage>
+ terminate when <stage> gets reached
+.br
+<stage> ::= rules | ldl | mso | dfa | dfadot | dfa2 | dfa3 | dfa4 | scxml 
+.TP
+\fB\-\-monitor\fP
+ generate a monitor which does not ignore but reject invalid incoming events. 
+.TP
+\fB\-v\fP, \fB\-\-verbose\fP
+ become verbose 
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+ show usage 
+.PP
+.SH SEE ALSO
+
+rulessat, rulesmc 
+.PP
+.SH AUTHOR
+
+\fBhttps://ldltools.github.io\fP
+.br
+\fBldltools@outlook.com\fP
+.PP
+.SH COPYRIGHT
+
+(C) Copyright IBM Corp. 2018. 
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

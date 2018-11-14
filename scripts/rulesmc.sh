@@ -16,7 +16,7 @@
 
 usage ()
 {
-    echo "usage: `basename $0` --model <model_file> <infile>"
+    echo "usage: `basename $0` <option>* <model_file>? <infile>"
     echo
     echo "`basename $0` is a model-checker for dsl4sc"
     echo "`basename $0` reads a model M (from <model_file>) and a set of requirements φ (from <infile>),"
@@ -52,7 +52,8 @@ do
 	-*)
 	    ldlmcopts="$ldlmcopts $1"
 	    ;;
-	*) infile=$1
+	*)
+	    test -z "$modelfile" && modelfile=$1 || infile=$1
     esac
     shift
 done

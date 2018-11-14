@@ -3,18 +3,23 @@ clean::
 	rm -f *~ *.cm*
 install::
 
-CAMLFLAGS	= -g
-#CAMLFLAGS	= -g -I $(shell ocamlfind query xml-light)
+OPAM_PREFIX	= $(shell opam config var prefix)
+OCAMLFIND	= $(OPAM_PREFIX)/bin/ocamlfind
+CAMLC		= $(OCAMLFIND) ocamlc
+CAMLOPT		= $(OCAMLFIND) ocamlopt
+CAMLCFLAGS	= -g
+CAMLOPTFLAGS	= -g
+
 _build/escape.byte:	_build/escape.cmo
-	ocamlc $(CAMLFLAGS) -o $@ $<
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $<
 _build/escape.opt:	_build/escape.cmx
-	ocamlopt $(CAMLFLAGS) -o $@ $<
+	$(CAMLOPT) $(CAMLOPTLAGS) -o $@ $<
 _build/escape.cmo:	escape.ml
 	@mkdir -p _build
-	ocamlc $(CAMLFLAGS) -c $< -o $@
+	$(CAMLC) $(CAMLCFLAGS) -c $< -o $@
 _build/escape.cmx:	escape.ml
 	@mkdir -p _build
-	ocamlopt $(CAMLFLAGS) -c $< -o $@
+	$(CAMLOPT) $(CAMLOPTFLAGS) -c $< -o $@
 
 veryclean:	clean
 	rm -f _build/*
