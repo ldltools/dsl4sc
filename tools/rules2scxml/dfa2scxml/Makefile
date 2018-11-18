@@ -17,8 +17,8 @@ install::	all
 	rsync -avzop $(HELPERS) $(PREFIX)/lib/dsl4sc/tools/dfa2scxml_helpers
 
 all::
-	for d in $(SUBDIRS); do make -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
 clean::
-	for d in $(SUBDIRS); do make -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
 veryclean::	clean
-	for d in $(SUBDIRS); do make -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done

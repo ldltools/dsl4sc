@@ -12,6 +12,6 @@ all::
 install::
 clean::
 	rm -f *~
-	for d in $(SUBDIRS); do make -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
 veryclean::
-	for d in $(SUBDIRS); do make -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done

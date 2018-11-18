@@ -7,17 +7,17 @@ LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
 SUBDIRS		= src scripts tools examples tests docs
 
 all::
-	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) LDLSATLIBDIR=$(LDLSATLIBDIR) $@ || exit 1; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) LDLSATLIBDIR=$(LDLSATLIBDIR) $@ || exit 1; done
 
 install::	all
-	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 
 clean::
 	find . -name '#*' -or -name '*~' -or -name '*.log' | xargs rm -f
-	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 
 veryclean::	clean
-	for d in $(SUBDIRS); do make -C $$d PREFIX=$(PREFIX) $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 	rm -rf _build/*
 
 #
