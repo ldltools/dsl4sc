@@ -32,7 +32,7 @@ type event_map = (string * Ldl.formula) list
 
 (* Rule.protocol -> Ldl.formula *)
 let rec translate_protocol nbit (es : string list) (p : Protocol.protocol) =
-  let _idle : formula = protocol_prop_to_formula nbit es (PProp_event "_skip") in
+  let _idle : formula = event_to_formula_aux nbit es "_skip" in
   let r = protocol_to_path nbit es p
   in
   Ldl_modal (Mod_ex, Path_seq [Path_prop _idle; r], Ldl_conj [Ldl_atomic "last"; _idle])
@@ -88,21 +88,16 @@ and genmap nbit (es : string list) =
 (* Rule.protocol -> Ldl.path *)
 and protocol_to_path nbit (es : string list) (p : Protocol.protocol) =
   match p with
-  | Proto_prop f -> Ldl.Path_prop (protocol_prop_to_formula nbit es f)
-  | Proto_seq ps -> Ldl.Path_seq (List.map (protocol_to_path nbit es) ps)
-  | Proto_sum ps -> Ldl.Path_sum (List.map (protocol_to_path nbit es) ps)
-  | Proto_test p' ->
+  | Proto_event e -> Ldl.Path_prop (event_to_formula_aux nbit es e)
+  | Proto_seq ps  -> Ldl.Path_seq (List.map (protocol_to_path nbit es) ps)
+  | Proto_sum ps  -> Ldl.Path_sum (List.map (protocol_to_path nbit es) ps)
+  | Proto_star p' -> Ldl.Path_star (protocol_to_path nbit es p')
+(*
+  | Proto_0or1 p' ->
       let _idle = event_to_formula_rec nbit 0 [] 0 in
       Ldl.Path_test (Ldl.Ldl_modal (Mod_ex, (protocol_to_path nbit es p'), _idle))
-  | Proto_star p' -> Ldl.Path_star (protocol_to_path nbit es p')
+ *)
   | _ -> failwith "protocol_to_path"
-
-(* Rule.protocol_prop -> Ldl.formula (proposition) *)
-and protocol_prop_to_formula nbit (es : string list) f =
-  match f with
-  | PProp_event e -> event_to_formula_aux nbit es e
-(*| PProp_neg f' ->Ldl_neg (protocol_prop_to_formula nbit es f')*)
-  | _ -> failwith "protocol_prop_to_formula"
 
 (* event list (disjunctive) -> formula *)
 and event_to_formula (es : string list) (e : string) =
@@ -260,250 +255,3 @@ let rec translate (s : Spec.t) =
   let fs3 = List.map (translate_rule nbit es s) s.rule_seq in
 
   (fs1 @ fs2 @ fs3), map
-
-(*
-
-(** labelled property term *)
-type prop_term_labelled =
-    prop_term * string
-
-and prop_term =
-  | PTerm_atomic of string
-  | PTerm_neg of string
-  | PTerm_conj of prop_term_labelled list
-  | PTerm_disj of prop_term_labelled list
-  | PTerm_modal of modality * path * prop_term_labelled
-
-[@@deriving show]
-
-type env_t =
-    (string * Ldl.formula) list
-      (** state name -> formula *)
-
-[@@deriving show]
-
-(* for debugging *)
-let debug_flags = ref 0b00000
-    (** flags
-	0b00001:	display high-level summary report (-v)
-	0b00010:	display detailed summary
-	0b00100:	print intermediate values
-	0b01000:	unused
-	0b10000:	generate intermediate files
-     *)
-let debug_vacuum = open_out "/dev/null"
-
-let debug_set_flags (flags : int) =
-  debug_flags := flags land 0b11111
-
-let debug_is_on (flags : int list) =
-  List.fold_left (fun b f -> b && (f land !debug_flags <> 0)) true flags
-
-let debug_printf (flags : int list) (fmt : ('a, out_channel, 'b) format) =
-  let oc = if debug_is_on flags then stderr else debug_vacuum in
-  fprintf oc fmt
-
-(* --------------------------------------------------------------------------------
-   helpers
-   --------------------------------------------------------------------------------
- *)
-
-(* prop_decls -> env_t = (state_name * forumla) list *)
-let rec make_env (xs, qs, ps, rs) =
-  let env0 = List.rev_map (fun x -> x, Ldl_atomic "true") qs in
-  List.fold_left
-    (fun env (p : property) ->
-      try ("initial", translate_pprop (xs, qs, ps, rs) env p) :: env with Exit -> env)
-    env0
-
-and env_lookup env x =
-  try List.assoc x env
-  with Not_found ->
-    eprintf "** lookup: %S not found in [" x;
-    List.iter (fun (x, _) -> eprintf "%S; " x) env;
-    eprintf "]\n";
-    failwith "name resolution"
-
-(* propositional property -> formula *)
-and translate_pprop (xs, qs, ps, rs) env (p : property) =
-  match p with
-  | Prop_atomic x when List.mem x xs -> Ldl_atomic x
-  | Prop_name x when List.mem x xs -> translate_pprop (xs, qs, ps, rs) env (Prop_atomic x)
-  | Prop_neg p' -> Ldl_neg (translate_pprop (xs, qs, ps, rs) env p')
-  | Prop_conj ps' -> Ldl_conj (List.map (translate_pprop (xs, qs, ps, rs) env) ps')
-  | Prop_disj ps' -> Ldl_disj (List.map (translate_pprop (xs, qs, ps, rs) env) ps')
-  | Prop_modal _ -> raise Exit
-  | Prop_name q when List.mem q qs -> env_lookup env q
-  | _ -> failwith "translate_pprop"
-
-(* nnf *)
-let rec nnf names p =
-  match p with
-  | Prop_atomic a -> p
-  | Prop_name a when List.mem a names -> Prop_atomic a
-
-  | Prop_neg (Prop_atomic a) -> p
-  | Prop_neg (Prop_name a) when List.mem a names -> Prop_neg (Prop_atomic a)
-  | Prop_neg (Prop_neg p') -> nnf names p'
-  | Prop_neg (Prop_conj ps) -> nnf names (Prop_disj (List.map (fun p' -> Prop_neg p') ps))
-  | Prop_neg (Prop_disj ps) -> nnf names (Prop_conj (List.map (fun p' -> Prop_neg p') ps))
-  | Prop_neg (Prop_modal (Mod_ex, r, p')) -> nnf names (Prop_modal (Mod_all, r, Prop_neg p'))
-  | Prop_neg (Prop_modal (Mod_all, r, p')) -> nnf names (Prop_modal (Mod_ex, r, Prop_neg p'))
-
-  | Prop_conj ps -> Prop_conj (List.map (nnf names) ps)
-  | Prop_disj ps -> Prop_disj (List.map (nnf names) ps)
-
-  | Prop_modal (m, r, p') -> Prop_modal (m, r, nnf names p')
-
-  | _ -> failwith ("nnf: " ^ Spec.show_property p)
-
-(* --------------------------------------------------------------------------------
-   property_spec list -> property term list
-   --------------------------------------------------------------------------------
- *)
-
-(* translate1: property list -> prop_term_labelled list *)
-let rec translate1 (xs, qs, ps, rs) (ps' : property list) =
-  List.fold_left
-    (fun (rslt : prop_term_labelled list) (p : property) ->
-      rslt @ [translate1_rec (xs, qs, ps, rs) "initial" p])
-    [] ps'
-
-(* translate1_rec: state -> property -> prop_term *)
-and translate1_rec (xs, qs, ps, rs) q (p : property) =
-  let tm =
-    match p with
-    | Prop_atomic x -> PTerm_atomic x
-    | Prop_name x when List.mem x xs -> PTerm_atomic x
-    | Prop_neg (Prop_atomic x)  -> PTerm_neg x
-    | Prop_neg p' -> fst (translate1_rec (xs, qs, ps, rs) q (nnf xs p))
-
-    | Prop_conj ps' -> PTerm_conj (List.map (translate1_rec (xs, qs, ps, rs) q) ps')
-    | Prop_disj ps' -> PTerm_disj (List.map (translate1_rec (xs, qs, ps, rs) q) ps')
-
-    | Prop_modal (m, r, Prop_atomic x)
-      when (List.mem x xs) ->
-	debug_printf [0b0100]  "translate1_rec (%s (modal) atomic:%s): %s\n" q x (show_property p);
-	PTerm_modal (m, r, ((PTerm_atomic x), "unknown"))
-   (*
-    | Prop_modal (m, r, Prop_name q')
-      when (List.mem q' qs) ->
-	debug_printf [0b0100] "translate1_rec (%s (modal) state:%s) %s\n" q q' (show_property p);
-	assert (q != q');
-	let matched : property list =
-	  (* props at q' *)
-	  List.fold_left
-	    (fun rslt -> function _, q1, p' when q1 = q' -> rslt @ [p'] | _ -> rslt)
-	    [] ps in
-	let children = List.map (translate1_rec (xs, qs, ps, rs) q') matched in
-	assert (children != []);
-	PTerm_modal (m, r, ((PTerm_conj children), q'))
-    *)
-    | Prop_modal (m, r, p') ->
-	PTerm_modal (m, r, translate1_rec (xs, qs, ps, rs) "unknown" p')
-
-    | _ -> failwith ("translate1_rec: " ^ Spec.show_property p)
-  in
-  debug_printf [0b0100] "property_term: @ %s: %s\n" q (show_prop_term tm);
-  (tm, q)
-
-(* --------------------------------------------------------------------------------
-   property term list -> formula list
-   --------------------------------------------------------------------------------
- *)
-
-(* prop_term list -> formula list *)
-let rec translate2 (xs, qs, ps, rs) env (tms : prop_term_labelled list)=
-  List.map
-    (fun ltm -> ((translate2_rec (xs, qs, ps, rs) env ltm) : formula))
-    tms
-  
-(* prop_term -> Ldl.formula *)
-and translate2_rec (xs, qs, ps, rs) env (tm, q) =
-  let m2m = function Spec.Mod_all -> Ldl.Mod_all | Spec.Mod_ex -> Ldl.Mod_ex in
-  match tm with
-  | PTerm_atomic x when List.mem x xs -> Ldl_atomic x
-  | PTerm_neg x when List.mem x xs -> Ldl_neg (Ldl_atomic x)
-
-  | PTerm_conj ts -> Ldl_conj (translate2 (xs, qs, ps, rs) env ts)
-  | PTerm_disj ts -> Ldl_disj (translate2 (xs, qs, ps, rs) env ts)
-  | PTerm_modal (m, r, ltm) ->
-      Ldl_modal (m2m m,
-		 translate_path (xs, qs, ps, rs) env r,
-		 translate2_rec (xs, qs, ps, rs) env ltm)
-  | _ -> failwith ("translate2_rec: " ^ show_prop_term tm)
-
-(* Spec.path -> Ldl.path *)
-and translate_path (xs, qs, ps, rs) env (r : Spec.path) =
-  match r with
-  | Path_prop p -> Ldl.Path_prop (translate_prop (xs, qs, ps, rs) env "unbound" p)
-
-  | Path_seq rs' -> Ldl.Path_seq (List.map (translate_path (xs, qs, ps, rs) env)  rs')
-  | Path_sum rs' -> Ldl.Path_sum (List.map (translate_path (xs, qs, ps, rs) env)  rs')
-  | Path_star r' -> Ldl.Path_star (translate_path (xs, qs, ps, rs) env r')
-  | Path_test p ->
-      let q = "initial" in
-      let tm, _ = translate1_rec (xs, qs, ps, rs) q p in
-      let f : Ldl.formula = translate2_rec  (xs, qs, ps, rs) env (tm, q) in
-      Ldl.Path_test f
-
-  | Path_name q when List.mem_assoc q env -> Ldl.Path_prop (env_lookup env q)
-	(* state *)
-  (*| Path_name x when List.mem x xs -> Ldl.Path_prop (Ldl_atomic x)*)
-  | Path_name q -> failwith ("translate_path: unknown name (" ^ q ^ ")")
-
-  | Path_let ([], r') -> translate_path (xs, qs, ps, rs) env r'
-  | Path_let ([q, (p : property)], r') ->
-      let f : Ldl.formula = translate_pprop (xs, qs, ps, rs) env p
-      in translate_path (xs, qs, ps, rs) ((q, f) :: env) r'
-  | Path_let ((b :: bs), r') ->
-      translate_path (xs, qs, ps, rs) env (Path_let ([b], Path_let (bs, r')))
-  | Path_call x when List.mem_assoc x rs ->
-      translate_path (xs, qs, ps, rs) env (List.assoc x rs)
-
-  | Path_choice cases ->
-      Path_sum (List.map (translate_path_case (xs, qs, ps, rs) env) cases)
-
-  | _ -> failwith ("translate_path: " ^ Spec.show_path r)
-
-and translate_path_case (xs, qs, ps, rs) env = function
-  | None, r   -> translate_path (xs, qs, ps, rs) env r
-  | Some p, r ->
-      let f : formula = translate_prop (xs, qs, ps, rs) env "unbound" p in
-      Ldl.Path_seq [Ldl.Path_test f; translate_path (xs, qs, ps, rs) env r]
-
-(* state -> property -> Ldl.formula *)
-and translate_prop (xs, qs, ps, rs) env q (p : property) =
-  p |> translate1_rec (xs, qs, ps, rs) q |> translate2_rec (xs, qs, ps, rs) env
-
-(* --------------------------------------------------------------------------------
-   translate: spec -> formula
-   --------------------------------------------------------------------------------
- *)
-
-(* spec -> Ldl.formula *)
-let translate (spec : Spec.spec) =
-  let filter f =
-    List.fold_left
-      (fun rslt decl -> match f decl with Some x -> rslt @ x | None -> rslt) [] in
-  let xs : string list = ["true"; "false"; "last"]
-    @ filter (function Decl_atomic x -> Some [x] | _ -> None) spec
-  and qs : string list = ["initial"; "final"]
-    @ filter (function Decl_state qs' -> Some qs' | _ -> None) spec
-  and ps : Spec.property list = []
-    @ filter (function Decl_property (_, ps') -> Some ps' | _ -> None) spec
-  and rs : (string * Spec.path) list =
-    filter
-      (function Decl_path (Some x, r) -> Some [x, r] | Decl_path (None, r) -> Some ["", r] | _ -> None)
-      spec
-  in
-
-  (* translate1: property -> prop_term_labelled list *)
-  let tms : prop_term_labelled list = translate1 (xs, qs, ps, rs) ps in
-  let env : env_t = make_env (xs, qs, ps, rs) ps in
-  debug_printf [0b0100] "environ\n%s\n" (show_env_t env);
-
-  (* translate2 : prop_term list -> formula list *)
-  translate2 (xs, qs, ps, rs) env tms
-
-*)

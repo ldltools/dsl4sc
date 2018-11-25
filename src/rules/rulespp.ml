@@ -34,10 +34,10 @@ let expand_arrays decls =
 let rec find_declared decls =
   let props, events, labs =
     List.fold_left find_declared1 ([], [], []) decls
-  in (props @ ["_idle"], events @ ["_skip"; "_any"], labs)
+  in (props @ ["_idle"], events @ ["_epsilon"; "_skip"; "_any"], labs)
 
 and find_declared1 ((props : string list), (events : string list), (labs : string list)) = function
-  | Decl_event (e, _) ->
+  | Decl_event (e, _) when not (List.mem e events) ->
       (*Printf.printf "(event:%s)" e;*)
       (props, events @ [e], labs)
   | Decl_variable ((p, _), _) ->
@@ -65,17 +65,42 @@ let rec find_undeclared decls =
   in props3, events3, labs3
 
 and find_undeclared1 declared = function
+  | Decl_protocol (_, p) ->
+      find_undeclared1_protocol declared p
   | Decl_property (_, f) ->
       find_undeclared1_labelled_property declared f
  (*
   | Decl_path (_, r) ->
       find_undeclared1_labelled_path declared r
   *)
-  | Decl_protocol (_, p) ->
-      find_undeclared1_protocol declared p
   | Decl_rule (_, r) ->
       find_undeclared1_rule declared (r : Rule.t)
   | _ -> declared
+
+and find_undeclared1_protocol (props, events, labs) = function
+  | Protocol.Proto_event e when not (List.mem e events) -> (props, events @ [e], labs)
+  | Protocol.Proto_event e -> (props, events, labs)
+
+  | Protocol.Proto_seq ps ->
+      List.fold_left find_undeclared1_protocol (props, events, labs) ps
+  | Protocol.Proto_sum ps ->
+      List.fold_left find_undeclared1_protocol (props, events, labs) ps
+  | Protocol.Proto_star p ->
+      find_undeclared1_protocol (props, events, labs) p
+
+(*
+  | Protocol.Proto_0or1 p ->
+      find_undeclared1_protocol (props, events, labs) p
+  | Protocol.Proto_prop f -> find_undeclared1_protocol_prop (props, events, labs) f
+  | _ -> failwith "find_undeclared1_protocol"
+
+and find_undeclared1_protocol_prop (props, events, labs) = function
+  | Protocol.PProp_event e when not (List.mem e events) -> (props, events @ [e], labs)
+(*
+  | PProp_neg f -> find_undeclared1_protocol_prop (props, events, labs) f
+ *)
+  | _ -> (props, events, labs)
+*)
 
 and find_undeclared1_labelled_property (props, events, labs) = function
   | (f, Some l) when not (List.mem l labs) ->
@@ -109,25 +134,6 @@ and find_undeclared1_path (props, events, labs) = function
       List.fold_left find_undeclared1_labelled_path (props, events, labs) rs
   | Rule.Path_star r -> find_undeclared1_labelled_path (props, events, labs) r
   | Rule.Path_label l when not (List.mem l labs) -> (props, events, labs @ [l])
-  | _ -> (props, events, labs)
-
-and find_undeclared1_protocol (props, events, labs) = function
-  | Protocol.Proto_prop f -> find_undeclared1_protocol_prop (props, events, labs) f
-  | Protocol.Proto_seq ps ->
-      List.fold_left find_undeclared1_protocol (props, events, labs) ps
-  | Protocol.Proto_sum ps ->
-      List.fold_left find_undeclared1_protocol (props, events, labs) ps
-  | Protocol.Proto_test p ->
-      find_undeclared1_protocol (props, events, labs) p
-  | Protocol.Proto_star p ->
-      find_undeclared1_protocol (props, events, labs) p
-  | _ -> failwith "find_undeclared1_protocol"
-
-and find_undeclared1_protocol_prop (props, events, labs) = function
-  | Protocol.PProp_event e when not (List.mem e events) -> (props, events @ [e], labs)
-(*
-  | PProp_neg f -> find_undeclared1_protocol_prop (props, events, labs) f
- *)
   | _ -> (props, events, labs)
 
 and find_undeclared1_rule (props, (events : string list), labs) (r : Rule.rule) =
@@ -179,7 +185,7 @@ let rec expand_any decls =
   let _, declared, _ = find_declared decls in
   let user_events = List.filter (fun e -> not @@ List.mem e ["_skip"; "_any"]) declared in
   let any_expanded =
-    Proto_sum (List.map (fun e -> Proto_prop (PProp_event e)) user_events) in
+    Proto_sum (List.map (fun e -> Proto_event e) user_events) in
   List.map
     (fun decl ->
       match decl with
@@ -191,21 +197,23 @@ let rec expand_any decls =
 
 and expand_any_protocol any_expanded p =
   match p with
-  | Proto_prop prop -> expand_any_prop any_expanded prop
+  | Proto_event "_any" -> any_expanded
+  | Proto_event e -> p
   | Proto_seq ps -> Proto_seq (List.map (expand_any_protocol any_expanded) ps)
   | Proto_sum ps -> Proto_sum (List.map (expand_any_protocol any_expanded) ps)
-  | Proto_test p' -> Proto_test (expand_any_protocol any_expanded p')
   | Proto_star p' -> Proto_star (expand_any_protocol any_expanded p')
+  | _ -> failwith "expand_any_protocol"
 
-and expand_any_prop any_expanded prop =
-  match prop with
-  | PProp_event "_any" -> any_expanded
-  | PProp_event e -> Proto_prop prop
-(*
-  | PProp_event_elt (e, _) when e <> "_any" -> Proto_prop prop
-  | PProp_neg (PProp_event e) when e <> "_any"-> Proto_prop prop
- *)
-  | _ -> failwith "expand_any_prop"
+(** eliminate_epsilon *)
+
+let rec minimize_protocols ?(always = false) decls =
+  List.fold_left
+    (fun rslt -> function
+      | Decl_protocol (None, p) when always || Protocol.mem_event "_epsilon" p ->
+	  rslt @ [Decl_protocol (None, Protocol.minimize p)]
+      | Decl_protocol (Some _, _) -> failwith "minimize_protocols"
+      | decl -> rslt @ [decl])
+    [] decls
 
 (** protocol_relax *)
 
@@ -223,13 +231,12 @@ and relax_protocol (p : Protocol.t) =
   relax_protocol_rec p |> flatten_protocol |> elim_dup
 
 and relax_protocol_rec (p : Protocol.t) =
-  let filler = Proto_star (Proto_prop (PProp_event "_skip")) in
+  let filler = Proto_star (Proto_event "_skip") in
   match p with
-  | Proto_prop _ -> Proto_seq [filler; p; filler]
-  | Proto_seq ps -> Proto_seq (List.map relax_protocol_rec ps)
-  | Proto_sum ps -> Proto_sum (List.map relax_protocol_rec ps)
-  | Proto_test p -> Proto_test (relax_protocol_rec p)
-  | Proto_star p -> Proto_star (relax_protocol_rec p)
+  | Proto_event _ -> Proto_seq [filler; p; filler]
+  | Proto_seq ps  -> Proto_seq (List.map relax_protocol_rec ps)
+  | Proto_sum ps  -> Proto_sum (List.map relax_protocol_rec ps)
+  | Proto_star p  -> Proto_star (relax_protocol_rec p)
   | _ -> failwith "relax_protocol_rec"
 
 and flatten_protocol p =
@@ -250,12 +257,12 @@ and elim_dup p =
 and elim_dup1 ps =
   match ps with
   | [] | [_] -> ps
-  | Proto_star (Proto_prop (PProp_event "_skip")) :: Proto_star (Proto_prop (PProp_event "_skip")) :: rest ->
-      elim_dup1 (Proto_star (Proto_prop (PProp_event "_skip")) :: rest)
-  | Proto_star (Proto_prop (PProp_event "_skip")) :: p2 :: rest ->
-      Proto_star (Proto_prop (PProp_event "_skip")) :: p2 :: elim_dup1 rest
-  | p1 :: Proto_star (Proto_prop (PProp_event "_skip")) :: rest ->
-      p1 :: elim_dup1 (Proto_star (Proto_prop (PProp_event "_skip")) :: rest)
+  | Proto_star (Proto_event "_skip") :: Proto_star (Proto_event "_skip") :: rest ->
+      elim_dup1 (Proto_star (Proto_event "_skip") :: rest)
+  | Proto_star (Proto_event "_skip") :: p2 :: rest ->
+      Proto_star (Proto_event "_skip") :: p2 :: elim_dup1 rest
+  | p1 :: Proto_star (Proto_event "_skip") :: rest ->
+      p1 :: elim_dup1 (Proto_star (Proto_event "_skip") :: rest)
   | p1 :: p2 :: rest ->
       p1 :: p2 :: elim_dup1 rest
 
@@ -421,17 +428,21 @@ let rec preprocess
 
   let identity decls = decls in
   decls
-  |> (if macro_expand then expand_macros else identity)
-  |> (if array_expand then expand_arrays else identity)
+  (* find/add undeclared event/variable names *)
   |> (if undeclared_add then add_undeclared else identity)
+
+  (* event/protocol *)
   |> (if any_expand then expand_any else identity)
-  |> (if interleaving_apply then apply_interleaving else identity)
+  (*|> (if interleaving_apply then apply_interleaving else identity)*)
+  |> minimize_protocols
   |> (if protocol_relax then relax_protocols else identity)
+
+  (* variable/property *)
   |> (if proposition_align then align_propositions else identity)
   |> (if code_discard then discard_codes else identity)
-
   |> variables_declare
 
+  (* rule *)
   (* move "preserve" rules to the last part *)
   |> (fun decls ->
       let decls', pres_rules =

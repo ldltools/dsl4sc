@@ -73,7 +73,7 @@ and path_spec =
 
 type t = rules
 
-(** for parsing *)
+(** for parsing/preprocessing *)
 
 type decl =
   (* protocol *)

@@ -1,4 +1,4 @@
-(* $Id: $ *)
+(* $Id: protocol.mli,v 1.1 2018/11/23 18:05:46 sato Exp sato $ *)
 (*
  * (C) Copyright IBM Corp. 2018.
  *
@@ -14,38 +14,44 @@
  * limitations under the License.
  *)
 
+(** protocol: regular language for specifying event patterns.
+    special built-in events
+    - _epsilon: label-less transition. eliminated by determinization.
+    - _skip: another label-less transition that is retained as it is.
+    - _empty: empty protocol
+    - _accept: termination event
+  *)
 type protocol =
-  | Proto_prop of protocol_prop
+  | Proto_event of string
+	(* named event *)
   | Proto_seq of protocol list
+	(* p1; p2; .. *)
   | Proto_sum of protocol list
-  | Proto_test of protocol
+	(* p1 + p2 + .. *)
   | Proto_star of protocol
-
-and protocol_prop =
-  | PProp_event of string
-(*
-  | PProp_event_elt of string * int term list
-  | PProp_neg of protocol_prop
- *)
+	(* p* *)
+  | Proto_empty
+        (* emptyset *)
 
 type t = protocol
 
-(** epsilon elimination *)
+(** minimization *)
 
-val include_epsilon_p : protocol -> bool
-val eliminate_epsilon : protocol -> protocol
+val mem_event : string -> t -> bool
+
+val minimize : t -> t
 
 (** pretty-printing *)
 
-val print_protocol : (string -> unit) -> ?fancy:bool -> protocol -> unit
-val string_of_protocol : protocol -> string
+val print_protocol : (string -> unit) -> ?fancy: bool -> t -> unit
+val string_of_protocol : t -> string
 
 (** pretty-printing -- ppx-generated *)
 
-val pp_protocol : Format.formatter -> protocol -> unit
-val show_protocol : protocol -> string
+val pp_protocol : Format.formatter -> t -> unit
+val show_protocol : t -> string
 
 (** json parser/serializer -- ppx-generated *)
 
-val protocol_of_yojson : Yojson.Safe.json -> (protocol, string) Result.result
-val protocol_to_yojson : protocol ->  Yojson.Safe.json
+val protocol_of_yojson : Yojson.Safe.json -> (t, string) Result.result
+val protocol_to_yojson : t ->  Yojson.Safe.json

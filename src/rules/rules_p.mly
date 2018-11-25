@@ -257,16 +257,16 @@ protocol2
 	: protocol3
 	  { $1 }
 	| protocol3 QUESTION
-	  { Proto_test $1 }
-	| protocol3 QUESTION protocol3
-	  { Proto_seq [Proto_test $1; $3] }
+	  { Proto_sum [$1; Proto_event "_epsilon"] }
+//	| protocol3 QUESTION protocol3
+//	  { Proto_seq [Proto_sum [$1; Proto_event "_epsilon"]; $3] }
 	| protocol3 STAR
 	  { Proto_star $1 }
 	;
 
 protocol3
 	: NAME
-	  { Proto_prop (PProp_event $1) }
+	  { match $1 with "_empty" -> Proto_empty | _ -> Proto_event $1 }
 //	| neg NAME
 //	  { Proto_prop (PProp_neg (PProp_event $2)) }
 //	| neg protocol3
