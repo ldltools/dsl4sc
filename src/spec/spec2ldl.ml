@@ -14,11 +14,14 @@
  * limitations under the License.
  *)
 
-open Rules
 open Protocol
+open Property
 open Rule
+open Rules
+
 open Ldl
 open Ldlsimp
+
 open Printf
 
 (* ================================================================================
@@ -128,14 +131,14 @@ and event_to_formula_rec nbit (bits : int) fs (i : int) =
    ================================================================================
  *)
 
-let rec translate_property nbit es (lp : Rule.labelled_property) =
+let rec translate_property nbit es (lp : Property.labelled_property) =
   lp |> lprop_to_formula nbit es
 
 (* labelled_property -> formula *)
 and lprop_to_formula nbit (es : string list) (p, p_opt) =
   prop_to_formula nbit es p
 
-and prop_to_formula nbit es (p : Rule.property) =
+and prop_to_formula nbit es (p : Property.property) =
   match p with
   | Prop_atomic "_idle" -> event_to_formula_aux nbit es "_skip"
   | Prop_atomic a -> Ldl_atomic a
@@ -149,7 +152,7 @@ and prop_to_formula nbit es (p : Rule.property) =
       failwith ("prop_to_formula:label(" ^ l ^ ")")
 
 and lpath_to_path nbit es (r, r_opt) =
-  match (r : Rule.path) with
+  match (r : Property.path) with
   | Path_prop p -> Ldl.Path_prop (prop_to_formula nbit es p)
   | Path_seq rs -> Ldl.Path_seq (List.map (lpath_to_path nbit es) rs)
   | Path_sum rs -> Ldl.Path_sum (List.map (lpath_to_path nbit es) rs)

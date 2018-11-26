@@ -31,15 +31,16 @@ type protocol =
   | Proto_star of protocol
 	(* p* *)
   | Proto_empty
-        (* emptyset *)
+        (* empty language *)
 
 type t = protocol
 
 (** minimization *)
 
-val mem_event : string -> t -> bool
-
 val minimize : t -> t
+    (** by means of dfa minimization *)
+
+val mem_event : string -> t -> bool
 
 (** pretty-printing *)
 

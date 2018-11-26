@@ -19,7 +19,7 @@ type t =
       proto_seq : Protocol.t list;
 
       pvar_seq : string list;
-      prop_seq : Rule.labelled_property list;
+      prop_seq : Property.labelled_property list;
 
       rule_seq : Rule.t list;
 

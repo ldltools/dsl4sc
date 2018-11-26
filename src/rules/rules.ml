@@ -46,12 +46,16 @@ and variable_spec =
 
 and variable_type =
   | VT_prop
-  | VT_range of int * int
-  | VT_impl of string option
+  | VT_nat of int
+
+(** proposition -- deprecated *)
+and proposition_spec =
+    (* name, exp *)
+    string * string option
 
 (** property *)
 and property_spec =
-    (string * string list) option * Rule.labelled_property
+    (string * string list) option * Property.labelled_property
     (* (name, args), property *)
 
 (** rule *)
@@ -59,14 +63,9 @@ and rule_spec =
     (string * string list) option * Rule.rule
     (* (name, args), rule *)
 
-(** proposition -- deprecated *)
-and proposition_spec =
-    (* name, exp *)
-    string * string option
-
 (** path -- deprecated *)
 and path_spec =
-    string option * Rule.labelled_path
+    string option * Property.labelled_path
 
 [@@deriving show, yojson]
 
@@ -182,8 +181,18 @@ let print_rules out (rs : t) =
       out "variable\n";
       List.iter
 	(function
-	  | (x, VT_impl _), Some e ->
-	      out " { "; out x; out " = "; out e; out "; }\n"
+	  | (x, VT_prop), None ->
+	      out " "; out x;
+	      out " : prop;\n"
+	  | (x, VT_prop), Some e ->
+	      out " "; out x; out " { "; out e; out " }";
+	      out " : prop;\n"
+	  | (x, VT_nat n), None ->
+	      out " "; out x;
+	      out " : nat ("; out (string_of_int n); out ");\n"
+	  | (x, VT_nat n), Some e ->
+	      out " "; out x; out " { "; out e; out " }";
+	      out " : nat ("; out (string_of_int n); out ");\n"
 	  | _ -> ())
 	rs.var_decls;
     end;
@@ -206,7 +215,7 @@ let print_rules out (rs : t) =
 	      out " { "; Rule.print_labelled_property out p; out " }\n"
 	   *)
 	  | _, p ->
-	      out " "; Rule.print_labelled_property out p; out ";\n")
+	      out " "; Property.print_labelled_property out p; out ";\n")
 	rs.prop_decls;
     end;
 
@@ -387,7 +396,7 @@ and print_property_in_xml out (name_opt, lp) =
     | Some (str', _) ->
 	out " name=\""; out str'; out "\">"
   in
-  escape out (Rule.string_of_labelled_property lp);
+  escape out (Property.string_of_labelled_property lp);
   out "</property>\n";
 
 (*
@@ -476,7 +485,7 @@ and print_rule_in_xml out ((name_opt, r) : rule_spec) =
       (* condition *)
       let c, c_opt = r.condition in
       out "<condition><formula>";
-      escape out (Rule.string_of_labelled_property c);
+      escape out (Property.string_of_labelled_property c);
       out "</formula>";
       let _ =
 	match c_opt with
@@ -493,14 +502,14 @@ and print_rule_in_xml out ((name_opt, r) : rule_spec) =
 	match a_path_opt with
 	| Some a_path ->
 	    out "<path>";
-	    escape out (Rule.string_of_labelled_path (a_path, None));
+	    escape out (Property.string_of_labelled_path (a_path, None));
 	    out "</path>"
 	| _ -> () in
       List.iter
 	(function
 	  | Rule.Act_ensure p ->
 	      out "<ensure>";
-	      escape out (Rule.string_of_labelled_property (p, None));
+	      escape out (Property.string_of_labelled_property (p, None));
 	      out "</ensure>"
 	  | Rule.Act_raise [e] ->
 	      out "<raise event=\""; out e; out "\"/>";
@@ -644,12 +653,8 @@ and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
     match ty with
     | VT_prop ->
 	out " type=\"prop\""
-    | VT_range (i, j) ->
-	out (Printf.sprintf " type=\"range(%d,%d)\"" i j)
-
-    | VT_impl None -> ()
-    | VT_impl (Some str) ->
-	out " type=\""; escape out str; out "\""
+    | VT_nat n ->
+	out (Printf.sprintf " type=\"nat(%d)\"" n)
   in ();
   match init_opt with
   | None -> out "/>\n"

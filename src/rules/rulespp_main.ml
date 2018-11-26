@@ -149,6 +149,8 @@ let main argc argv =
   (* read a set of declarations from file *)
   let ic = open_in !infile in
   let decls : Rules.decl list = input_rules ic !opt_fmt_in in
+  if !opt_parse_only then
+    (output_rules oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
 (*
   List.iter
     (function
@@ -161,10 +163,7 @@ let main argc argv =
   (* decls -> decls' *)
   let decls' =
     Rulespp.preprocess
-      ~macro_expand:!opt_expand_macros
-      ~array_expand:!opt_expand_arrays
       ~undeclared_add:!opt_add_undeclared
-      ~interleaving_apply:!opt_apply_interleaving
       ~protocol_relax:!opt_relax_protocols
       ~proposition_align:!opt_align_propositions
       ~code_discard:!opt_discard_codes

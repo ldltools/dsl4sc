@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel>
+    <data id="n" expr="0"/>
+    <data id="buff" expr="[]"/>
+    <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
+    <data id="_trace"/>
+    <!-- _trace_matches (guard) examines whether _trace ⊨ [true*]guard holds or not -->
+    <data id="_trace_matches" expr="function (guard) { return true; }"/>
+    <!-- _trace_append (next_world) appends next_world to _trace -->
+    <data id="_trace_append" expr="function (next_world) { }"/>
+  </datamodel>
+  <state id="q2">
+    <transition target="q4" event="_accept">
+      <!--tid t59-->
+    </transition>
+    <transition target="q5" event="put">
+      <!--tid t63-->
+      <!--transition: curr_world: !_n_0 & !_n_1 label: _n_0 & !_n_1 next_world: _n_0 & !_n_1-->
+      <script>_trace_append (" _n_0 &amp; !_n_1 ");  buff[n++] = _event.data;  ;</script>
+      <!--rule: r43 event: put certainty: 15-->
+      <!--rule.when: !_n_0 & !_n_1-->
+      <!--rule.ensure: _n_0 & !_n_1-->
+    </transition>
+  </state>
+  <state id="q5">
+    <transition target="q4" event="_accept">
+      <!--tid t67-->
+    </transition>
+    <transition target="q6" event="put">
+      <!--tid t70-->
+      <!--transition: curr_world: _n_0 & !_n_1 label: !_n_0 & _n_1 next_world: !_n_0 & _n_1-->
+      <script>_trace_append (" !_n_0 &amp; _n_1 ");  buff[n++] = _event.data;  ;</script>
+      <!--rule: r44 event: put certainty: 15-->
+      <!--rule.when: _n_0 & !_n_1-->
+      <!--rule.ensure: !_n_0 & _n_1-->
+    </transition>
+    <transition target="q2" event="get">
+      <!--tid t72-->
+      <!--transition: curr_world: _n_0 & !_n_1 label: !_n_0 & !_n_1 next_world: !_n_0 & !_n_1-->
+      <script>_trace_append (" !_n_0 &amp; !_n_1 ");  console.log (n, buff[--n]); buff[n] = null;  ;</script>
+      <!--rule: r48 event: get certainty: 15-->
+      <!--rule.when: _n_0 & !_n_1-->
+      <!--rule.ensure: !_n_0 & !_n_1-->
+    </transition>
+  </state>
+  <state id="q7">
+    <transition target="q4" event="_accept">
+      <!--tid t77-->
+    </transition>
+    <transition target="q6" event="get">
+      <!--tid t80-->
+      <!--transition: curr_world: _n_0 & _n_1 label: !_n_0 & _n_1 next_world: !_n_0 & _n_1-->
+      <script>_trace_append (" !_n_0 &amp; _n_1 ");  console.log (n, buff[--n]); buff[n] = null;  ;</script>
+      <!--rule: r50 event: get certainty: 15-->
+      <!--rule.when: _n_0 & _n_1-->
+      <!--rule.ensure: !_n_0 & _n_1-->
+    </transition>
+  </state>
+  <state id="q6">
+    <transition target="q4" event="_accept">
+      <!--tid t83-->
+    </transition>
+    <transition target="q7" event="put">
+      <!--tid t87-->
+      <!--transition: curr_world: !_n_0 & _n_1 label: _n_0 & _n_1 next_world: _n_0 & _n_1-->
+      <script>_trace_append (" _n_0 &amp; _n_1 ");  buff[n++] = _event.data;  ;</script>
+      <!--rule: r45 event: put certainty: 15-->
+      <!--rule.when: !_n_0 & _n_1-->
+      <!--rule.ensure: _n_0 & _n_1-->
+    </transition>
+    <transition target="q5" event="get">
+      <!--tid t89-->
+      <!--transition: curr_world: !_n_0 & _n_1 label: _n_0 & !_n_1 next_world: _n_0 & !_n_1-->
+      <script>_trace_append (" _n_0 &amp; !_n_1 ");  console.log (n, buff[--n]); buff[n] = null;  ;</script>
+      <!--rule: r49 event: get certainty: 15-->
+      <!--rule.when: !_n_0 & _n_1-->
+      <!--rule.ensure: _n_0 & !_n_1-->
+    </transition>
+  </state>
+  <final id="q4"/>
+</scxml>
