@@ -119,6 +119,9 @@ and protocol2nfa_rec m = function
       and fin = Fsa.state_add m () in
       Fsa.transition_add m ini (None, fin);
       ini, fin
+  | Proto_event e when List.mem e ["_any"; "_empty"] ->
+      invalid_arg ("protocol2nfa_rec: " ^ e)
+
   | Proto_event e ->
       let ini = Fsa.state_add m ()
       and fin = Fsa.state_add m ()
@@ -240,8 +243,9 @@ let rec dfa2protocol (m : ('state, string) Fsa.t) =
     that correspond with transition paths, from state [i] to [j],
     each of which does not include any intermediate state larger than [k].
 
-    note that we assume that each final state is a sink
-    (i.e., state w/o any outbound edge).
+    note that we assume that each final state of [m] is a sink
+    (i.e., state w/o any outbound edge),
+    which allows to rule out epsilon events.
  *)
 and dfa2protocol_rec (m : ('state, string) Fsa.t) i j allow_trailing_epsilon k =
   (*Printf.eprintf ";; dfa2protocol (%d, %d, %d)\n" i j k;*)
@@ -307,27 +311,39 @@ and dfa2protocol_rec (m : ('state, string) Fsa.t) i j allow_trailing_epsilon k =
      *)
     p'
 
-let rec minimizable_p p =
-  if not (mem_event "_epsilon" p)
-  then true
-  else p |> simp |> minimizable_rec
+let rec epsilon_terminable_p p =
+  if mem_event "_epsilon" p
+  then p |> simp |> epsilon_terminable_rec
+  else false
 
-and minimizable_rec = function
-  | Proto_event "_epsilon" -> false
-  | Proto_event _ -> true
+and epsilon_terminable_rec = function
+  | Proto_event "_epsilon" -> true
+  | Proto_event _ -> false
 
   | Proto_seq ps when ps <> [] ->
-      minimizable_rec (List.nth ps (List.length ps - 1))
+      epsilon_terminable_rec (List.nth ps (List.length ps - 1))
   | Proto_sum ps ->
-      (match List.find_opt (fun p -> not @@ minimizable_rec p) ps with None -> true | _ -> false)
+      (match List.find_opt epsilon_terminable_rec ps with None -> false | _ -> true)
   | Proto_star p ->
-      minimizable_rec p
-  | _ -> failwith "Protocol.minimizable_rec"
+      epsilon_terminable_rec p
+  | _ -> failwith "Protocol.epsilon_terminable_rec"
+
+let rec subst_event e1 e2 p =
+  match p with
+  | Proto_event e when e = e1 -> Proto_event e2
+  | Proto_event _ -> p
+  | Proto_seq ps -> Proto_seq (List.map (subst_event e1 e2) ps)
+  | Proto_sum ps -> Proto_sum (List.map (subst_event e1 e2) ps)
+  | Proto_star p' -> Proto_star (subst_event e1 e2 p')
+  | Proto_empty -> p
 
 let minimize p =
-  if not (minimizable_p p) then
-    failwith ("[implementation restriction] protocol cannot end with epsilon: " ^ (string_of_protocol p))
-  else
+  let p =
+    if epsilon_terminable_p p
+    then
+      (assert (not @@ mem_event "_terminate" p);
+       Proto_seq [p; Proto_event "_terminate"])
+    else p in
 
   (* protocol -> nfa *)
   let m1 : nfa = protocol2nfa p in
@@ -364,7 +380,7 @@ let minimize p =
   close_out oc;
    *)
 
-  let p' = dfa2protocol m4 |> simp in
+  let p' = dfa2protocol m4 |> simp |> subst_event "_terminate" "_epsilon" in
   (*
   Printf.fprintf stderr "%s\n" (show_protocol p');
   output_string stderr "\n";

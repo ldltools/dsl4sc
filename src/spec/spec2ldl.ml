@@ -88,15 +88,15 @@ and genmap nbit (es : string list) =
 (* Rule.protocol -> Ldl.path *)
 and protocol_to_path nbit (es : string list) (p : Protocol.protocol) =
   match p with
+  | Proto_event "_epsilon" ->
+      failwith "[implementation restriction] protocol cannot end with epsilon"
+  | Proto_event e when List.mem e ["_any"; "_empty"] ->
+      invalid_arg ("protocol_to_path: " ^ e)
   | Proto_event e -> Ldl.Path_prop (event_to_formula_aux nbit es e)
+
   | Proto_seq ps  -> Ldl.Path_seq (List.map (protocol_to_path nbit es) ps)
   | Proto_sum ps  -> Ldl.Path_sum (List.map (protocol_to_path nbit es) ps)
   | Proto_star p' -> Ldl.Path_star (protocol_to_path nbit es p')
-(*
-  | Proto_0or1 p' ->
-      let _idle = event_to_formula_rec nbit 0 [] 0 in
-      Ldl.Path_test (Ldl.Ldl_modal (Mod_ex, (protocol_to_path nbit es p'), _idle))
- *)
   | _ -> failwith "protocol_to_path"
 
 (* event list (disjunctive) -> formula *)

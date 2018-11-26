@@ -19,7 +19,7 @@
     - _epsilon: label-less transition. eliminated by determinization.
     - _skip: another label-less transition that is retained as it is.
     - _empty: empty protocol
-    - _accept: termination event
+    - _any: synonymous to "e1 + e2 + ..." where ei ranges over all user-defined events
   *)
 type protocol =
   | Proto_event of string
