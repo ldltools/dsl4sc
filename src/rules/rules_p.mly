@@ -20,31 +20,31 @@ open Rule
 open Printf
 
 type rule_elt =
-  | Elt_path of labelled_path
   | Elt_event of event
   | Elt_event_opt of string
   | Elt_condition of labelled_property
   | Elt_condition_opt of string
   | Elt_action of action
-  | Elt_action_opt of string
+(*| Elt_action_opt of string*)
+(*| Elt_path of labelled_path*)
 
 let rec genrule (elts : rule_elt list) =
   let e : event = Ev_name ""
   and c : labelled_property = Prop_atomic "true", None
-  and a : action = None, [] in
-  let e', c', a', r' = genrule_rec ((e, None), (c, None), (a, None), None) elts
-  in { event = e'; condition = c'; action = a'; path = r'; }
+  and a : action = [] in
+  let e', c', a' = genrule_rec ((e, None), (c, None), a) elts
+  in { event = e'; condition = c'; action = a'; path = None; }
 
-and genrule_rec ((e, ex), (c, cx), (a, ax), r) elts =
-  if elts = [] then ((e, ex), (c, cx), (a, ax), r) else
+and genrule_rec ((e, ex), (c, cx), a) elts =
+  if elts = [] then ((e, ex), (c, cx), a) else
   let rslt =
     match List.hd elts with
-    | Elt_event e'          -> (e', ex), (c, cx), (a, ax), r
-    | Elt_event_opt str     -> (e, Some str), (c, cx), (a, ax), r
-    | Elt_condition c'      -> (e, ex), (c', cx), (a, ax), r
-    | Elt_condition_opt str -> (e, ex), (c, Some str), (a, ax), r
-    | Elt_action a'         -> (e, ex), (c, cx), (a', ax), r
-    | Elt_action_opt str    -> (e, ex), (c, cx), (a, Some str), r
+    | Elt_event e'          -> (e', ex), (c, cx), a
+    | Elt_event_opt str     -> (e, Some str), (c, cx), a
+    | Elt_condition c'      -> (e, ex), (c', cx), a
+    | Elt_condition_opt str -> (e, ex), (c, Some str), a
+    | Elt_action a'         -> (e, ex), (c, cx), a'
+    (*| Elt_action_opt str    -> (e, ex), (c, cx), (a, Some str), r*)
     (*| Elt_path r'           -> (e, ex), (c, cx), (a, ax), Some r'*)
     | _ -> failwith "genrule_rec"
   in genrule_rec rslt (List.tl elts)
@@ -100,8 +100,9 @@ and expand_prop_spec_rec rslt = function
 %token	OR
 %token	AND
 %token	IMPLIES
+
 %token	EQUAL
-%token	GT LT
+%token	NE GT LT
 
 %token	TILDE
 %token 	EXCLAM DOLLAR HAT
@@ -331,15 +332,15 @@ var_type
 	  { match $1 with
 	    | "prop" -> Rules.VT_prop
 	    | "bool" -> Rules.VT_prop
-	    | "bit" -> Rules.VT_nat 1
-	    | "nibble" -> Rules.VT_nat 15
-	    | "byte" -> Rules.VT_nat 255
+	    | "bit" -> Rules.VT_nat 2
+	    | "nibble" -> Rules.VT_nat 16
+	    | "byte" -> Rules.VT_nat 256
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
 	| NAME LPAREN CONST RPAREN
 	  // range type
 	  { match $1 with
-	    | "nat" when 0 <= $3 && $3 < 256 -> Rules.VT_nat $3
+	    | "nat" when 0 < $3 && $3 <= 256 -> Rules.VT_nat $3
 	    | "nat" -> invalid_arg (sprintf "nat %d : out of range" $3)
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
@@ -487,6 +488,8 @@ property3
 //	  { Ldl_modal (fst $1, snd $1, $2) }
 	| term EQUAL term
 	  { Prop_equal ($1, $3) }
+	| term NE term
+	  { Prop_neg (Prop_equal ($1, $3)) }
 	| neg property3
 	  { Prop_neg $2 }
 	| LPAREN property RPAREN
@@ -553,14 +556,14 @@ term	: term1
 	  { $1 }
 	| term PLUS term1
 	  { Tm_app (Tm_app (Tm_bop "+", $1), $3) }
-	| term MINUS term1
-	  { Tm_app (Tm_app (Tm_bop "-", $1), $3) }
+//	| term MINUS term1
+//	  { Tm_app (Tm_app (Tm_bop "-", $1), $3) }
 	;
 
 term1	: term2
 	  { $1 }
-	| term1 STAR term2
-	  { Tm_app (Tm_app (Tm_bop "*", $1), $3) }
+//	| term1 STAR term2
+//	  { Tm_app (Tm_app (Tm_bop "*", $1), $3) }
 	;
 
 term2	: CONST
@@ -809,7 +812,7 @@ rule_c	: labelled_property
 	;
 
 rule_a	: action_seq
-	  { $1 }
+	  { [Elt_action $1] }
 	;
 
 // ------
@@ -818,25 +821,25 @@ rule_a	: action_seq
 	    
 action_seq
 	: action
-	  { $1 }
+	  { [$1] }
 	| action_seq action
-	  { $1 @ $2 }
+	  { $1 @ [$2] }
 	;
 	    
 action	: action1
-	  { [Elt_action (None, [$1])] }
+	  { $1, None }
 	| action1 LBRACE STRING RBRACE
-	  { [Elt_action (None, [$1]); Elt_action_opt $3] }
+	  { $1, Some $3 }
 	| DO LBRACE STRING RBRACE
-	  { [Elt_action_opt $3] }
+	  { Act_do, Some $3 }
 	;
 
 action1	: action_ensure
 	  { $1 }
 	| action_raise
 	  { $1 }
-	| DO action1
-	  { $2 }
+//	| DO action1
+//	  { $2 }
 	;
 
 // -------------
@@ -939,9 +942,9 @@ preserve_rule_a
 
 preserve
 	: PRESERVE args
-	  { [Elt_action (None, [Act_preserve $2])] }
+	  { [Elt_action [(Act_preserve $2), None]] }
  	| PRESERVE LPAREN args RPAREN
-	  { [Elt_action (None, [Act_preserve $3])] }
+	  { [Elt_action [(Act_preserve $3), None]] }
 	;
 
 args	: NAME

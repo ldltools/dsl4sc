@@ -134,15 +134,16 @@ and find_undeclared1_rule (props, (events : string list), labs) (r : Rule.t) =
     | Ev_name_seq es -> es
     | Ev_name_seq_compl es -> es in
   let es =
-    let a : action = fst r.action in
+    let acts = r.action in
     List.fold_left
-      (fun es -> function
+      (fun es (act, _) ->
+	match act with
 	| Act_raise es' ->
 	    List.fold_left
 	      (fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
 	      es es'
 	| _ -> es)
-      es (snd a)
+      es acts
   in
   let events' =
     List.fold_left
@@ -178,7 +179,7 @@ let rec expand_any decls =
       match decl with
       | Decl_protocol (None, p) ->
 	  let p' = expand_any_protocol any_expanded p in Decl_protocol (None, p')
-      | Decl_protocol _ -> failwith "expand_any"
+      | Decl_protocol _ -> failwith "[expand_any]"
       | _ -> decl)
     decls
 
@@ -189,7 +190,7 @@ and expand_any_protocol any_expanded p =
   | Proto_seq ps -> Proto_seq (List.map (expand_any_protocol any_expanded) ps)
   | Proto_sum ps -> Proto_sum (List.map (expand_any_protocol any_expanded) ps)
   | Proto_star p' -> Proto_star (expand_any_protocol any_expanded p')
-  | _ -> failwith "expand_any_protocol"
+  | _ -> failwith "[expand_any_protocol]"
 
 (* eliminate_epsilon *)
 
@@ -198,7 +199,7 @@ let rec minimize_protocols ?(always = false) decls =
     (fun rslt -> function
       | Decl_protocol (None, p) when always || Protocol.mem_event "_epsilon" p ->
 	  rslt @ [Decl_protocol (None, Protocol.minimize p)]
-      | Decl_protocol (Some _, _) -> failwith "minimize_protocols"
+      | Decl_protocol (Some _, _) -> failwith "[minimize_protocols]"
       | decl -> rslt @ [decl])
     [] decls
 
@@ -209,7 +210,7 @@ let rec relax_protocols decls =
     (fun rslt -> function
       | Decl_protocol (None, p) ->
 	  let p' = relax_protocol p in rslt @ [Decl_protocol (None, p')]
-      | Decl_protocol _ -> failwith "relax_protocols"
+      | Decl_protocol _ -> failwith "[relax_protocols]"
       | decl -> rslt @ [decl])
     [] decls
 
@@ -224,7 +225,7 @@ and relax_protocol_rec (p : Protocol.t) =
   | Proto_seq ps  -> Proto_seq (List.map relax_protocol_rec ps)
   | Proto_sum ps  -> Proto_sum (List.map relax_protocol_rec ps)
   | Proto_star p  -> Proto_star (relax_protocol_rec p)
-  | _ -> failwith "relax_protocol_rec"
+  | _ -> failwith "[relax_protocol_rec]"
 
 and flatten_protocol p =
   match p with
@@ -263,15 +264,13 @@ let rec propositionalize decls =
       (fun (rslt, tenv) decl ->
 	match decl with
 	| Decl_variable ((x, VT_nat n), None) ->
-	  let len = float_of_int (n + 1) in
-	  let nbit = int_of_float @@ ceil (log len /. log 2.0) in
 	  let decls' =
-	    List.init nbit
-	      (fun i ->
-		Decl_variable (("_" ^ x ^ "_" ^ (string_of_int i), VT_prop), None))
+	    List.map
+	      (fun x' -> Decl_variable ((x', VT_prop), None))
+	      (Property.term_to_propositions (Tm_var (x, Ty_nat n)))
 	  in (rslt @ decls'), (x, n) :: tenv
 	| Decl_variable ((_, VT_nat _), Some _) ->
-	    failwith "expand_terms"
+	    failwith "[propositionalize]"
 	| Decl_property (hd, (f, l_opt)) ->
 	    let f' = propositionalize_property tenv f
 	    in (rslt @ [Decl_property (hd, (f', l_opt))]), tenv
@@ -279,9 +278,11 @@ let rec propositionalize decls =
 	    let (f, l_opt), c_code = r.condition in
 	    let f' = propositionalize_property tenv f in
 	    let c' = (f', l_opt), c_code in
-	    let (p_opt, acts), a_code = r.action in
-	    let acts' = List.map (propositionalize_action tenv) acts in
-	    let r' = {event = r.event; condition = c'; action = (p_opt, acts'), a_code; path = r.path}
+	    let acts' =
+	      List.map
+		(fun (act, code_opt) -> (propositionalize_action tenv act), code_opt)
+		r.action in
+	    let r' = {event = r.event; condition = c'; action = acts'; path = r.path}
 	    in (rslt @ [Decl_rule (hd, r')]), tenv
 	| _ -> (rslt @ [decl]), tenv)
       ([], []) decls
@@ -294,6 +295,7 @@ and propositionalize_action tenv (act : Rule.action_unit) =
   match act with
   | Act_ensure f -> Act_ensure (propositionalize_property tenv f)
   | Act_raise _ -> act
+  | Act_do -> act
   | Act_preserve _ -> act
 
 and annotate_term_type_to_property tenv f =
@@ -309,7 +311,7 @@ and annotate_term_type_to_property tenv f =
       Prop_disj (List.map (annotate_term_type_to_property tenv) gs)
   | Prop_modal (m, lp, (g, l_opt)) ->
       Prop_modal (m, lp, ((annotate_term_type_to_property tenv g), l_opt))
-  | _ -> failwith "annotate_term_type_to_property"
+  | _ -> failwith "[annotate_term_type_to_property]"
 
 and annotate_term_type tenv (e : int term) =
   match e with
@@ -317,7 +319,7 @@ and annotate_term_type tenv (e : int term) =
   | Tm_var (x, Ty_nat n) when List.mem_assoc x tenv ->
       Tm_var (x, Ty_nat (List.assoc x tenv))
   | Tm_var (x, _) ->
-      failwith ("[annotate_term_type] unknown variable: " ^ x)
+      failwith ("[annotate_term_type] undeclared variable: " ^ x)
   | _ -> e
 
 (* proposition_align
@@ -325,27 +327,29 @@ and annotate_term_type tenv (e : int term) =
  *)
 
 let rec align_propositions decls =
-  List.fold_left
-    (fun rslt decl ->
-      match decl with
-      | Decl_variable ((p, VT_prop), p_opt)
-      | Decl_proposition (p, p_opt) ->
-	  let prop : Property.property =
-	    (* [true*] (<p>!p & <!p>p -> <true>!_idle) *)
-	    let tt = Prop_atomic "true" in
-	    let p1 : Property.property =
-	      let p11 = Prop_modal (Mod_ex, (Path_prop (Prop_atomic p), None), (Prop_neg (Prop_atomic p), None))
-	      and p12 = Prop_modal (Mod_ex, (Path_prop (Prop_neg (Prop_atomic p)), None), (Prop_atomic p, None))
-	      in Prop_disj [p11; p12]
-	    and p2 : Property.property =
-	      Prop_modal (Mod_ex, (Path_prop tt, None),
-			  (Prop_neg (Prop_atomic "_idle"), None))
-	    in
-	    Prop_modal (Mod_all, (Path_star (Path_prop tt, None), None),
-			(Prop_disj [Prop_neg p1; p2], None))
-	  in rslt @ [decl; Decl_property (None, (prop, None))]
-      | _ -> rslt @ [decl])
-    [] decls
+  let decls' =
+    List.fold_left
+      (fun rslt decl ->
+	match decl with
+	| Decl_variable ((p, VT_prop), p_opt)
+	| Decl_proposition (p, p_opt) ->
+	    let prop : Property.property =
+	      (* [true*] (<p>!p & <!p>p -> <true>!_idle) *)
+	      let tt = Prop_atomic "true" in
+	      let p1 : Property.property =
+		let p11 = Prop_modal (Mod_ex, (Path_prop (Prop_atomic p), None), (Prop_neg (Prop_atomic p), None))
+		and p12 = Prop_modal (Mod_ex, (Path_prop (Prop_neg (Prop_atomic p)), None), (Prop_atomic p, None))
+		in Prop_disj [p11; p12]
+	      and p2 : Property.property =
+		Prop_modal (Mod_ex, (Path_prop tt, None),
+			    (Prop_neg (Prop_atomic "_idle"), None))
+	      in
+	      Prop_modal (Mod_all, (Path_star (Path_prop tt, None), None),
+			  (Prop_disj [Prop_neg p1; p2], None))
+	    in rslt @ [Decl_property (None, (prop, None))]
+	| _ -> rslt)
+      [] decls
+  in decls @ decls'
 
 (* code_discard
    strip off code fragments (in JS) from rules
@@ -356,12 +360,13 @@ let rec discard_codes decls =
     (fun rslt decl ->
       match decl with
       | Decl_rule (None, r) ->
-	  let (e, _), (c, _), (a, _) = r.event, r.condition, r.action in
-	  let r' = { event = (e, None); condition = (c, None); action = (a, None); path = None; }
+	  let (e, _), (c, _) = r.event, r.condition
+	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
+	  let r' = { event = (e, None); condition = (c, None); action = a'; path = None; }
 	  in rslt @ [Decl_rule (None, r')]
 
       | Decl_rule (Some (name, _), r) ->
-	  failwith ("discard_codes: named rule (" ^ name ^ ") not permitted")
+	  failwith ("[discard_codes] named rule (" ^ name ^ ") not permitted")
       | _ -> rslt @ [decl])
     [] decls
 
@@ -377,10 +382,10 @@ let expand_preserve (events : string list) (decls : decl list) =
       | Decl_rule (None, r) ->
 	  (*print_rule (output_string stderr) r; output_string stderr "\n";*)
 	  (*output_string stderr ((show_rule r) ^ "\n");*)
-	  let (e, _), (c, _), (a, _) = r.event, r.condition, r.action in
+	  let (e, _), (c, _), acts = r.event, r.condition, r.action in
 	  let rs : rule list =
-	    match a with
-	    | None, [Act_preserve (ps : string list)] ->
+	    match acts with
+	    | [(Act_preserve (ps : string list)), None] ->
 		(* event_names -> prop_names -> rules *)
 		let expand (es : string list) ps =
 		  List.fold_left
@@ -390,13 +395,13 @@ let expand_preserve (events : string list) (decls : decl list) =
 			  let r1 =
 			    { event = (Ev_name e, None);
 			      condition = ((Prop_atomic p, None), None);
-			      action = ((None, [Act_ensure (Prop_atomic p)]), None);
+			      action = [(Act_ensure (Prop_atomic p)), None];
 			      path = None;
 			    }
 			  and r2 =
 			    { event = (Ev_name e, None);
 			      condition = ((Prop_neg (Prop_atomic p), None), None);
-			      action = ((None, [Act_ensure (Prop_neg (Prop_atomic p))]), None);
+			      action = [(Act_ensure (Prop_neg (Prop_atomic p))), None];
 			      path = None;
 			    }
 			  in rslt @ [r1; r2])
@@ -418,7 +423,7 @@ let expand_preserve (events : string list) (decls : decl list) =
 	  rslt @ List.map (fun r -> Decl_rule (None, r)) rs
 
       | Decl_rule (Some (name, _), r) ->
-	  failwith ("expand_preserve: named rule (" ^ name ^ ") not permitted")
+	  failwith ("[expand_preserve] named rule (" ^ name ^ ") not permitted")
       | _ -> rslt @ [decl])
     [] decls
 
@@ -463,25 +468,6 @@ let rec preprocess
     (*?(skip_allow = false)*)
     (decls : Rules.decl list) =
 
-  (* special properties for event processing *)
-  let props_on_events : Property.property list =
-    let idle1 = Prop_atomic "_idle"
-	(* _idle *)
-    and idle2 =
-      Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
-		  (Prop_disj [Prop_neg (Prop_atomic "last"); Prop_atomic "_idle"], None))
-	(* [true*] (last -> _idle) *)
-    and idle3 =
-      (* this prohibits intermediate _idle states (and thus _skip events).
-	 _idle appears only at the beginning/end of the trace.
-	 included only when relax_protocol is not set *)
-      Prop_modal (Mod_ex, (Path_prop (Prop_atomic "true"), None),
-		  (Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
-			       (Prop_disj [Prop_neg (Prop_atomic "_idle"); Prop_atomic "last"], None)), None))
-	(* <true>[true*] (_idle -> last) *)
-    in [idle1; idle2] @ if protocol_relax (*|| skip_allow*) then [] else [idle3]
-  in
-
   let identity decls = decls in
   decls
   (* find/add undeclared event/variable names *)
@@ -498,6 +484,38 @@ let rec preprocess
   |> (if proposition_align then align_propositions else identity)
   |> (if code_discard then discard_codes else identity)
   (*|> variables_declare*)
+  |> (fun decls ->
+      (* add special properties [_idle1; _idle2; _idle3] *)
+      let props_on_events : Property.property list =
+	let idle1 = Prop_atomic "_idle"
+	    (* _idle *)
+	and idle2 =
+	  Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
+		      (Prop_disj [Prop_neg (Prop_atomic "last"); Prop_atomic "_idle"], None))
+	    (* [true*] (last -> _idle) *)
+	and idle3 =
+	  (* this prohibits intermediate _idle states (and thus _skip events).
+	     _idle appears only at the beginning/end of the trace.
+	     included only when relax_protocol is not set *)
+	  Prop_modal (Mod_ex, (Path_prop (Prop_atomic "true"), None),
+		      (Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
+				   (Prop_disj [Prop_neg (Prop_atomic "_idle"); Prop_atomic "last"], None)), None))
+	    (* <true>[true*] (_idle -> last) *)
+	in [idle1; idle2] @ if protocol_relax (*|| skip_allow*) then [] else [idle3]
+      in
+      List.fold_left
+	(fun rslt p ->
+	  (* append special_events to decls when undeclared *)
+	  try
+	    let _ =
+	      List.find
+		(function
+		  | Decl_property (None, (p', None)) when equal_property p' p -> true
+		  | _ -> false)
+		decls
+	    in rslt
+	  with Not_found -> rslt @ [Decl_property (None, (p, None))])
+	decls props_on_events)
 
   (* rule *)
   (* move "preserve" rules to the last part *)
@@ -507,7 +525,7 @@ let rec preprocess
 	  (fun (decls', pres_rules) decl ->
 	    match decl with
 	    | Decl_rule (None, r)
-	      when (match fst r.action with _, [Act_preserve _] -> true | _ -> false) ->
+	      when (match r.action with [(Act_preserve _), _] -> true | _ -> false) ->
 		decls', pres_rules @ [decl]
 	    | _ -> decls' @ [decl], pres_rules)
 	  ([], []) decls
@@ -521,7 +539,7 @@ let rec preprocess
       let r : rule =
 	{ event = Ev_name "_skip", None;
 	  condition = (Prop_atomic "true", None), None;
-	  action = (None, [Act_ensure (Prop_atomic "true")]), None;
+	  action = [(Act_ensure (Prop_atomic "true")), None];
 	  path = None
 	} in
       (* insert r *)
@@ -531,7 +549,7 @@ let rec preprocess
 	    if b then b, rslt @ [decl] else
 	    match decl with
 	    | Decl_rule (None, r')
-	      when (match fst r'.action with _, [Act_preserve _] -> true | _ -> false) ->
+	      when (match r'.action with [(Act_preserve _), _] -> true | _ -> false) ->
 		true, rslt @ [Decl_rule (None, r); decl]
 	    | _ -> b, rslt @ [decl])
 	  (false, []) decls
@@ -548,19 +566,3 @@ let rec preprocess
 	    | _ -> rslt)
 	  [] decls in
       expand_preserve events decls)
-
-  (* append special "_idle" event properties *)
-  |> (fun decls ->
-      List.fold_left
-	(fun rslt p ->
-	  (* append p to decls only when undeclared *)
-	  try
-	    let _ =
-	      List.find
-		(function
-		  | Decl_property (None, (p', None)) when equal_property p' p -> true
-		  | _ -> false)
-		decls
-	    in rslt
-	  with Not_found -> rslt @ [Decl_property (None, (p, None))])
-	decls props_on_events)

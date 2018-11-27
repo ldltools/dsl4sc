@@ -2,7 +2,7 @@ protocol
 (put + get)*;;
 
 variable
-n : nat (3);  // num of contents. 0 <= n <= 3
+n : nat (4);  // num of contents. 0 <= n <= 3
 
 property
 n = 0;  // initially set to 0, indicating the buffer is empty.

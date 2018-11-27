@@ -211,12 +211,13 @@ let main argc argv =
   List.iter
     (function
       | None, (r : Rule.t) ->
-	  let (e, e_opt), (_, c_opt), (_, a_opt) = r.event, r.condition, r.action in
-	  (match e_opt, c_opt, a_opt with
-	  | Some _, _, _ | _, Some _, _ | _, _, Some _ ->
-	      failwith ("** rule for event (" ^ (Rule.event_name e) ^ ") carries code")
+	  let (e, e_opt), (_, c_opt), a = r.event, r.condition, r.action in
+	  (match e_opt, c_opt with
+	  | Some _, _ | _, Some _ ->
+	      failwith ("[rules2ldl] rule for event (" ^ (Rule.event_name e) ^ ") carries code")
 	  | _ -> ())
-      | Some (name, _), _ -> failwith ("** named rule (" ^ name ^ ") not allowed")
+      | Some (name, _), _ ->
+	  failwith ("[rules2ldl] named rule (" ^ name ^ ") not allowed")
       | _ -> ())
     rules.rule_decls;
 

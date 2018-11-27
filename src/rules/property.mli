@@ -31,7 +31,7 @@ type _ term =
 and _ term_t =
   | Ty_prop : bool term_t
   | Ty_nat : int -> int term_t
-      (** [Ty_nat n] denotes {0, 1, ..., n} *)
+      (** [Ty_nat n] denotes {0, 1, ..., n - 1} *)
 
   | Ty_fun : 'a term_t * 'b term_t -> ('a -> 'b) term_t
 

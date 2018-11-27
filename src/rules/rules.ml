@@ -150,7 +150,7 @@ let print_rules out (rs : t) =
       out "event ";
       out (List.hd es);
       List.iter	(function e -> out ", "; out e) (List.tl es);
-      out " ;\n";
+      out ";\n";
     end;
 
   (* protocol *)
@@ -348,7 +348,7 @@ let rec print_rules_in_xml out (rules : t) =
 	let special_rule : Rule.t = 
 	  { event = Ev_name "_skip", None;
 	    condition = (Prop_atomic "true", None), None;
-	    action = (None, [Act_ensure (Prop_atomic "true")]), None;
+	    action = [(Act_ensure (Prop_atomic "true")), None];
 	    path = None
 	  } in
 	let name_opt, (r : Rule.t) = rspec in
@@ -495,30 +495,29 @@ and print_rule_in_xml out ((name_opt, r) : rule_spec) =
       out "</condition>\n";
 
       (* action *)
-      let a, a_opt = r.action in
+      let acts = r.action in
       out "<action>";
-      let a_path_opt, a_seq = a in
-      let _ =
-	match a_path_opt with
-	| Some a_path ->
-	    out "<path>";
-	    escape out (Property.string_of_labelled_path (a_path, None));
-	    out "</path>"
-	| _ -> () in
-      List.iter
-	(function
-	  | Rule.Act_ensure p ->
-	      out "<ensure>";
-	      escape out (Property.string_of_labelled_property (p, None));
-	      out "</ensure>"
-	  | Rule.Act_raise [e] ->
-	      out "<raise event=\""; out e; out "\"/>";
-	  | Rule.Act_raise es when List.length es > 1 ->
-	      out "<choice>";
-	      List.iter (fun e -> out @@ "<raise event=\"" ^ e ^ "\"/>") es;
-	      out "</choice>";
-	  | _ -> ())
-	a_seq;
+      let scripts : string list =
+	List.fold_left
+	  (fun rslt (act, code_opt) ->
+	    match act with
+	    | Rule.Act_ensure p ->
+		out "<ensure>";
+		escape out (Property.string_of_labelled_property (p, None));
+		out "</ensure>";
+		rslt
+	    | Rule.Act_raise [e] ->
+		out "<raise event=\""; out e; out "\"/>";
+		rslt @ (match code_opt with None -> [] | Some code -> [code])
+	    | Rule.Act_raise es when List.length es > 1 ->
+		out "<choice>";
+		List.iter (fun e -> out @@ "<raise event=\"" ^ e ^ "\"/>") es;
+		out "</choice>";
+		rslt @ (match code_opt with None -> [] | Some code -> [code])
+	    | Rule.Act_do ->
+		rslt @ (match code_opt with None -> [] | Some code -> [code])
+	    | _ -> rslt)
+	  [] acts in
 (*
 	match a_seq with
 	| [] -> ()
@@ -529,11 +528,9 @@ and print_rule_in_xml out ((name_opt, r) : rule_spec) =
 	    List.iter (fun a -> out "; "; escape out (Rule.string_of_action a)) a_seq';
 	    out "</path>"
 *)
-      let _ =
-	match a_opt with
-	| None -> ()
-	| Some s -> out "<script>"; escape out s; out "</script>"
-      in
+      out "<script>";
+      List.iter (escape out) scripts;
+      out "</script>";
       out "</action>\n";
 
       (* path *)

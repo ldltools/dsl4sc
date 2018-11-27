@@ -169,43 +169,41 @@ and lpath_to_path nbit es (r, r_opt) =
  *)
 
 let rec translate_rule nbit es (s : Spec.t) (r : Rule.rule) =
-  let (e, _), (c, _), (a, _) = r.event, r.condition, r.action in
+  let (e, _), (c, _), acts = r.event, r.condition, r.action in
   let c' : formula = lprop_to_formula nbit es c in
   match c' with
   | _ when propositional c' ->
-      translate_rule1 nbit es (s : Spec.t) (e, c', a)
+      translate_rule1 nbit es (s : Spec.t) (e, c', acts)
   | Ldl_modal (Mod_ex, r, f) when propositional f ->
-      translate_rule2 nbit es (s : Spec.t) (e, c', a)
+      translate_rule2 nbit es (s : Spec.t) (e, c', acts)
   |_ ->
       failwith ("translate_rule: invalid condition " ^ string_of_formula c')
 
-and translate_rule1 nbit es (s : Spec.t) (e, c, a) =
+and translate_rule1 nbit es (s : Spec.t) (e, c, acts) =
   assert (propositional c);
   let c' : path = Path_prop c
   and e' : formula =
     event_to_formula s.event_seq (match e with Ev_name e' -> e' | _ -> failwith "translate_rule1")
-  and a' : formula = action_to_formula nbit s.event_seq a
+  and a' : formula = action_to_formula nbit s.event_seq acts
   in
   (* [true*](<c>e -> <c>(e ^ a)) *)
   Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
 	     Ldl_impl (Ldl_modal (Mod_ex, c', e'), Ldl_modal (Mod_ex, c', Ldl_conj [e'; a'])))
 
-and translate_rule2 nbit es (s : Spec.t) (e, c, a) =
+and translate_rule2 nbit es (s : Spec.t) (e, c, acts) =
   let c' : path =
     match c with
     | Ldl_modal (Mod_ex, r, f) when propositional f -> Path_seq [r; Path_prop f]
     | _ -> failwith "translate_rule2"
   and e' : formula = event_to_formula s.event_seq (event_name e)
-  and a' : formula = action_to_formula nbit s.event_seq a
+  and a' : formula = action_to_formula nbit s.event_seq acts
   in
   (* [true*](<c>e -> <c>(e ^ a)) *)
   Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
 	     Ldl_impl (Ldl_modal (Mod_ex, c', e'), Ldl_modal (Mod_ex, c', Ldl_conj [e'; a'])))
 
-and action_to_formula nbit es (a : action) =
-  match a with
-  | None, acts -> Ldl_conj (List.map (action_unit_to_formula nbit es) acts)
-  | _ -> failwith "action_to_formula"
+and action_to_formula nbit es (acts : action) =
+  Ldl_conj (List.map (fun (act, _) -> action_unit_to_formula nbit es act) acts)
 
 and action_unit_to_formula nbit es (a : action_unit) =
   match a with
@@ -215,6 +213,10 @@ and action_unit_to_formula nbit es (a : action_unit) =
       (* <true> \/es' *)
       Ldl_modal (Mod_ex, Path_prop (Ldl_atomic "true"),
 		 Ldl_disj (List.map (event_to_formula es) es'))
+  | Act_do ->
+      failwith "[Spec2ldl.action_to_formula] action \"do\" should not appear"
+  | Act_preserve _ ->
+      failwith "[Spec2ldl.action_to_formula] action \"preserve\" should not appear"
 
 (* ================================================================================
    translation of rule set

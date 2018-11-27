@@ -32,14 +32,14 @@ and _ term_t =
 
 (* term ops *)
 
-let equal_term tm1 tm2 = failwith "equal_term"
+let equal_term tm1 tm2 = failwith "[equal_term]"
 
 let eval_term env tm =
-  failwith "eval_term"
+  failwith "[eval_term]"
 
 let term_to_propositions = function
   | Tm_var (x, Ty_nat n) ->
-      let len = float_of_int (n + 1) in
+      let len = float_of_int n in
       let nbit = int_of_float @@ ceil (log len /. log 2.0) in
       List.init nbit (fun i -> "_" ^ x ^ "_" ^ string_of_int i)
   | _ -> invalid_arg "[term_to_propositions]"
@@ -58,7 +58,7 @@ let rec print_term (out : string -> unit) (e : int term) =
       out (" " ^ bop ^ " ");
       print_term out e2;
       out ")";
-  | _ -> failwith "print_term"
+  | _ -> failwith "[print_term]"
 
 (** pretty-printing -- ppx-compliant *)
 
@@ -72,13 +72,13 @@ let rec pp_term (pp : Format.formatter -> int -> unit) (fmt : Format.formatter) 
       Format.pp_print_string fmt (" " ^ bop ^ " ");
       pp_term pp fmt e2;
       Format.pp_print_string fmt ")"
-  | _ -> failwith "pp_term"
+  | _ -> failwith "[pp_term]"
 
 let term_of_yojson json =
-  failwith "term_of_yojson"
+  failwith "[term_of_yojson]"
 
 let term_to_yojson tm =
-  failwith "term_to_yojson"
+  failwith "[term_to_yojson]"
 
 (** property *)
 type property =
@@ -141,7 +141,7 @@ let rec modal_p = function
   | Prop_conj ps | Prop_disj ps ->
       (match List.find_opt modal_p ps with None -> false | _ -> true)
   | Prop_modal _ -> true
-  | Prop_label _ -> failwith "modal_p"
+  | Prop_label _ -> failwith "[modal_p]"
 
 let rec propositionalize f =
   match f with
@@ -152,15 +152,26 @@ let rec propositionalize f =
   | Prop_conj fs -> Prop_conj (List.map propositionalize fs)
   | Prop_disj fs -> Prop_disj (List.map propositionalize fs)
   | Prop_modal (m, p, (f, opt)) ->
-      let p' = propositionalize_path p and f' = propositionalize f
+      let p' = propositionalize_lpath p and f' = propositionalize f
       in Prop_modal (m, p', (f', opt))
   | _ -> failwith "[propositionalize]"
 
 and propositionalize_eq e1 e2 =
   match e1, e2 with
-  | Tm_var (x1, Ty_nat n1), Tm_val (v2, Ty_nat n2) when n1 >= v2 ->
+  | Tm_val _, Tm_val _ | Tm_var _, Tm_val _ | Tm_val _, Tm_var _ | Tm_var _, Tm_var _ ->
+      propositionalize_eq_rec e1 e2
+  | _ -> failwith "[propositionalize_eq]"
+
+and propositionalize_eq_rec e1 e2 =
+  match e1, e2 with
+  | Tm_val (v1, Ty_nat n1), Tm_val (v2, Ty_nat n2) ->
+      (* v1 = v2 *)
+      Prop_atomic (string_of_bool (v1 = v2))
+
+  | Tm_var (x1, Ty_nat n1), Tm_val (v2, Ty_nat n2) when n1 > v2 ->
+      (* x1 = v2 *)
       let xs : string list = term_to_propositions e1 in
-      let nbit = int_of_float @@ ceil (log (float_of_int (n1 + 1)) /. log 2.0) in
+      let nbit = int_of_float @@ ceil (log (float_of_int n1) /. log 2.0) in
       let bits : bool list = gen_bits nbit v2 in
       let props, _  =
 	List.fold_left
@@ -170,9 +181,45 @@ and propositionalize_eq e1 e2 =
 	    in (rslt @ [f]), i + 1)
 	  ([], 0) xs
       in Prop_conj props
+  | Tm_var (x1, Ty_nat n1), Tm_val (v2, Ty_nat n2) ->
+      assert (n1 <= v2);
+      Prop_atomic "false"
   | Tm_val _, Tm_var _ ->
-      propositionalize_eq e2 e1
-  | _ -> failwith "[propositionalize_eq]"
+      (* v1 = x2 *)
+      propositionalize_eq_rec e2 e1
+
+  | Tm_var (x1, Ty_nat n1), Tm_var (x2, Ty_nat n2) when x1 = x2 ->
+      (* x = x *)
+      Prop_atomic "true"
+  | Tm_var (x1, Ty_nat n1), Tm_var (x2, Ty_nat n2) when n1 >= n2 ->
+      (* x1 = x2 *)
+      let xs1 : string list = term_to_propositions e1
+      and nbit1 = int_of_float @@ ceil (log (float_of_int n1) /. log 2.0)
+      and xs2 : string list = term_to_propositions e2
+      and nbit2 = int_of_float @@ ceil (log (float_of_int n2) /. log 2.0) in
+      let conj1 =
+	List.init nbit2
+	  (fun i ->
+	    let p1 = Prop_atomic (List.nth xs1 i) and p2 = Prop_atomic (List.nth xs2 i)
+	    in Prop_disj [Prop_conj [p1; p2]; Prop_conj [Prop_neg p1; Prop_neg p2]])
+      and conj2 =
+	List.init (nbit1 - nbit2)
+	  (fun i -> Prop_neg (Prop_atomic (List.nth xs1 (nbit2 + i))))
+      in Prop_conj (conj1 @ conj2)
+  | Tm_var _, Tm_var _ ->
+      propositionalize_eq_rec e2 e1
+
+  | Tm_var (x1, _), Tm_app (Tm_app (Tm_bop "+", Tm_var (x2, _)), Tm_val (v3, Ty_nat _)) when x1 = x2 ->
+      (* x = x + v *)
+      Prop_atomic (string_of_bool (v3 = 0))
+      
+  | Tm_var (x1, Ty_nat n1), Tm_app (Tm_app (Tm_bop "+", Tm_var (x2, Ty_nat n2)), Tm_val (v3, Ty_nat n3)) when n1 > v3 ->
+      failwith "[propositionalize_eq_rec] not yet supported"
+  | Tm_var (_, Ty_nat n1), Tm_app (Tm_app (Tm_bop "+", Tm_var _), Tm_val (v3, _)) ->
+      assert (n1 <= v3);
+      Prop_atomic "false"
+
+  | _ -> failwith "[propositionalize_eq_rec]"
 
 and gen_bits nbit (n : int) =
   gen_bits_rec nbit n [] 0
@@ -183,8 +230,17 @@ and gen_bits_rec nbit (n : int) rslt i =
   else
     gen_bits_rec nbit n (rslt @ [n land (1 lsl i) <> 0]) (i + 1)
 
-and propositionalize_path (p, l_opt) =
-  (p, l_opt)
+and propositionalize_lpath (p, l_opt) =
+  (propositionalize_path p), l_opt
+
+and propositionalize_path p =
+  match p with
+  | Path_prop f -> Path_prop (propositionalize f)
+  | Path_seq ps -> Path_seq (List.map propositionalize_lpath ps)
+  | Path_sum ps -> Path_sum (List.map propositionalize_lpath ps)
+  | Path_test f -> Path_test (propositionalize f)
+  | Path_star p' -> Path_star (propositionalize_lpath p')
+  | _ -> failwith "[propositionalize_path]"
 
 (** pretty-printing *)
 
@@ -293,7 +349,7 @@ and print_property_rec out ?(fancy=false) (f : property) =
   | Prop_label l ->
       out "$"; out l
 
-  | _ -> failwith ("print_property_rec: " ^ show_property f)
+  | _ -> failwith ("[print_property_rec] " ^ show_property f)
 
 (* precedence: neg < and < lor < implies *)
 and prec = function
@@ -366,7 +422,7 @@ and print_path out ?(fancy=false) r =
   | Path_label l ->
       out "$"; out l
 
-  | _ -> failwith ("print_path: " ^ show_path r)
+  | _ -> failwith ("[print_path] " ^ show_path r)
 
 (* precedence: grouping (()) < *, ? < concat (;) < choice (+) *)
 and path_prec = function

@@ -27,15 +27,26 @@ type t =
       label_seq : string list;
     }
 
-let rules_to_spec (rules : Rules.t) =
+let rec rules_to_spec (rules : Rules.t) =
   { event_seq = List.map fst rules.event_decls;
     proto_seq = List.map snd rules.proto_decls;
 
     pvar_seq = List.map fst rules.pvar_decls;
     prop_seq = List.map snd rules.prop_decls;
 
-    rule_seq = List.map snd rules.rule_decls;
+    rule_seq = List.map filter_rule_spec rules.rule_decls;
 
     (* deprecated*)
     label_seq = rules.label_decls;
   }
+
+and filter_rule_spec (rspec : Rules.rule_spec) =
+  let _, r = rspec in
+  let acts' =
+    List.fold_left
+      (fun rslt (act, code_opt) ->
+	match act with
+	| Rule.Act_do -> rslt
+	| _ -> rslt @ [act, code_opt])
+      [] r.action
+  in { event = r.event; condition = r.condition; action = acts'; path = None}

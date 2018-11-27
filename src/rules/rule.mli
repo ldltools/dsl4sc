@@ -20,8 +20,8 @@ type rule =
         (** event, code *)
       condition : Property.labelled_property * string option;
         (** property, code *)
-      action : action * string option;
-        (** action, code *)
+      action : action;
+        (** action *)
 
       (* deprecated *)
       path : Property.labelled_path option;
@@ -38,13 +38,13 @@ and event =
 
 (** action *)
 and action =
-    Property.path option * action_unit list
-      (** path part is no longer used *)
+    (action_unit * string option) list
 
 and action_unit =
   | Act_ensure of Property.property
   | Act_raise of string list
 	(** [raise [e1; e2; ..]] selects/raises one of the events non-deterministically *)
+  | Act_do
   | Act_preserve of string list
 	(** [on e preserve [p; p';..]] indicates p, p', .. should be preserved
 	    thru processing e.

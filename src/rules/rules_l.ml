@@ -142,6 +142,15 @@ and token_rec (buf : lexbuf) =
 
   | "implementation"	-> mode := 1; IMPLEMENTATION
 
+  (* inequality *)
+  | "!="		-> NE
+(*
+  | "=="		-> EQ
+  | "!="		-> NE
+  | "<="		-> LE
+  | ">="		-> GE
+ *)
+
   (* logical connectives *)
   | "not"		-> NOT
   | '!'			-> NOT
@@ -158,7 +167,6 @@ and token_rec (buf : lexbuf) =
   | "rule"		-> mode := 10; RULE
   | "on"		-> if !mode = 10 then mode := 11; ON
   | "when"		-> if !mode = 10 then mode := 11; WHEN
-  | "if"		-> if !mode = 10 then mode := 11; WHEN
   | "do"		-> if !mode = 10 then mode := 11; DO
   | "then"		-> if !mode = 10 then mode := 11; DO
   | "ensure"		-> if !mode = 10 then mode := 11; ENSURE
@@ -167,12 +175,6 @@ and token_rec (buf : lexbuf) =
   | "except"		-> EXCEPT
 
   | ";;"		-> SEMISEMI
-(*
-  | "=="		-> EQ
-  | "!="		-> NE
-  | "<="		-> LE
-  | ">="		-> GE
- *)
 
   | '~'			-> TILDE
   | '<'			-> incr depth_angle; LT
@@ -195,8 +197,10 @@ and token_rec (buf : lexbuf) =
   | '%'			-> PERCENT
  *)
   | '?'			-> QUESTION
+(*
   | '^'			-> HAT
   | '$'			-> DOLLAR
+ *)
 
   (* SYMBOL *)
   | identifier		->
