@@ -4,9 +4,8 @@ usage:
 	@echo "usage: make <target>"
 	@echo "where <target> can be either of the following"
 	@echo -e "\tlist\tshow the test cases in this directory"
-	@echo -e "\tdfa\tgenerate DFAs (in ./out)"
-#	@echo -e "\tafw\tgenerate AFWs (in ./out)"
 	@echo -e "\tscxml\tgenerate SCXMLs (in ./out)"
+	@echo -e "\ttest\trun tests"
 
 list:
 	@for f in test*rules; do echo -ne "`basename $$f .rules`\t"; cat $$f | sed '{2,$$d;s/^\/\/ *//g}'; done
@@ -14,6 +13,20 @@ list:
 TOP_DIR	= $(shell readlink -f ..)
 include $(TOP_DIR)/tests/Makefile.common
 
+# shelltest (https://github.com/simonmichael/shelltestrunner) can be installed
+# by running "apt-get install shelltestrunner"
+test::
+	@mkdir -p out
+	shelltest tests_scxml.conf
+
+# examples
+test::
+	@mkdir -p out
+	shelltest echo.conf
+	shelltest ping_pong.conf
+	shelltest accumulator.conf
+
+# ----------
 out/%.ldl:	%.rules
 	@mkdir -p out
 	$(RULES2LDL) $< -o out/$*.ldl -t json --map out/$*.map
@@ -31,7 +44,7 @@ TESTCASES_AFW	= $(TESTCASES_RULES:%.rules=out/%.afw.png)
 
 TESTCASES_SCXML	= $(TESTCASES_RULES:%.rules=out/%.scxml)
 TESTCASES_SCXML	:= $(filter-out out/test17.scxml out/test21.scxml,$(TESTCASES_SCXML))
-TESTCASES_UML	= $(TESTCASES_SCXML:%.scxml=%.uml)
+TESTCASES_UML	= $(TESTCASES_SCXML:%.scxml=%.puml)
 TESTCASES_SVG	= $(TESTCASES_UML:%.uml=%.svg)
 
 .PRECIOUS:	out/%.ldl out/%.re out/%.mso
@@ -39,11 +52,8 @@ TESTCASES_SVG	= $(TESTCASES_UML:%.uml=%.svg)
 dfa:	$(TESTCASES_DFA)
 afw:	$(TESTCASES_AFW)
 scxml:	$(TESTCASES_SCXML)
-uml:	$(TESTCASES_UML)
+puml:	$(TESTCASES_UML)
 svg:	$(TESTCASES_SVG)
-
-test:	scxml
-	python3 checkrules.py
 
 install::
 clean::

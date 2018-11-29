@@ -1,19 +1,21 @@
-// cancel + order; (cancel + ship)
-protocol
-cancel + order; (cancel + ship);;
+// cancel + order; (cancel + ship) (with property)
+protocol cancel + order; (cancel + ship);;
 
 property
-[{<{!cancelled}*>last}?] <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
-
-!cancelled;
-[{true}*](cancelled -> last);
-
-// extra constraints -- each state changes only once
-  [{true}*][{ordered}][{true}*] ordered;
-  [{true}*][{shipped}][{true}*] shipped;
-  [{true}*][{cancelled}][{true}*] cancelled;
+!ordered & !shipped & !canceled;
+//[{<{!canceled}*>last}?] <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
+//[{true}*](canceled -> last);
 
 rule
-on order when !ordered do ordered;
-on ship when !shipped do shipped;
-on cancel when !cancelled do cancelled;
+on order when !ordered ensure ordered
+on order when ordered ensure false
+
+on ship when !shipped do { console.log ("shipped!"); } ensure shipped
+on ship when shipped ensure false
+
+on cancel when !canceled do { console.log ("canceled!"); } ensure canceled
+on cancel when canceled ensure false
+
+except on order preserve ordered
+except on ship preserve shipped
+except on cancel preserve canceled

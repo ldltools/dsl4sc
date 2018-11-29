@@ -1,4 +1,3 @@
-{"event" : {"name":"_init"}}
 {"event" : {"name":"echo", "data":"hello"}}
 {"event" : {"name":"echo", "data":"world"}}
 {"event" : {"name":"_accept"}}

@@ -1,5 +1,0 @@
-// (e1; _any) & (_any; e2) = e1; e2
-
-protocol
-  e1; _any;;
-  _any; e2;;

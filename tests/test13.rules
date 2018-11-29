@@ -1,8 +1,8 @@
-// order; ship
+// order; ship (with property)
 
-property <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
 protocol order; ship;;
+property <{!ordered&!shipped};{ordered&!shipped};{ordered&shipped}>last;
 
 rule
-on order when !ordered do ordered;
-on ship when !shipped do shipped;
+on order when !ordered ensure ordered
+on ship when !shipped do { console.log ("shipped!"); } ensure shipped
