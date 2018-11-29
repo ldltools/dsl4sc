@@ -326,15 +326,17 @@ let rec print_rules_in_xml out (rules : t) =
     print_property_in_xml;
 
   (* deprecated *)
-  print "propositions"
+  (*
+    print "propositions"
     rules.pvar_decls
     print_proposition_in_xml;
-  print "paths"
+    print "paths"
     rules.path_decls
     print_path_in_xml;
-  print "labels"
+    print "labels"
     rules.label_decls
     print_label_in_xml;
+   *)
 
   out "</preamble>\n";
 
@@ -356,7 +358,13 @@ let rec print_rules_in_xml out (rules : t) =
 	if r = special_rule then true, rslt else b, rslt @ [rspec])
       (false, []) rules.rule_decls
   in
-  List.iter (print_rule_in_xml out) r_specs;
+  let _ =
+    List.fold_left
+      (fun i r_spec ->
+	print_rule_in_xml out ~id: (Some ("r" ^ (string_of_int i))) r_spec;
+	i + 1)
+      1 r_specs
+  in
 
   print "implementation"
     rules.impl_decls
@@ -366,19 +374,19 @@ let rec print_rules_in_xml out (rules : t) =
 
 (*
   let pspecs =
-    List.fold_left
-      (fun rslt -> function
-	|	Decl_proposition pspecs -> rslt @ pspecs
-	| _ -> rslt)
-      [] s
+  List.fold_left
+  (fun rslt -> function
+  |	Decl_proposition pspecs -> rslt @ pspecs
+  | _ -> rslt)
+  [] s
   and rspecs =
-    List.fold_left
-      (fun rslt -> function
-	| Decl_rule (name_opt, (rs : Rule.rule list)) -> rslt @ rspecs
-	| _ -> rslt)
-      [] s
+  List.fold_left
+  (fun rslt -> function
+  | Decl_rule (name_opt, (rs : Rule.rule list)) -> rslt @ rspecs
+  | _ -> rslt)
+  [] s
   in
-*)
+ *)
 
 and print_proposition_in_xml out ((str, opt) : proposition_spec) =
   out "<proposition variable=\""; out str; out "\"";
@@ -402,35 +410,35 @@ and print_property_in_xml out (name_opt, lp) =
 (*
   match lp_seq with
   (*
-  | [lp] ->
-      out "<property>\n";
-      let _ =
-	match name_opt with
-	| None -> ()
-	| Some str' ->
-	    out "<name>"; out str'; out "</name>\n"
-      in
-      out "<proposition>";
-      escape out (Rule.string_of_labelled_property lp);
-      out "</proposition>\n";
-      out "</property>\n"
+    | [lp] ->
+    out "<property>\n";
+    let _ =
+    match name_opt with
+    | None -> ()
+    | Some str' ->
+    out "<name>"; out str'; out "</name>\n"
+    in
+    out "<proposition>";
+    escape out (Rule.string_of_labelled_property lp);
+    out "</proposition>\n";
+    out "</property>\n"
    *)
   | _ ->
-      out "<properties";
-      let _ =
-	match name_opt with
-	| None -> out ">\n"
-	| Some str' ->
-	    out " name=\""; out str'; out "\">\n"
-      in
-      List.iter
-	(fun lp ->
-	  out "<property>";
-	  escape out (Rule.string_of_labelled_property lp);
-	  out "</property>\n")
-	lp_seq;
-      out "</properties>\n"
-*)
+  out "<properties";
+  let _ =
+  match name_opt with
+  | None -> out ">\n"
+  | Some str' ->
+  out " name=\""; out str'; out "\">\n"
+  in
+  List.iter
+  (fun lp ->
+  out "<property>";
+  escape out (Rule.string_of_labelled_property lp);
+  out "</property>\n")
+  lp_seq;
+  out "</properties>\n"
+ *)
 
 and print_path_in_xml out (name_opt, lr) =
   ()
@@ -459,106 +467,113 @@ and print_protocol_in_xml out ((name_opt, p) : protocol_spec) =
   escape out (Protocol.string_of_protocol p);
   out "</protocol>\n"
 
-and print_rule_in_xml out ((name_opt, r) : rule_spec) =
-      out "<rule";
-      let _ =
-	match name_opt with
-	| None -> out ">\n"
-	| Some (str', _) ->
-	    out " name=\""; out str'; out "\"";
-	    out ">\n"
-      in ();
+and print_rule_in_xml out ?(id = None) ((name_opt, r) : rule_spec) =
+  out "<rule";
+  let _ =
+    match id with
+    | None -> ()
+    | Some str ->
+	out " id=\""; out str; out "\""
+  in ();
 
-      (* event *)
-      let ev, ev_opt = r.event in
-      let e = Rule.event_name ev in
-      out "<event name=\""; out e; out "\"";
-      let _ = 
-	match ev_opt with
-	| None -> out "/>\n"
-	| Some s ->
-	    out ">";
-	    out "<script>"; escape out s; out "</script>";
-	    out "</event>\n";
-      in ();
+  let _ =
+    match name_opt with
+    | None -> out ">\n"
+    | Some (str', _) ->
+	out " name=\""; out str'; out "\"";
+	out ">\n"
+  in ();
 
-      (* condition *)
-      let c, c_opt = r.condition in
-      out "<condition><formula>";
-      escape out (Property.string_of_labelled_property c);
-      out "</formula>";
-      let _ =
-	match c_opt with
-	| None -> ()
-	| Some s -> out "<script>"; escape out s; out "</script>"
-      in
-      out "</condition>\n";
+  (* event *)
+  let ev, ev_opt = r.event in
+  let e = Rule.event_name ev in
+  out "<event name=\""; out e; out "\"";
+  let _ = 
+    match ev_opt with
+    | None -> out "/>\n"
+    | Some s ->
+	out ">";
+	out "<script>"; escape out s; out "</script>";
+	out "</event>\n";
+  in ();
 
-      (* action *)
-      let acts = r.action in
-      out "<action>";
-      let scripts : string list =
-	List.fold_left
-	  (fun rslt (act, code_opt) ->
-	    match act with
-	    | Rule.Act_ensure p ->
-		out "<ensure>";
-		escape out (Property.string_of_labelled_property (p, None));
-		out "</ensure>";
-		rslt
-	    | Rule.Act_raise [e] ->
-		out "<raise event=\""; out e; out "\"/>";
-		rslt @ (match code_opt with None -> [] | Some code -> [code])
-	    | Rule.Act_raise es when List.length es > 1 ->
-		out "<choice>";
-		List.iter (fun e -> out @@ "<raise event=\"" ^ e ^ "\"/>") es;
-		out "</choice>";
-		rslt @ (match code_opt with None -> [] | Some code -> [code])
-	    | Rule.Act_do ->
-		rslt @ (match code_opt with None -> [] | Some code -> [code])
-	    | _ -> rslt)
-	  [] acts in
+  (* condition *)
+  let c, c_opt = r.condition in
+  out "<condition><formula>";
+  escape out (Property.string_of_labelled_property c);
+  out "</formula>";
+  let _ =
+    match c_opt with
+    | None -> ()
+    | Some s -> out "<script>"; escape out s; out "</script>"
+  in
+  out "</condition>\n";
+
+  (* action *)
+  let acts = r.action in
+  out "<action>";
+  let scripts : string list =
+    List.fold_left
+      (fun rslt (act, code_opt) ->
+	match act with
+	| Rule.Act_ensure p ->
+	    out "<ensure>";
+	    escape out (Property.string_of_labelled_property (p, None));
+	    out "</ensure>";
+	    rslt
+	| Rule.Act_raise [e] ->
+	    out "<raise event=\""; out e; out "\"/>";
+	    rslt @ (match code_opt with None -> [] | Some code -> [code])
+	| Rule.Act_raise es when List.length es > 1 ->
+	    out "<choice>";
+	    List.iter (fun e -> out @@ "<raise event=\"" ^ e ^ "\"/>") es;
+	    out "</choice>";
+	    rslt @ (match code_opt with None -> [] | Some code -> [code])
+	| Rule.Act_do ->
+	    rslt @ (match code_opt with None -> [] | Some code -> [code])
+	| _ -> rslt)
+      [] acts in
 (*
-	match a_seq with
-	| [] -> ()
-	(*| [a] -> out "<path>"; escape out (Rule.string_of_action a); out "</path>"*)
-	| a :: a_seq' ->
-	    out "<path>";
-	    escape out (Rule.string_of_action a);
-	    List.iter (fun a -> out "; "; escape out (Rule.string_of_action a)) a_seq';
-	    out "</path>"
-*)
-      out "<script>";
-      List.iter (escape out) scripts;
-      out "</script>";
-      out "</action>\n";
+  match a_seq with
+  | [] -> ()
+  (*| [a] -> out "<path>"; escape out (Rule.string_of_action a); out "</path>"*)
+  | a :: a_seq' ->
+  out "<path>";
+  escape out (Rule.string_of_action a);
+  List.iter (fun a -> out "; "; escape out (Rule.string_of_action a)) a_seq';
+  out "</path>"
+ *)
+  out "<script>";
+  List.iter (escape out) scripts;
+  out "</script>";
+  out "</action>\n";
 
-      (* path *)
+  (* path *)
 (*
-      let _ =
-	match r.path with
-	| None -> ()
-	| Some lp ->
-	    out "<path>"; escape out (Rule.string_of_labelled_path lp); out "</path>\n";
-      in ();
-*)
-      out "</rule>\n"
+  let _ =
+  match r.path with
+  | None -> ()
+  | Some lp ->
+  out "<path>"; escape out (Rule.string_of_labelled_path lp); out "</path>\n";
+  in ();
+ *)
+  out "</rule>\n"
 (*
   match rs with
   | [r] ->
   | _ when name_opt = None ->
-      List.iter	(fun r -> print_rule_in_xml out (None, [r])) rs;
+  List.iter	(fun r -> print_rule_in_xml out (None, [r])) rs;
   | _ ->
-      out "<rules";
-      let _ =
-	match name_opt with
-	| None -> out ">\n"
-	| Some str' ->
-	    out " name=\""; out str'; out "\">\n";
-      in
-      List.iter	(fun r -> print_rule_in_xml out (None, [r])) rs;
-      out "</rules>\n"
-*)
+  out "<rules";
+  let _ =
+  match name_opt with
+  | None -> out ">\n"
+  | Some str' ->
+  out " name=\""; out str'; out "\">\n";
+  in
+  List.iter	(fun r -> print_rule_in_xml out (None, [r])) rs;
+  out "</rules>\n"
+ *)
 
 (*
   let rname_opt, _ = r in
@@ -571,50 +586,50 @@ and print_rule_in_xml out ((name_opt, r) : rule_spec) =
   out "<proposition>"; out ""; out "</proposition>\n";
 (*
   if List.mem_assoc pname pspecs then
-    (match List.assoc pname pspecs with
-    | None -> ()
-    | Some exp ->
-	out "<expression><script>";
-	List.iter out (escape exp);
-	out "</script></expression>\n");
-*)
+  (match List.assoc pname pspecs with
+  | None -> ()
+  | Some exp ->
+  out "<expression><script>";
+  List.iter out (escape exp);
+  out "</script></expression>\n");
+ *)
   out "</condition>\n";
 
   out "<action><script>";
   (*List.iter out (escape act);*)
   out "</script></action>\n";
   out "</rule>\n"
-*)
+ *)
 
 (*
-let rec string_of_spec s =
+  let rec string_of_spec s =
   let str = ref "" in
   let concat str' = str := !str ^ str' in
   print_spec concat s;
   !str
 
-and print_spec out (s : spec) =
+  and print_spec out (s : spec) =
   failwith "not yet implemented"
 
-let rec print_rules_in_xml out (s : spec) =
+  let rec print_rules_in_xml out (s : spec) =
   let pspecs =
-    List.fold_left
-      (fun rslt -> function
-	|	Decl_proposition pspecs -> rslt @ pspecs
-	| _ -> rslt)
-      [] s
+  List.fold_left
+  (fun rslt -> function
+  |	Decl_proposition pspecs -> rslt @ pspecs
+  | _ -> rslt)
+  [] s
   and rspecs =
-    List.fold_left
-      (fun rslt -> function
-	| Decl_rule rspecs -> rslt @ rspecs
-	| _ -> rslt)
-      [] s
+  List.fold_left
+  (fun rslt -> function
+  | Decl_rule rspecs -> rslt @ rspecs
+  | _ -> rslt)
+  [] s
   in
   out "<rules>\n";
   List.iter (print_rule_in_xml out pspecs) rspecs;
   out "</rules>\n"
 
-and print_rule_in_xml out (pspecs : proposition_spec list) (r : rule_spec) =
+  and print_rule_in_xml out (pspecs : proposition_spec list) (r : rule_spec) =
   let rname_opt, _ = r in
   out "<rule";
   (*if rname <> "" then (out " name=\""; out rname; out "\"");*)
@@ -625,13 +640,13 @@ and print_rule_in_xml out (pspecs : proposition_spec list) (r : rule_spec) =
   out "<proposition>"; out ""; out "</proposition>\n";
 (*
   if List.mem_assoc pname pspecs then
-    (match List.assoc pname pspecs with
-    | None -> ()
-    | Some exp ->
-	out "<expression><script>";
-	List.iter out (escape exp);
-	out "</script></expression>\n");
-*)
+  (match List.assoc pname pspecs with
+  | None -> ()
+  | Some exp ->
+  out "<expression><script>";
+  List.iter out (escape exp);
+  out "</script></expression>\n");
+ *)
   out "</condition>\n";
 
   out "<action><script>";
@@ -639,7 +654,7 @@ and print_rule_in_xml out (pspecs : proposition_spec list) (r : rule_spec) =
   out "</script></action>\n";
   out "</rule>\n"
 
-*)
+ *)
 
 and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
   assert (name <> "");

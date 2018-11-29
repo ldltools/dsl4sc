@@ -95,7 +95,8 @@ In addition to the tools listed above, you also need the following GNU tools:
 - GNU sed/awk  
   run: `brew install gnu-sed gawk`
 - GNU make (v4.1 or higher)  
-  run: `brew install remake`
+  run: `brew install remake`  
+  and build with `MAKE=remake make` instead of `make`
 
 # Testing
 - run: `make -C tests scxml`  

@@ -330,11 +330,12 @@ var_spec
 var_type
 	: NAME
 	  { match $1 with
-	    | "prop" -> Rules.VT_prop
-	    | "bool" -> Rules.VT_prop
-	    | "bit" -> Rules.VT_nat 2
+	    | "prop"   -> Rules.VT_prop
+	    | "bool"   -> Rules.VT_prop
+	    | "bit"    -> Rules.VT_nat 2
 	    | "nibble" -> Rules.VT_nat 16
-	    | "byte" -> Rules.VT_nat 256
+	    | "byte"   -> Rules.VT_nat 256
+	    | "nat"    -> Rules.VT_nat 256
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
 	| NAME LPAREN CONST RPAREN

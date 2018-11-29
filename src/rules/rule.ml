@@ -59,17 +59,16 @@ let event_name ev =
 
 let rec print_rule out ?(fancy=false) (r : rule) =
   (* event *)
-  out "on ";
   let ev : event = fst r.event in
   let _ =
     match ev with
-    | Ev_name e -> out e;
+    | Ev_name e -> out "on "; out e;
     | Ev_name_seq (e :: rest) ->
+	out "on ";
 	out e; List.iter (fun e -> out ", "; out e) rest
     | Ev_name_seq_compl (e :: rest) ->
-	out "^(";
+	out "except on ";
 	out e; List.iter (fun e -> out ", "; out e) rest;
-	out ")"
     | _ -> failwith "[print_rule]"
   in ();
   out " ";

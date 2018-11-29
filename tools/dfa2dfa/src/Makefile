@@ -3,10 +3,12 @@
 
 all::
 
+PREFIX		?= /usr/local
+LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+
 TOP_DIR		= $(shell readlink -f ../../..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml/dfa2dfa
-PREFIX		?= $(TOP_DIR)/_build/install
-LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+DSL4SCLIBDIRS	= $(foreach dir,. rules spec,$(TOP_DIR)/_build/caml/$(dir))
 SRC_DIRS	= .
 
 OPAM_PREFIX	= $(shell opam config var prefix)
@@ -45,6 +47,7 @@ CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/easy-format
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/xml-light
 
 CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
+CAML_INC_FLAGS	+= $(DSL4SCLIBDIRS:%=-I %)
 
 CAMLCFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
 CAMLOPTFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
@@ -73,6 +76,7 @@ CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
 CMAS		+= xml-light.cma
 CMAS		+= ldlsat.cma
+CMAS		+= dsl4sc.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
 include $(TOP_DIR)/src/Makefile.common
@@ -91,10 +95,10 @@ all::	$(BINS)
 
 $(BUILD_DIR)/dfa2dfa.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{nfa,ldlrule,ldllts}.cmo
+	$(BUILD_DIR)/{ldlrule,ldllts}.cmo
 $(BUILD_DIR)/dfa2dfa.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{nfa,ldlrule,ldllts}.cmx
+	$(BUILD_DIR)/{ldlrule,ldllts}.cmx
 
 # $(BINS.byte)
 $(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/dfa2dfa_main.cmo

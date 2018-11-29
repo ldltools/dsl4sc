@@ -20,17 +20,15 @@ open Ldlrule
 open Printf
 
 type t =
-    (state, label) Nfa.nfa
+    (state, label) Fsa.t
 
 and state =
     string * bool * formula
-      (* (id, accepting, possible_world) *)
+      (* (qid, accepting, possible_world) *)
 
 and label =
     string * formula list * string list
-      (* (id, next_world, event_name list) *)
-
-[@@deriving show, yojson]
+      (* (tid, next_world, event_name list) *)
 
 let verbose = ref 0
 
@@ -53,7 +51,7 @@ let formula_of_string str =
   Ldl_p.formula Ldl_l.token (Lexing.from_string str)
 
 let state_name (m : t) (i : int) =
-  let name, _, _ = Nfa.get_state m i in name
+  let name, _, _ = Fsa.state_get m i in name
 
 let state_index_by_name (states : (int * state) list) (name : string) =
   try
@@ -83,23 +81,22 @@ let read_in (ic : in_channel) =
   assert (List.length alist >= 3);
 
   (* xml -> t *)
-  let m : t = Nfa.make () in
+  let m : t = Fsa.make () in
+
   (* states *)
   let nodes = List.assoc "states" alist in
   if !verbose > 0 then eprintf "** states: %d\n" (List.length (Xml.children nodes));
   List.iter
     (function Xml.Element ("state", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
-      let id : string = List.assoc "id" attrs in
-      (*eprintf "** add_state: %s\n" id;*)
-      Nfa.add_state m
-	(id, List.mem_assoc "accepting" attrs, Ldl_atomic "false")
-	None;
+      let qid : string = List.assoc "id" attrs in
+      let i = Fsa.state_add m (qid, List.mem_assoc "accepting" attrs, Ldl_atomic "false") in
+      if !verbose > 0 then eprintf "  state: %d, %s\n" i qid;
       ())
     (Xml.children nodes);
   if !verbose > 0 then
     (eprintf "** states:";
-     List.iter (fun (i, (id, _, _)) -> eprintf " (%d,%s)" i id) (Nfa.alist_of_states m);
+     List.iter (fun (i, (qid, _, _)) -> eprintf " (%d,%s)" i qid) (Fsa.alist_of_states m);
      eprintf "\n");
 
   (* transitions *)
@@ -107,9 +104,11 @@ let read_in (ic : in_channel) =
   if !verbose > 0 then eprintf "** edges: %d\n" (List.length (Xml.children edges));
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
+      assert (List.mem_assoc "id" attrs);
+      let tid = List.assoc "id" attrs in
+      let q1, q2 = List.assoc "from" attrs, List.assoc "to" attrs in
       let n1, n2 =
-	let q1, q2 = List.assoc "from" attrs, List.assoc "to" attrs 
-	and states = Nfa.alist_of_states m
+	let states = Fsa.alist_of_states m
 	in state_index_by_name states q1, state_index_by_name states q2
       and lab = List.assoc "label" attrs
       and events =
@@ -125,17 +124,39 @@ let read_in (ic : in_channel) =
 	    else rslt @ [formula_of_string str])
 	  [] (tokenize lab)
       in
-      Nfa.add_transition m
-	(n1, Some (gen_id "t", props, events), n2);
+      Fsa.transition_add m n1 (Some (Fsa.sigma_add m (tid, props, events)), n2);
+      if !verbose > 0 then eprintf "  transition: %s (%s->%s)\n" tid q1 q2;
       ())
     (Xml.children edges);
+  if !verbose > 0 then
+    begin
+      eprintf "** transitions:";
+      let n =
+	List.fold_left
+	  (fun n (i, edges) ->
+	    List.iter
+	      (fun (l_opt, j) ->
+		let q1, _, _= Fsa.state_get m i and q2, _, _ = Fsa.state_get m j in
+		let tid, _, _ =
+		  match l_opt with
+		  | None -> failwith "Ldllts.read_in"
+		  | Some l -> Fsa.sigma_get m l
+		in
+		eprintf " (%s: %s->%s)" tid q1 q2)
+	      edges;
+	    n + List.length edges)
+	  0 (Fsa.alist_of_delta m)
+      in
+      eprintf " (%d)\n" n
+    end;
 
   (* xml -> rule list *)
   let rules = List.assoc "rules" alist in
   if !verbose > 0 then eprintf "** rules: %d\n" (List.length (Xml.children rules));
   let rs : rule list =
     List.map
-      (function Xml.Element ("rule", _, [e_elt; c_elt; a_elt]) ->
+      (function Xml.Element ("rule", attrs, [e_elt; c_elt; a_elt]) ->
+	assert (List.mem_assoc "id" attrs);
 	let e : string =
 	  match e_elt with
 	  | Xml.Element ("event", attrs, _) -> List.assoc "name" attrs
@@ -191,7 +212,7 @@ let read_in (ic : in_channel) =
 (* collect_transitions m returns [(qid1, l, qid2); ..] *)
 
 let collect_transitions m =
-  let edges : (int * (int option * int) list) list = Nfa.alist_of_delta m in
+  let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
   List.fold_left
     (fun (rslt : (string * label * string) list) (i, nexts) ->
       List.fold_left
@@ -199,7 +220,7 @@ let collect_transitions m =
 	  let qid1, qid2 = state_name m i, state_name m j in
 	  match lab_opt with
 	  | None -> failwith "collect_transitions"
-	  | Some k -> rslt @ [qid1, Nfa.sigma_get m k, qid2])
+	  | Some k -> rslt @ [qid1, Fsa.sigma_get m k, qid2])
 	rslt nexts)
     [] edges
 
@@ -213,8 +234,8 @@ and detect_final_rec m (visited, final) i =
   if sink_p m i then
     visited @ [i], final @ [i]
   else
-    let _, acc, _ = Nfa.get_state m i
-    and nexts = Nfa.delta_get m i in
+    let _, acc, _ = Fsa.state_get m i
+    and nexts = Fsa.delta_get m i in
     if acc && last_p m i then
       visited @ [i], final @ [i]
     else
@@ -222,16 +243,16 @@ and detect_final_rec m (visited, final) i =
       List.fold_left (detect_final_rec m) (visited @ [i], final) next_indices
 
 and sink_p m i =
-  let nexts = Nfa.delta_get m i in
+  let nexts = Fsa.delta_get m i in
   try
     let _ = List.find (fun (_, j) -> j <> i) nexts in false
   with Not_found ->
     true
 
 and last_p m i =
-  let _, acc, _ = Nfa.get_state m i in
+  let _, acc, _ = Fsa.state_get m i in
   if not acc then false else
-  let nexts = Nfa.delta_get m i in
+  let nexts = Fsa.delta_get m i in
   try
     let _ = List.find (fun (_, j) -> j <> i && not (sink_p m j)) nexts in false
   with Not_found ->
@@ -243,7 +264,7 @@ let rec split_transitions (m : t) =
   if !verbose > 0 then (eprintf ";; split_transitions\n"; flush_all ());
   let final : int list = detect_final m in
   (*eprintf "** final:"; List.iter (eprintf " %d") final; eprintf "\n";*)
-  let edges = Nfa.alist_of_delta m in
+  let edges = Fsa.alist_of_delta m in
   List.iter (split_transition m final) edges;
   m
 
@@ -253,26 +274,35 @@ and split_transition (m : t) final (i, nexts) =
       match lab_opt with
       | None -> ()
       | Some k ->
-	  let (id, props, es) : label = Nfa.sigma_get m k in
+	  (* transition (i -tid-> j) that accompanies events es *)
+	  let (tid, props, es) : label = Fsa.sigma_get m k in
 	  if !verbose > 1 then
 	    eprintf "** del_transition: %d -(%d)-> %d\n" i (List.length es) j;
-	  Nfa.del_transition m (i, Some k, j);
-	  let labs : label list = List.map (fun e -> gen_id "t", props, [e]) es in
+
+	  (* remove (i -tid-> j) *)
+	  Fsa.transition_del m i (Some k, j);
+
+	  let (labs : label list), _ =
+	    List.fold_left
+	      (fun (labs, l) e ->
+		labs @ [(tid ^ "_" ^ (string_of_int l)), props, [e]], l + 1)
+	      ([], 1) es
+	  in
 	  List.iter
-	    (fun (id, props, es) ->
+	    (fun (tid', props, es) ->
 	      assert (List.length es = 1);
 	      let e' = List.hd es in
-	      if !verbose > 1 then
-		(eprintf "** add_transition: %d -> %d\n" i j; flush_all ());
-	      Nfa.add_transition m (i, Some (id, props, [e']), j); ())
+	      if !verbose > 0 then
+		(eprintf "** add_transition: %s (%d -> %d)\n" tid' i j; flush_all ());
+	      Fsa.transition_add m i (Some (Fsa.sigma_add m (tid', props, [e'])), j); ())
 	    labs)
     nexts
 
 (* update_states *)
 
 let rec update_states (m : t) =
-  let qs : (int * state) list = Nfa.alist_of_states m
-  and edges = Nfa.alist_of_delta m in
+  let qs : (int * state) list = Fsa.alist_of_states m
+  and edges = Fsa.alist_of_delta m in
   List.iter (update_state m edges) qs;
   m
 
@@ -287,7 +317,7 @@ and update_state m es (i, (id, accepting, f)) =
 	    match l_opt with
 	    | None -> failwith "update_state"
 	    | Some l ->
-		let (_, props, _) = Nfa.sigma_get m l in rslt @ [Ldl_conj props])
+		let (_, props, _) = Fsa.sigma_get m l in rslt @ [Ldl_conj props])
 	  rslt nexts)
       [] es
   in
@@ -307,37 +337,46 @@ and update_state m es (i, (id, accepting, f)) =
   let f'' = simp f' in
   if !verbose > 0 then (eprintf "%s\n" (string_of_formula f''); flush_all ());
 
-  Nfa.set_state m i (id, accepting, f'')
+  Fsa.state_set m i (id, accepting, f'')
 
 (* find_applicable_rules *)
 
 let rec find_applicable_rules (m : t) (rs : rule list) =
   if !verbose > 0 then (eprintf ";; find_applicable_rules\n"; flush_all ());
-  let edges = Nfa.alist_of_delta m in
+  let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
   List.fold_left
     (fun rslt (i, nexts) ->
+      if !verbose > 0 then
+	eprintf ";; %d transitions from %s (%d)\n"
+	  (List.length nexts) (let qid, _, _ = Fsa.state_get m i in qid) i;
       List.fold_left
 	(fun rslt (l_opt, j) ->
 	  let l : label =
 	    match l_opt with
 	    | None -> failwith "find_applicable_rules"
-	    | Some l ->  Nfa.sigma_get m l
+	    | Some k ->  Fsa.sigma_get m k
 	  in rslt @ find_applicable_rules_rec m (i, l, j) rs)
 	rslt nexts)
     [] edges
 
-and find_applicable_rules_rec m (i, l, j) rs =
+and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.rule list) =
   let tid, props, es = l in
   match es with
   | [] -> []
   | [e] ->
       List.fold_left
-	(fun rslt r ->
+	(fun rslt (r : Ldlrule.rule) ->
 	  let rid, e', (c, _), (acts, _) = r in
+	  let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j in
+
+	  if !verbose > 0 then
+	    (eprintf ";; applicable? (rid=%s, event=%s) to (tid=%s, %d->%d, %s->%s): "
+	       rid e' tid i j q1 q2;
+	     flush_all ());
 	  let certainty = rule_applicable m (i, j) r in
 	  if !verbose > 0 then
-	    (eprintf ";; applicable? (rid=%s, tid=%s): %d\n" rid tid certainty;
-	     flush_all ());
+	    (eprintf "certainty=0x%02x\n" certainty; flush_all ());
+
 	  if e' = e
 	  then rslt @ [rid, tid]
 	  else rslt)
@@ -347,9 +386,9 @@ and find_applicable_rules_rec m (i, l, j) rs =
       []
 
 (* returns: 0 = inapplicable, 0b0001-0b1111 = (conditionally) applicable *)
-and rule_applicable m (i, j) r =
-  let _, _, (w1 : formula) = Nfa.get_state m i
-  and _, _, (w2 : formula) = Nfa.get_state m j in
+and rule_applicable m (i, j) (r : Ldlrule.rule) =
+  let _, _, (w1 : formula) = Fsa.state_get m i
+  and _, _, (w2 : formula) = Fsa.state_get m j in
   let b, certainty = Ldlrule.applicable r (w1, w2) in
   assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);
   certainty
@@ -418,7 +457,7 @@ let print_states_in_xml out (m : t) =
       escape out (string_of_formula (simp w));
       out "</formula>";
       out "</state>\n")
-    (Nfa.alist_of_states m);
+    (Fsa.alist_of_states m);
   out "</states>\n"
 
 let rec print_transitions_in_xml out (m : t) =
@@ -431,7 +470,7 @@ let rec print_transitions_in_xml out (m : t) =
 	  let id, props, es =
 	    match l_opt with
 	    | Some l ->
-		let id, props, es = Nfa.sigma_get m l in id, props, es
+		let id, props, es = Fsa.sigma_get m l in id, props, es
 	    | None -> failwith "print_transitions_in_xml" in
 	  assert (List.length es = 1);
 	  let e = List.hd es in
@@ -447,13 +486,13 @@ let rec print_transitions_in_xml out (m : t) =
 	  out "</formula>";
 	  out "</transition>\n")
 	delta)
-    (Nfa.alist_of_delta m);
+    (Fsa.alist_of_delta m);
   out "</transitions>\n";
   ()
 
 and subst_event_name m (initial: int) (final : int list) (i, j) e =
   if e <> "_skip" then None else
-  let _, acc, _ = Nfa.get_state m j in
+  let _, acc, _ = Fsa.state_get m j in
   if List.mem j final then
     Some (if acc then "_accept" else "_reject")
   else
@@ -464,7 +503,7 @@ let rec print_rules_in_xml out (m : t) alist (rs : rule list) =
   out "<rules>\n";
   let alist2 : (string * formula) list =
     (* [(qid, w); ..] *)
-    List.map (fun (_, (id, _, w)) -> (id, w)) (Nfa.alist_of_states m) in
+    List.map (fun (_, (id, _, w)) -> (id, w)) (Fsa.alist_of_states m) in
   let alist3 : (string * (formula * formula)) list =
     (* [(tid, (w1, w2)]; ..] *)
     let edges : (string * label * string) list = collect_transitions m in
@@ -544,21 +583,25 @@ let debug_print m =
   (*output_string stderr (show_nfa m);*)
   (* states *)
   output_string stderr "[states]\n";
+  (*
   List.iter
     (fun (i, q) -> eprintf "%d: %s\n" i (show_state q))
-    (Nfa.alist_of_states m);
+    (Fsa.alist_of_states m);
+   *)
   (* transitions *)
   output_string stderr "[transitions]\n";
+  (*
   List.iter
     (fun (i, delta) ->
       output_string stderr ((state_name m i) ^ ":");
       List.iter
 	(function
 	  | None, j   -> eprintf " %s" (state_name m j)
-	  | Some l, j -> eprintf " %s -> %s" (show_label (Nfa.sigma_get m l)) (state_name m j))
+	  | Some l, j -> eprintf " %s -> %s" (show_label (Fsa.sigma_get m l)) (state_name m j))
 	delta;
       output_string stderr "\n")
-    (Nfa.alist_of_delta m);
+    (Fsa.alist_of_delta m);
+   *)
   flush_all ();
   ()
 

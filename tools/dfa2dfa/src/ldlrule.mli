@@ -2,7 +2,7 @@
 
 type rule =
     string * string * condition * action
-      (* (id, e, c, a) *)
+      (* (rid, e, c, a) *)
 
 and condition =
     Ldl.formula * string option

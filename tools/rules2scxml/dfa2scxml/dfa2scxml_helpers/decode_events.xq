@@ -132,7 +132,7 @@ declare function local:decode_events_rec ($propositions, $nodes as node()*)
         let $event := local:find_events ($propositions, $label0, $label1)
         return
         element transition {
-	  $n/@from, $n/@to, $n/@label0,
+	  $n/@id, $n/@from, $n/@to, $n/@label0,
 	  attribute label1 { $label1 },
 	  attribute label { $label },
           if (exists ($event)) then attribute event { $event } else (),

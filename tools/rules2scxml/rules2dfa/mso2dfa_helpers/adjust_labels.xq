@@ -30,10 +30,9 @@ declare function local:adjust_labels_transition ($n as element (transition))
     then $n
     else
       element transition {
-	attribute from { data ($n/@from) },
-	attribute to { data ($n/@to) },
-	attribute label0 { data ($n/@label) },
+        $n/@id, $n/@from, $n/@to,
 
+	attribute label0 { data ($n/@label) },
 	if (contains ($label, "0") or contains ($label, "1"))
 	then attribute label { local:construct_proposition ($label, 1, "") }
 	else attribute label { "T" }

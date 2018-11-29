@@ -17,11 +17,11 @@
 (** rule *)
 type rule =
     { event : event * string option;
-        (** event, code *)
+        (** event (with optional expression) *)
       condition : Property.labelled_property * string option;
-        (** property, code *)
+        (** trigger condition (with optional expression) *)
       action : action;
-        (** action *)
+        (** action that includes a set of unit actions *)
 
       (* deprecated *)
       path : Property.labelled_path option;
@@ -34,17 +34,20 @@ and event =
 
   | Ev_name_seq of string list
   | Ev_name_seq_compl of string list
-	(** eliminated by preprocessor *)
+	(** these are eliminated in the preprocessing stage *)
 
 (** action *)
 and action =
     (action_unit * string option) list
+        (** a set of unit actions each may accompany code fragment *)
 
 and action_unit =
   | Act_ensure of Property.property
+	(** post-condition *)
   | Act_raise of string list
 	(** [raise [e1; e2; ..]] selects/raises one of the events non-deterministically *)
   | Act_do
+        (** [do { code }] in dsl4sc corresponds to (Acto_do, Some code) *)
   | Act_preserve of string list
 	(** [on e preserve [p; p';..]] indicates p, p', .. should be preserved
 	    thru processing e.
