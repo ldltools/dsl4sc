@@ -16,13 +16,12 @@ CAMLC		= $(OCAMLFIND) ocamlc
 CAMLOPT		= $(OCAMLFIND) ocamlopt
 
 ifdef PROF
-CAMLC		:= $(OCAMLFIND) ocamlcp
-CAMLOPT		:= $(OCAMLFIND) ocamloptp
+#CAMLC		:= $(OCAMLFIND) ocamlcp
+#CAMLOPT	:= $(OCAMLFIND) ocamloptp
 endif
 
 # for ocamlfind
 CAML_PKG_PLAGS	=
-ifndef PROF
 CAML_PKG_FLAGS	+= -package ppx_deriving.eq
 CAML_PKG_FLAGS	+= -package ppx_deriving.ord
 CAML_PKG_FLAGS	+= -package ppx_deriving.show
@@ -32,7 +31,6 @@ CAML_PKG_FLAGS	+= -package xml-light
 #CAML_PKG_FLAGS	+= -package sexplib
 #CAML_PKG_FLAGS	+= -package ppx_sexp_conv
 CAML_PKG_FLAGS	+= -package sedlex
-endif
 
 # on our own
 CAML_INC_FLAGS	=
@@ -66,9 +64,9 @@ CAMLCFLAGS	+= -noassert -w -A
 CAMLOPTFLAGS	+= -noassert -w -A
 endif
 
-ifdef PROP
-CAMLCFLAGS	+= -P f
-CAMLOPTFLAGS	+= -P f
+ifdef PROF
+#CAMLCFLAGS	+= -p a
+CAMLOPTFLAGS	+= -p
 endif
 
 CMAS		=
@@ -101,7 +99,7 @@ $(BUILD_DIR)/dsl4sc.cma:	$(CMOS)
 	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmo \
 	$(BUILD_DIR)/spec/{spec,spec2ldl}.cmo
 $(BUILD_DIR)/dsl4sc.cmxa:	$(CMXS)
-	$(CAMLOPT) $(CAMLCFLAGS) -o $@ -a \
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
 	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmx \
 	$(BUILD_DIR)/spec/{spec,spec2ldl}.cmx
 
@@ -113,9 +111,9 @@ $(BUILD_DIR)/rules2ldl.byte:	$(LIBS.byte) $(BUILD_DIR)/rules/rules2ldl_main.cmo
 
 # $(BINS.opt)
 $(BUILD_DIR)/rulespp.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rulespp_main.cmx
-	$(CAMLOPT) $(CAMLCFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
 $(BUILD_DIR)/rules2ldl.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rules2ldl_main.cmx
-	$(CAMLOPT) $(CAMLCFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
 
 #
 install::	install_bins install_libs

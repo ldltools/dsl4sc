@@ -16,20 +16,16 @@ include $(TOP_DIR)/tests/Makefile.common
 # shelltest (https://github.com/simonmichael/shelltestrunner) can be installed
 # by running "apt-get install shelltestrunner"
 test::
-	@mkdir -p out
-	shelltest tests_scxml.conf
+	shelltest tests.conf
 
 # examples
-test::
-	@mkdir -p out
-	shelltest echo.conf
-	shelltest ping_pong.conf
-	shelltest accumulator.conf
+test::	examples.conf
+	shelltest $<
+
+examples.conf:	echo.conf ping_pong.conf accumulator.conf bounded_buffer.conf
+	cat $^ > $@
 
 # ----------
-out/%.ldl:	%.rules
-	@mkdir -p out
-	$(RULES2LDL) $< -o out/$*.ldl -t json --map out/$*.map
 out/%.scxml:	%.rules
 	@mkdir -p out
 	$(RULES2SCXML) $< -o $@
@@ -38,21 +34,15 @@ out/%.scxml:	%.rules
 .PRECIOUS:	%.dfa.dot %.dfa.xml
 
 TESTCASES_RULES	= $(shell echo test??.rules)
-TESTCASES_LDL	= $(TESTCASES_RULES:%.rules=%.ldl)
-TESTCASES_DFA	= $(TESTCASES_RULES:%.rules=out/%.dfa.png)
-TESTCASES_AFW	= $(TESTCASES_RULES:%.rules=out/%.afw.png)
-
 TESTCASES_SCXML	= $(TESTCASES_RULES:%.rules=out/%.scxml)
-TESTCASES_SCXML	:= $(filter-out out/test17.scxml out/test21.scxml,$(TESTCASES_SCXML))
-TESTCASES_UML	= $(TESTCASES_SCXML:%.scxml=%.puml)
-TESTCASES_SVG	= $(TESTCASES_UML:%.uml=%.svg)
+TESTCASES_SCXML	:= $(filter-out out/test17.scxml,$(TESTCASES_SCXML))
+TESTCASES_PUML	= $(TESTCASES_SCXML:%.scxml=%.puml)
+TESTCASES_SVG	= $(TESTCASES_PUML:%.puml=%.svg)
 
 .PRECIOUS:	out/%.ldl out/%.re out/%.mso
 
-dfa:	$(TESTCASES_DFA)
-afw:	$(TESTCASES_AFW)
 scxml:	$(TESTCASES_SCXML)
-puml:	$(TESTCASES_UML)
+puml:	$(TESTCASES_PUML)
 svg:	$(TESTCASES_SVG)
 
 install::

@@ -96,10 +96,10 @@ In addition to the tools listed above, you also need the following GNU tools:
   run: `brew install gnu-sed gawk`
 - GNU make (v4.1 or higher)  
   run: `brew install remake`  
-  and build with `MAKE=remake make` instead of `make`
+  and build with `MAKE=remake remake` instead of `make`
 
 # Testing
+- run: `make -C tests test`  
+  run test cases using `rulessat`, `rulesmc`, and `rules2scxml`.
 - run: `make -C tests scxml`  
   SCXML files will be generated from rules definitions and stored into `tests/out`
-- run: `make -C tests dfa`  
-  DFA files will be generated in `tests/out`

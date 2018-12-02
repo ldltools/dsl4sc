@@ -26,6 +26,7 @@ usage ()
     exit 0
 }
 
+RULES2LDL=rules2ldl
 LDLSAT=ldlsat
 LDLSATOPTS=
 
@@ -47,6 +48,6 @@ do
     shift
 done
 
-test -e $infile || { echo "$infile not found" > /dev/stderr; exit 1; } 
+test -e "$infile" || { echo "$infile not found" > /dev/stderr; exit 1; } 
 
-rules2ldl $infile | ldlsat $LDLSATOPTS
+${RULES2LDL} $infile | $LDLSAT $LDLSATOPTS
