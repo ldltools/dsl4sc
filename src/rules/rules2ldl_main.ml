@@ -35,8 +35,8 @@ let synopsis prog =
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
-    ^ "  -o <file>\t\toutput ldl formula to <file>\n"
-    ^ "  -t <fmt>\t\toutput rules in <fmt> (ldl, caml, json)\n"
+    ^ "  -o <file>\t\toutput to <file>\n"
+    ^ "  -t <fmt>\t\toutput in <fmt> (ldl, caml, json)\n"
     ^ "  --map <file>\t\toutput event mappings to <file> (in xml)\n"
     ^ "  -p\t\t\tparse-only\n"
     ^ "  --no-pp\t\tsuppress preprocessing\n"

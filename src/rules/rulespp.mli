@@ -16,7 +16,7 @@
 
 val preprocess :
     (* protocol *)
-    ?any_expand:bool ->
+    ?any_expand: bool ->
     ?protocol_relax: bool ->
 
     (* property *)

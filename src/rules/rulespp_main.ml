@@ -48,7 +48,7 @@ let synopsis prog =
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
-    ^ "  -o <file>\t\toutput to <file>\n"
+    ^ "  -o <file>\t\toutput rules to <file>\n"
     ^ "  -t <fmt>\t\toutput rules in <fmt> (rules, caml, json, xml)\n"
     ^ "  -p\t\t\tparse-only\n"
     ^ "  -h\t\t\tdisplay this message\n"

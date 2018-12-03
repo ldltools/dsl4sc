@@ -6,7 +6,7 @@
   expressions such as `x = 1`, `x = y`, and `x + 1 = y + 2` are recognized as propositions.
 
 - [rulespp] epsilon events  
-  epsilon events (`\_epsilon`) can appear in protocol definitions.  
+  epsilon events (`_epsilon`) can appear in protocol definitions.  
   `p?`, where `p` denotes a protocol, can also appear as a shorthand for `p + _epsilon`.
 
 # v0.10.0 (2018-11-08)

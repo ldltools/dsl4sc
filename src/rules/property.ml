@@ -339,6 +339,7 @@ let rec split p =
       ([], 0) (find_term_variables p)
   in let nbit = List.fold_left (fun rslt (_, (_, _, len)) -> rslt + len) 0 alist
   in
+  if nbit > 8 then failwith ("[split] too many combinations: 2^" ^ string_of_int nbit);
   split_rec p alist nbit [] 0
 
 and split_rec p alist nbit rslt i =
@@ -420,6 +421,7 @@ let rec propositionalize_eq (e1 : int term) (e2 : int term) =
 	  (fun i -> Prop_neg (Prop_atomic (List.nth xs1 (nbit2 + i))))
       in Prop_conj (conj1 @ conj2)
 
+(*
   | Tm_const _, Tm_op ("+", es2)
   | Tm_var _, Tm_op ("+", es2) ->
       propositionalize_eq_summands [e1] es2
@@ -513,6 +515,7 @@ and propositionalize_eq_summands_rec es1 es2 alist rslt nbit i =
     else pos, neg @ [Prop_neg (Prop_conj conj)]
   in
   propositionalize_eq_summands_rec es1 es2 alist (pos', neg') nbit (i + 1)
+ *)
 
 (* propositionalize f *)
 

@@ -196,10 +196,16 @@ let add_undeclared (decls : Rules.decl list) =
 
 (* any_expand *)
 let rec expand_any decls =
-  let _, declared, _ = find_declared decls in
-  let user_events = List.filter (fun e -> not @@ List.mem e ["_skip"; "_any"]) declared in
+  let declared, _, _ = find_declared decls in
+
+  let user_events =
+    List.filter (fun e -> not @@ List.mem e ["_epsilon"; "_skip"; "_any"]) declared
+  in
   let any_expanded =
-    Proto_sum (List.map (fun e -> Proto_event e) user_events) in
+    if user_events <> []
+    then Proto_sum (List.map (fun e -> Proto_event e) user_events)
+    else Proto_event "_epsilon"
+  in
   List.map
     (fun decl ->
       match decl with
