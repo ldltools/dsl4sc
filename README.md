@@ -9,7 +9,7 @@ Each model defined in dsl4sc has the following unique characteristics:
   [_ECA rules_](https://en.wikipedia.org/wiki/Event_condition_action) --
   are independent of each other.  
   You can regard each protocol, property, or rule as a separate model,
-  while the whole model as a conjunctive composition of these building block models.
+  while the whole model as a conjunctive composition of these building-block models.
 - It has a clear semantics in LDL<sub>f</sub>.
 - it can be verified statically and formally against arbitrary requirements
   that are also defined in dsl4sc
@@ -22,7 +22,7 @@ alternating manner.
 We can define the following dsl4sc models that capture this behavior and
 perform their verification and translation to executable forms.
 
-(1) _model1_ includes a single _protocol_ defintion in dsl4sc as follows.
+(1) _model1_ includes a single _protocol_ definition in dsl4sc as follows.
 
 &ensp; **protocol**
 &ensp; (ping; pong); (ping; pong)*;; // ping followed by pong (1 or more times)
@@ -32,9 +32,9 @@ perform their verification and translation to executable forms.
 &ensp; **property**  
 &ensp; &ensp; !waiting; // initially waiting is set to false (pong is not awaited)  
 &ensp; **rule**  
-&ensp; &ensp; **on** ping **when** !waiting **do** { console.log ("I say ping"); } **ensure** waiting;  
+&ensp; &ensp; **on** ping **when** !waiting **do** { console.log ("You say ping"); } **ensure** waiting;  
 &ensp; &ensp; &ensp; // ping turns waiting from false into true  
-&ensp; &ensp; **on** pong **when** waiting **do** { console.log ("You say pong"); } **ensure** !waiting;  
+&ensp; &ensp; **on** pong **when** waiting **do** { console.log ("I say pong"); } **ensure** !waiting;  
 &ensp; &ensp; &ensp; // pong turns waiting from true into false
 
 Note that, since no protocol is defined,
@@ -47,7 +47,7 @@ _model2_ assumes that `ping` and `pong` events may arrive in any order.
 1. **protocol** (ping + pong)*; pong;;  
    either ping or pong may repeat any times, though the last event is always pong
 1. **property** [{true}\*][{waiting}] !waiting;  
-   at any point, wating always changes from true to false
+   at any point, waiting always changes from true to false
 
 The first requirement is met by _model1_ and _model3_, while
 the second one is met by _model2_ and _model3_.
@@ -59,8 +59,8 @@ When `ping` and `pong` are emitted to the SCXML statechart generated from _model
 the following messages appear on the console.
 
 ```
-I say ping  
-You say pong
+You say ping  
+I say pong
 ```
 
 For more detail,
@@ -104,7 +104,7 @@ please take a look at [these examples](examples/README.md).
   To change the installation directory,
   run `make PREFIX=<prefix> install` instead (default: `PREFIX=/usr/local`).
 
-# Installation on Darwin
+# Installation on macOS (Darwin)
 In addition to the tools listed above, you also need the following GNU tools:
 
 - GNU common utilities  
