@@ -1,4 +1,4 @@
-# v0.11.0rc
+# v0.11.0 (2018-12-03)
 
 - [rulespp] natural numbers  
   natural numbers (literals and variables) are supported.
