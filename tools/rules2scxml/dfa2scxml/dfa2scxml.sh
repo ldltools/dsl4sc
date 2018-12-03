@@ -26,6 +26,9 @@ xmlrulesfile=/dev/null
 outfile=/dev/stdout
 verbose=0
 until="scxml"
+
+# extra options that affect post-processing/scxml-generation
+generate_monitor=${generate_monitor:-0}
 reject_invalid_events=${reject_invalid_events:-0}
 accept_transition=${accept_transition:-_accept}
 
@@ -56,6 +59,10 @@ do
 	    verbose=1
 	    ;;
 
+	## monitor
+	--monitor)
+	    generate_monitor=1
+	    ;;
 	--ignore*)
 	    reject_invalid_events=0
 	    ;;
@@ -78,6 +85,8 @@ test $until = "dfa" && { cat $infile > $outfile; exit 0; }
 
 mkdir -p /tmp/.dsl4sc
 #echo "dfa2scxml: $infile -> $outfile" > /dev/stderr
+
+test ${generate_monitor} -ne 0 && reject_invalid_events=1
 
 # --------------------------------------------------------------------------------
 # dfa -> dfa2 (preprocessing)
@@ -145,6 +154,9 @@ test $until = "dfa3" && { xmllint --format ${dfa3file} > $outfile; rm -f ${dfa3f
 #
 # - to each transition, insert the applicable rules
 # - to each state, associate the transitions
+#
+# - (when generating a monitor) add "reject" transitions
+# - rename _accept when accept_transition is specified
 # --------------------------------------------------------------------------------
 #
 elim_rejecting=$LIBDIR/elim_rejecting.xq
@@ -199,12 +211,41 @@ esac
 
 # --------------------------------------------------------------------------------
 # dfa4 -> scxml (printing)
+#
+# - <dfa> -> <scxml>
+# - adjust "initial" states (skip mona-generated initial states)
+# - copy implementation/datamodel/* in dfa4 to scxml/datamodel
 # --------------------------------------------------------------------------------
 print_in_scxml=$LIBDIR/print_in_scxml.xq
 test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
 
 scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
 
+# -----
+# unescape the <implementation> element of ${dfa4file} -- quick dirty work-around
+unescape () {
+local file=$1
+local escape="${LIBDIR}/escape.opt"
+test -x "$escape" || { echo "$escape not found" > /dev/stderr; exit 1; }
+local unescaped="$(echo "declare default element namespace \"https://github.com/ldltools/dsl4sc\"; .//dfa/implementation/text()" | xqilla /dev/stdin -i $file |$escape -u)"
+#echo $unescaped > /dev/stderr
+local tempfile=${file}.unescaped
+cat <<EOF | xqilla /dev/stdin -i $file |\
+    gawk -v unescaped="$unescaped" '/^__implementation__$/{print(unescaped);next}{print($0)}' > $tempfile
+declare default element namespace "https://github.com/ldltools/dsl4sc";
+element dfa {
+  .//dfa/@*,
+  (for \$n in .//dfa/node() where name (\$n) != "implementation" return \$n),
+  element implementation { text { "&#x0a;__implementation__&#x0a;" } }
+}
+EOF
+#cat $tempfile; exit 0
+test -f $tempfile && mv -f $tempfile $file
+}
+fgrep -q '<implementation>' ${dfa4file} && unescape ${dfa4file}
+# -----
+
+#
 cat <<EOF | xqilla /dev/stdin -i ${dfa4file} -o ${scxmlfile} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa4file} ${scxmlfile}; exit 1; }
 `cat ${print_in_scxml}`
 local:print_in_scxml (.)

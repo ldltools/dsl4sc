@@ -3,10 +3,12 @@
 
 all::
 
+PREFIX		?= /usr/local
+LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+
 TOP_DIR		= $(shell readlink -f ../../..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml/dfa2dfa
-PREFIX		?= $(TOP_DIR)/_build/install
-LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+DSL4SCLIBDIRS	= $(foreach dir,. rules spec,$(TOP_DIR)/_build/caml/$(dir))
 SRC_DIRS	= .
 
 OPAM_PREFIX	= $(shell opam config var prefix)
@@ -15,13 +17,12 @@ CAMLC		= $(OCAMLFIND) ocamlc
 CAMLOPT		= $(OCAMLFIND) ocamlopt
 
 ifdef PROF
-CAMLC		:= $(OCAMLFIND) ocamlcp
-CAMLOPT		:= $(OCAMLFIND) ocamloptp
+#CAMLC		:= $(OCAMLFIND) ocamlcp
+#CAMLOPT	:= $(OCAMLFIND) ocamloptp
 endif
 
 # for ocamlfind
 CAML_PKG_PLAGS	=
-ifndef PROF
 CAML_PKG_FLAGS	+= -package ppx_deriving.eq
 CAML_PKG_FLAGS	+= -package ppx_deriving.ord
 CAML_PKG_FLAGS	+= -package ppx_deriving.show
@@ -29,7 +30,6 @@ CAML_PKG_FLAGS	+= -package ppx_deriving_yojson
 #CAML_PKG_FLAGS	+= -package bigstring
 #CAML_PKG_FLAGS	+= -package sexplib
 #CAML_PKG_FLAGS	+= -package ppx_sexp_conv
-endif
 
 # on our own
 CAML_INC_FLAGS	=
@@ -45,6 +45,7 @@ CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/easy-format
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/xml-light
 
 CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
+CAML_INC_FLAGS	+= $(DSL4SCLIBDIRS:%=-I %)
 
 CAMLCFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
 CAMLOPTFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
@@ -60,9 +61,9 @@ CAMLCFLAGS	+= -noassert -w -A
 CAMLOPTFLAGS	+= -noassert -w -A
 endif
 
-ifdef PROP
-CAMLCFLAGS	+= -P f
-CAMLOPTFLAGS	+= -P f
+ifdef PROF
+#CAMLCFLAGS	+= -p a
+CAMLOPTFLAGS	+= -p
 endif
 
 CMAS		=
@@ -73,6 +74,7 @@ CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
 CMAS		+= xml-light.cma
 CMAS		+= ldlsat.cma
+CMAS		+= dsl4sc.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
 include $(TOP_DIR)/src/Makefile.common
@@ -91,10 +93,10 @@ all::	$(BINS)
 
 $(BUILD_DIR)/dfa2dfa.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{nfa,ldlrule,ldllts}.cmo
+	$(BUILD_DIR)/{ldlrule,ldllts}.cmo
 $(BUILD_DIR)/dfa2dfa.cmxa:	$(CMXS)
-	$(CAMLOPT) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{nfa,ldlrule,ldllts}.cmx
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
+	$(BUILD_DIR)/{ldlrule,ldllts}.cmx
 
 # $(BINS.byte)
 $(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/dfa2dfa_main.cmo
@@ -102,7 +104,7 @@ $(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/dfa2dfa_main.cmo
 
 # $(BINS.opt)
 $(BUILD_DIR)/dfa2dfa.opt:	$(LIBS.opt) $(BUILD_DIR)/dfa2dfa_main.cmx
-	$(CAMLOPT) $(CAMLCFLAGS) -o $@ $(CMXAS) $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 
 #
 install::	install_bins

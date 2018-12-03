@@ -10,7 +10,7 @@
 \begin{align*}
   % ================================================================================
   % declarations
-  \textit{contract} &::= \textit{decl}^+
+  \textit{process} &::= \textit{decl}^+
   \\
   \textit{decl} &::=
     \textit{event\_decl}
@@ -36,8 +36,8 @@
   % protocol_decl/spec
   \textit{protocol\_decl} &::=
   \token{protocol}\;
-% \left(\textit{protocol}\;;;\right)^+
-   \textit{protocol}\; \texttt{;;}
+   \left(\textit{protocol}\;;;\right)^+
+   %\textit{protocol}\; \texttt{;;}
   \\
   %
 %  \textit{protocol\_spec} &::= \textit{protocol}\;
@@ -62,8 +62,10 @@
   \textit{protocol}\; \texttt{+}\; \textit{protocol}\;
   \mid\;
   \textit{protocol}\; \texttt{*}\;
-%  \mid\;
-%  \textit{protocol}\; \texttt{?}\;
+  \mid\;
+  \textit{protocol}\; \texttt{?}\;
+  \mid\;
+  \texttt{(}\; \textit{protocol}\;\; \texttt{)}\;
   \\
   % ================================================================================
 %  % proposition_decl
@@ -87,8 +89,8 @@
 %  \\
   %
   \textit{type} &::=
-    \token{bool}\;
-    \mid\; \token{max}\; \texttt{(}\; \textit{number}\; \texttt{)}
+    \token{prop}\;
+    \mid\; \token{nat}\; \texttt{(}\; \textit{max}\; \texttt{)}
   \\
   % ================================================================================
   % property_decl/spec
@@ -109,7 +111,8 @@
   % ================================================================================
   % rule_decl/spec
   \textit{rule\_decl} &::= \token{rule}\;
-  \left(\textit{rule}\; \texttt{;}\right)^+
+  \textit{rule}^+
+  %\left(\textit{rule}\; \texttt{;}\right)^+
   \\
   %
 %  \textit{rule\_spec} &::= \textit{rule}\;
@@ -124,12 +127,12 @@
   % ================================================================================
   % rule
   \textit{rule} &::=
-  \left(\;
+  %\left(\;
   %\token{on}\; \textit{event\_name}\;
   \token{except}^?\; \token{on}\; \textit{event\_name}\;
   \left(\texttt{,}\; \textit{event\_name}\right)^\ast\;
   \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
-  \right)^?\;
+  %\right)^?\;
   %
   \\&\qquad
   \left(\;
@@ -138,8 +141,8 @@
   \right)^?
   %
   \\&\qquad
-  \textit{action}\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
+  \textit{action}^+
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\
   % ----------
   \textit{condition} &::= \textit{proposition}\;
@@ -148,19 +151,22 @@
   \\
   % ----------
   \textit{action} &::=
-  \token{ensure}\; \textit{proposition}
+  \token{ensure}\; \textit{proposition}\;
+  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\&\quad
   \mid\;
-  \token{raise}\; \textit{event\_name}\; \left(\texttt{+}\; \textit{event\_name}\; \right)^\ast
-  \\&\quad
-  \mid\;
-  \token{preserve}\; (\textit{var\_name}\; (\texttt{,}\; \textit{var\_name})^\ast)
+  \token{raise}\; \textit{event\_name}\; \left(\texttt{+}\; \textit{event\_name}\; \right)^\ast\;
+  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\&\quad
   \mid\;
   \token{do}\;
-    \texttt{(}\;
-    \textit{action}\; \left(\texttt{,}\; \textit{action}\right)^\ast\;
-    \texttt{)}
+  \token{\{}\; \textit{code}\; \token{\}}\;
+  %  \texttt{(}\;
+  %  \textit{action}\; \left(\texttt{,}\; \textit{action}\right)^\ast\;
+  %  \texttt{)}
+  \\&\quad
+  \mid\;
+  \token{preserve}\; \textit{var\_name}\; (\texttt{,}\; \textit{var\_name})^\ast
 \end{align*}
 % --------------------------------------------------------------------------------
 \end{table}

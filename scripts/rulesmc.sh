@@ -16,7 +16,7 @@
 
 usage ()
 {
-    echo "usage: `basename $0` --model <model_file> <infile>"
+    echo "usage: `basename $0` <option>* <model_file>? <infile>"
     echo
     echo "`basename $0` is a model-checker for dsl4sc"
     echo "`basename $0` reads a model M (from <model_file>) and a set of requirements φ (from <infile>),"
@@ -26,8 +26,14 @@ usage ()
     exit 0
 }
 
+RULESSAT=rulessat
+RULESPP=rulespp
+RULES2LDL=rules2ldl
+LDLMC=ldlmc
+
 modelfile=
 infile=/dev/stdin
+infile_copied=0
 reachability=0
 verbose=0
 
@@ -52,14 +58,16 @@ do
 	-*)
 	    ldlmcopts="$ldlmcopts $1"
 	    ;;
-	*) infile=$1
+	*)
+	    test -z "$modelfile" && modelfile=$1 || infile=$1
     esac
     shift
 done
 
 test .$modelfile = . && { usage; exit 0; }
 test -f $modelfile || { echo "$modelfile does not exit" > /dev/stderr; exit 1; }
-test -f $infile || { echo "$infile does not exit" > /dev/stderr; exit 1; }
+test -e $infile || { echo "$infile does not exit" > /dev/stderr; exit 1; }
+test ! -f $infile && { temp=`tempfile -s .rules`; cat $infile > $temp; infile=$temp; infile_copied=1; }
 
 # --------------------------------------------------------------------------------
 # find_missing (modelfile, infile)
@@ -70,17 +78,19 @@ find_missing ()
 
 local modelfile=$1    
 local infile=$2
-test -f $modelfile -a -f $infile || { echo "** error in detect_missing"; exit 1; } 
+test -f $modelfile -a -e $infile || { echo "** error in detect_missing"; exit 1; } 
 
 # modelfile, infile -> xmlfile1, xmlfile2
 xmlfile1=`tempfile -s .xml`
 xmlfile2=`tempfile -s .xml`
-rulespp $modelfile -t xml -o ${xmlfile1}
-rulespp $infile -t xml -o ${xmlfile2}
+$RULESPP $modelfile -t xml -o ${xmlfile1} || exit 1
+$RULESPP $infile -t xml -o ${xmlfile2} || exit 1
+test -f ${xmlfile1} -a -f ${xmlfile2} || exit 1
 
-# detect spurious events
+# detect spurious events that appear in $infile but does not in $modelfile
 cat <<EOF | xqilla /dev/stdin | tr '\n' ' ' |\
-    { read rslt; test ."$rslt" = . || { echo "** strange events in \"$infile\"": $rslt > /dev/stderr; exit 1; }; }
+    { read rslt; test ."$rslt" = . || { echo "** strange events in \"$infile\"": $rslt > /dev/stderr; rm -f ${xmlfile1} ${xmlfile2}; exit 1; }; } || exit 1
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 let \$events1 := doc("$xmlfile1")//events/event/@name
 let \$events2 := doc("$xmlfile2")//events/event/@name
 return
@@ -91,7 +101,8 @@ EOF
 
 # detect spurious propositions
 cat <<EOF | xqilla /dev/stdin | tr '\n' ' ' |\
-    { read rslt; test ."$rslt" = . || { echo "** strange propositions in \"$infile\"": $rslt > /dev/stderr; exit 1; }; }
+    { read rslt; test ."$rslt" = . || { echo "** strange propositions in \"$infile\"": $rslt > /dev/stderr; rm -f ${xmlfile1} ${xmlfile2}; exit 1; }; }
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 let \$vars1 := doc("$xmlfile1")//propositions/proposition/@variable
 let \$vars2 := doc("$xmlfile2")//propositions/proposition/@variable
 return
@@ -102,6 +113,7 @@ EOF
 
 # find missing events
 cat <<EOF | xqilla /dev/stdin | tr ' ' '\n'
+declare default element namespace "https://github.com/ldltools/dsl4sc";
 let \$events1 := doc("$xmlfile1")//events/event/@name
 let \$events2 := doc("$xmlfile2")//events/event/@name
 return
@@ -141,7 +153,7 @@ mc ()
 
 local modelfile=$1    
 local infile=$2
-test -f $modelfile -a -f $infile || { echo "** error in mc"; exit 1; } 
+test -f $modelfile -a -e $infile || { echo "** error in mc"; exit 1; } 
 
 # infile -> propfile
 
@@ -157,14 +169,14 @@ rm -f $missing
 
 ldlfile1=`tempfile -s .ldl`
 ldlfile2=`tempfile -s .ldl`
-rules2ldl $modelfile -o ${ldlfile1}
-rules2ldl $propfile -o ${ldlfile2}
+${RULES2LDL} $modelfile -o ${ldlfile1} || exit 1
+${RULES2LDL} $propfile -o ${ldlfile2} || exit 1
 
 # clean up
 test $propfile = $infile || rm -f $propfile
 
 # ldlmc
-ldlmc $ldlmcopts --model ${ldlfile1} ${ldlfile2} || { echo "** rulesmc crashed" > /dev/stderr; exit 1; }
+$LDLMC $ldlmcopts --model ${ldlfile1} ${ldlfile2} || { echo "** rulesmc crashed" > /dev/stderr; exit 1; }
 
 # clean up
 rm -f ${ldlfile1} ${ldlfile2}
@@ -178,9 +190,9 @@ ra ()
 {
 local modelfile=$1    
 local infile=$2
-test -f $modelfile -a -f $infile || { echo "** error in ra"; exit 1; } 
+test -f $modelfile -a -e $infile || { echo "** error in ra"; exit 1; } 
 
-cat $modelfile $infile | rulessat | { read result; if test "$result" = satisfiable; then echo reachable; else echo unreachable; fi; }
+cat $modelfile $infile | $RULESSAT | { read result; if test "$result" = satisfiable; then echo reachable; else echo unreachable; fi; } || exit 1
 
 }
 
@@ -193,4 +205,5 @@ then ra $modelfile $infile
 else mc $modelfile $infile
 fi
 
+test -f $infile -a ${infile_copied} -eq 1 && rm -f $infile
 true

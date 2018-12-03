@@ -1,0 +1,44 @@
+\documentclass[fancy]{article}
+\setDate{November 2018}
+\begin{document}
+
+\begin{Name}{1}{rules2scxml}{author}{LDL Tools}{title}
+rules2scxml -- translate dsl4sc script to scxml
+\end{Name}
+
+\section{Synopsis}
+rules2scxml <option>* <infile>
+
+\section{Description}
+rules2scxml reads a dsl4sc script from <infile> and translate it to scxml.
+
+\section{Options}
+\begin{description}
+\item[\Opt{-o} <outfile>]
+output to <outfile>
+%
+\item[\Opt{--until} <stage>]
+terminate when <stage> gets reached\\
+<stage> ::= rules | ldl | mso | dfa | dfadot | dfa2 | dfa3 | dfa4 | scxml
+%
+\item[\Opt{--monitor}]
+generate a monitor which does not ignore but reject invalid incoming events.
+%
+\item[\Opt{-v}, \Opt{--verbose}]
+become verbose
+%
+\item[\Opt{-h}, \Opt{--help}]
+show usage
+\end{description}
+
+\section{See Also}
+rulessat, rulesmc
+
+\section{Author}
+\URL{https://ldltools.github.io}\\
+\Email{ldltools@outlook.com}
+
+\section{Copyright}
+(C) Copyright IBM Corp. 2018.
+
+\end{document}

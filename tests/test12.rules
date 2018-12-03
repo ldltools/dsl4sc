@@ -1,2 +1,3 @@
-// order; ship (protocol-only)
+// order; ship
 protocol order; ship;;
+rule on ship do { console.log ("shipped!"); }

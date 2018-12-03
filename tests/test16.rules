@@ -1,5 +1,4 @@
 // {even}; {!even}; {even}; ...
-
 //protocol e*;;
 property
 even; // initial
@@ -7,5 +6,5 @@ even; // initial
 //[{true}*][{!even}]even;
 
 rule
-on e when even do !even { console.log ("even"); };
-on e when !even do even { console.log ("odd"); };
+on e when even ensure !even
+on e when !even do { console.log ("even"); } ensure even

@@ -15,14 +15,16 @@
  *)
 
 type t =
-    { pvar_seq : string list;
-      prop_seq : Rule.labelled_property list;
-      label_seq : string list;
+    { event_seq : string list;
+      proto_seq : Protocol.t list;
 
-      event_seq : string list;
-      proto_seq : Rule.protocol list;
+      pvar_seq : string list;
+      prop_seq : Property.labelled_property list;
 
       rule_seq : Rule.t list;
+
+      (* deprecated*)
+      label_seq : string list;
     }
 
 val rules_to_spec : Rules.t -> t

@@ -1,6 +1,5 @@
-// cancel + order; (cancel + ship) (protocol-only)
-protocol
-cancel + order; (cancel + ship);;
-  // order; ship
-  // order; cancel
-  // cancel
+// cancel + order; (cancel + ship)
+protocol cancel + order; (cancel + ship);;
+rule
+on ship do { console.log ("shipped!"); }
+on cancel do { console.log ("canceled!"); }

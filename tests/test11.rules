@@ -1,10 +1,10 @@
-// order
+// order (with property)
 
-proposition ordered // this line is omittable
-property <{!ordered};{ordered}>last;
-
-event order // omittable
+event order; // omittable
 protocol order;;
 
+variable ordered; // this line is omittable as well
+property <{!ordered};{ordered}>last;
+
 rule
-on order when !ordered do ordered;
+on order when !ordered do { console.log ("ordered!"); } ensure ordered;

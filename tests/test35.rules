@@ -1,2 +1,0 @@
-protocol e1; _any;;
-rule on e1 raise _e2 { __raiseEvent ("_e2"); };

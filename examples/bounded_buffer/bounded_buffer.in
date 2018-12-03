@@ -1,0 +1,7 @@
+{"event" : {"name" : "put", "data" : "item1"}}
+{"event" : {"name" : "put", "data" : "item2"}}
+{"event" : {"name" : "get"}}
+{"event" : {"name" : "put", "data" : "item3"}}
+{"event" : {"name" : "get"}}
+{"event" : {"name" : "get"}}
+{"event" : {"name" : "_accept"}}

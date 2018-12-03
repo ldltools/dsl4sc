@@ -10,14 +10,14 @@
 \begin{align*}
   % ================================================================================
   % declarations
-  \textit{contract} &::=
+  \textit{process} &::=
 %  \left(
 %  \textit{event\_decl}
-  \textit{protocol\_decl}\;
+  \textit{protocol\_decl}\;^?\;
 %  \right.\\&\quad\left.
 %   \mid \textit{proposition\_decl}
-   \textit{property\_decl}\;
-   \textit{rule\_decl}\;
+   \textit{property\_decl}\;^?\;
+   \textit{rule\_decl}\;^?\;
 %  \right)\!^+
   \\
   \medskip
@@ -36,7 +36,7 @@
   \\&\hspace{1.9em}
   \token{protocol}\;
 % \left(\textit{protocol}\;;;\right)^+
-   \textit{protocol}\; \texttt{;;}
+   \left(\textit{protocol}\; \texttt{;;}\right)^+
   \\
   %
 %  \textit{protocol\_spec} &::= \textit{protocol}\;
@@ -95,7 +95,8 @@
   % ================================================================================
   % rule_decl/spec
   \textit{rule\_decl} &::= \token{rule}\;
-  \left(\textit{rule}\; \texttt{;}\right)^+
+  \textit{rule}^+
+%  \left(\textit{rule}\; \texttt{;}\right)^+
   \\
   %
 %  \textit{rule\_spec} &::= \textit{rule}\;
@@ -116,8 +117,8 @@
   \token{when}\; \textit{condition}\;
   \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\qquad
-  \textit{action}\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
+  \textit{action}\;^+
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\
   % ----------
   \textit{condition} &::= \textit{proposition}\;
@@ -126,16 +127,19 @@
   \\
   % ----------
   \textit{action} &::=
-  \token{ensure}\; \textit{proposition}
+  \token{ensure}\; \textit{proposition}\;
+  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\quad
   \mid\;
-  \token{raise}\; \textit{event\_name}\; \left(\texttt{+}\; \textit{event\_name}\; \right)^\ast
+  \token{raise}\; \textit{event\_name}\; \left(\texttt{+}\; \textit{event\_name}\; \right)^\ast\;
+  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\quad
   \mid\;
   \token{do}\;
-    \texttt{(}\;
-    \textit{action}\; \left(\texttt{,}\; \textit{action}\right)^\ast\;
-    \texttt{)}
+    \token{\{}\; \textit{code}\; \token{\}}
+  %  \texttt{(}\;
+  %  \textit{action}\; \left(\texttt{,}\; \textit{action}\right)^\ast\;
+  %  \texttt{)}
 \end{align*}
 % --------------------------------------------------------------------------------
 \end{table}

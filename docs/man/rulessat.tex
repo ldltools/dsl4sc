@@ -1,0 +1,37 @@
+\documentclass[fancy]{article}
+\setDate{November 2018}
+\begin{document}
+
+\begin{Name}{1}{rules2scxml}{author}{LDL Tools}{title}
+rulessat -- SAT solver for dsl4sc
+\end{Name}
+
+\section{Synopsis}
+rulessat <option>* <infile>
+
+\section{Description}
+rulessat reads a set of dsl4sc declarations from <infile>,
+converts them to a LDL formula φ,
+examines if φ is satisfiable or not, and then
+returns either "valid" (¬φ is unsatisfiable), "satisfiable", or "unsatisfiable"
+
+\section{Options}
+\begin{description}
+\item[\Opt{-v}, \Opt{--verbose}]
+become verbose
+%
+\item[\Opt{-h}, \Opt{--help}]
+show usage
+\end{description}
+
+\section{See Also}
+rulesmc, ldlsat
+
+\section{Author}
+\URL{https://ldltools.github.io}\\
+\Email{ldltools@outlook.com}
+
+\section{Copyright}
+(C) Copyright IBM Corp. 2018.
+
+\end{document}

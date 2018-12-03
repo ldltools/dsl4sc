@@ -64,13 +64,13 @@ print_props ()
 {
 gawk '
 BEGIN {
-  processing = 0; count = 0;
+  processing = 0; count = 0; vid = 1;
   print ("<variables>");
 }
 /^A satisfying example/ { processing = 1; next; }
 /^$/ { if (processing) exit; }
 { if (!processing) next; }
-{ printf ("<variable name=\"%s\" type=\"prop\" number=\"%d\"/>\n", $1, count++); }
+{ printf ("<variable id=\"v%d\" name=\"%s\" type=\"prop\" number=\"%d\"/>\n", vid++, $1, count++); }
 END { print ("</variables>"); }'
 }
 
@@ -115,6 +115,7 @@ BEGIN {
   print ("<transitions>");
   #print ("<transition from=\"init\" to=\"0\"/>");
   #print ("<transition from=\"init\" to=\"1\"/>");
+  tid = 1;
 }
 /^Transitions:/ { processing = 1; next; }
 /^$/ { if (processing) exit; }
@@ -129,7 +130,8 @@ BEGIN {
      j = $5 + 0; lbl = "";
    }
    if (i == 0 && j == 1) next;	# discard transition 0->1
-   printf ("<transition from=\"q%d\" to=\"q%d\" label=\"%s\"/>\n", i, j, lbl);
+   printf ("<transition id=\"t%d\" from=\"q%d\" to=\"q%d\" label=\"%s\"/>\n", tid, i, j, lbl);
+   tid++;
 }
 END { print ("</transitions>"); }'
 }

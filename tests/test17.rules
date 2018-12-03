@@ -1,14 +1,14 @@
 // {even}; {!even}; {even}; ... (modal)
-
-//protocol e*;;
+protocol (e; e)*;;
 property
 even;
 //[{true}*][{even}]!even;
 //[{true}*][{!even}]even;
 
 rule
-on e when <{!even}>even do !even { console.log ("even (<!even>even)"); };
-on e when <{even}>!even do even { console.log ("odd (<even>!even)"); };
+on e when <{!even}>even do { console.log ("even (<!even>even)"); } ensure !even
+on e when even do { console.log ("even"); } ensure !even
+on e when <{even}>!even do { console.log ("odd (<even>!even)"); } ensure even
 
 // ** note
 // the generated DFA has 2 alternating states -- state 3 for a and state 4 for !a.

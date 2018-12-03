@@ -4,6 +4,7 @@ tmp/
 trash/
 obsolete/
 README.html
+CHANGES.html
 .DS_Store
 *~
 *.cm*

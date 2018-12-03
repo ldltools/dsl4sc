@@ -1,53 +1,70 @@
 # Summary
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
-for defining, verifying, and running event-processing systems.
+for defining, verifying, and running state transition models for event processing.
 
-In *dsl4sc*,
-each system is defined as a set of rules
-in the [_event-condtion-action_](https://en.wikipedia.org/wiki/Event_condition_action) style.  
-Then, the system can be
-(1) statically verified against particular formal properties in LDL<sub>f</sub>, and/or
-(2) translated into a statechart in the [SCXML](https://www.w3.org/TR/scxml/) format
-and run as an executable program using a SCXML processor such as
-[_scxmlrun_](https://github.com/ldltools/scxmlrun).
+Each model defined in dsl4sc has the following unique characteristics:
 
-# Example: [echo](examples/echo/README.md)
+- Its building blocks -- _protocols_, _properties_, and
+  [_ECA rules_](https://en.wikipedia.org/wiki/Event_condition_action) --
+  are independent of each other.  
+  You can regard each protocol, property, or rule as a separate model,
+  while the whole model as a conjunctive composition of these building-block models.
+- It has a clear semantics in LDL<sub>f</sub>.
+- it can be verified statically and formally against arbitrary requirements
+  that are also defined in dsl4sc
+- It can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/)
 
-(1) [*echo.rules*](examples/echo/echo.rules) is defined in *dsl4sc* as follows.
+# Example: [ping\_pong](examples/ping\_pong/README.md) -- You say "ping" and I say "pong"
 
-&ensp; **protocol**  
-&ensp;&ensp; echo; echo\*;;  
-&ensp;&ensp;&ensp; // sequence of *echo* events (repeated 1 or more times)  
+Let us consider 2 sorts of events, _ping_ and _pong_, which are emitted in an
+alternating manner.  
+We can define the following dsl4sc models that capture this behavior and
+perform their verification and translation to executable forms.
+
+(1) _model1_ includes a single _protocol_ definition in dsl4sc as follows.
+
+&ensp; **protocol**
+&ensp; (ping; pong); (ping; pong)*;; // ping followed by pong (1 or more times)
+
+(2) _model2_ introduces _waiting_ to keep track of whether a _pong_ is awaited
+
+&ensp; **property**  
+&ensp; &ensp; !waiting; // initially waiting is set to false (pong is not awaited)  
 &ensp; **rule**  
-&ensp;&ensp; **on** echo **do** { console.log (_event.data); };  
-&ensp;&ensp;&ensp; // upon each incoming *echo* event, print out its parameter string
+&ensp; &ensp; **on** ping **when** !waiting **do** { console.log ("You say ping"); } **ensure** waiting;  
+&ensp; &ensp; &ensp; // ping turns waiting from false into true  
+&ensp; &ensp; **on** pong **when** waiting **do** { console.log ("I say pong"); } **ensure** !waiting;  
+&ensp; &ensp; &ensp; // pong turns waiting from true into false
 
-(2) [*echo.scxml*](examples/echo/out/echo.scxml) can be generated
-from [*echo.rules*](examples/echo/echo.rules) as a semantically-equivalent
-statechart in the [SCXML](https://www.w3.org/TR/scxml/) format.
+Note that, since no protocol is defined,
+_model2_ assumes that `ping` and `pong` events may arrive in any order.
 
-run: `rules2scxml echo.rules -o echo.scxml`
+(3) _model3_ by merging (1) and (2) into one.
 
-![statechart](examples/echo/echo.svg)
+(4) Requirements for the models.
 
-(3) [echo.in](examples/echo/echo.in) is defined as an input scenario,
-which includes the following lines.
+1. **protocol** (ping + pong)*; pong;;  
+   either ping or pong may repeat any times, though the last event is always pong
+1. **property** [{true}\*][{waiting}] !waiting;  
+   at any point, waiting always changes from true to false
 
-&ensp; {"event" : {"name" : "echo", "data" : "hello"}}  
-&ensp; {"event" : {"name" : "echo", "data" : "world"}}
+The first requirement is met by _model1_ and _model3_, while
+the second one is met by _model2_ and _model3_.
 
-(4) To test *echo.scxml* against *echo.in*
-using [scxmlrun](https://github.com/ldltools/scxmlrun), our SCXML interperter,
+(5) SCXML generation and execution
 
-run: `scxmlrun echo.scxml echo.in`
+Models can be translated into SCXML.
+When `ping` and `pong` are emitted to the SCXML statechart generated from _model3_,
+the following messages appear on the console.
 
-The following messages should appear on your terminal.
+```
+You say ping  
+I say pong
+```
 
-&ensp; hello  
-&ensp; world  
-
-Take a look at [more examples](examples/README.md) if you are interested.
+For more detail,
+please take a look at [these examples](examples/README.md).
 
 # Installation on Docker
 
@@ -87,7 +104,7 @@ Take a look at [more examples](examples/README.md) if you are interested.
   To change the installation directory,
   run `make PREFIX=<prefix> install` instead (default: `PREFIX=/usr/local`).
 
-# Installation on Darwin
+# Installation on macOS (Darwin)
 In addition to the tools listed above, you also need the following GNU tools:
 
 - GNU common utilities  
@@ -95,10 +112,11 @@ In addition to the tools listed above, you also need the following GNU tools:
 - GNU sed/awk  
   run: `brew install gnu-sed gawk`
 - GNU make (v4.1 or higher)  
-  run: `brew install remake`
+  run: `brew install remake`  
+  and build with `MAKE=remake remake` instead of `make`
 
 # Testing
+- run: `make -C tests test`  
+  run test cases using `rulessat`, `rulesmc`, and `rules2scxml`.
 - run: `make -C tests scxml`  
   SCXML files will be generated from rules definitions and stored into `tests/out`
-- run: `make -C tests dfa`  
-  DFA files will be generated in `tests/out`
