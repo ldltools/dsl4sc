@@ -43,10 +43,6 @@ type property =
   | Prop_disj of property list
   | Prop_modal of modality * labelled_path * labelled_property
 
-  (* deprecated *)
-  | Prop_atomic_elt of string * int term list	(* indexed *)
-  | Prop_label of string
-
 and modality =
   | Mod_all | Mod_ex
 
@@ -61,9 +57,6 @@ and path =
   | Path_sum of labelled_path list
   | Path_test of property
   | Path_star of labelled_path
-
-  (* deprecated *)
-  | Path_label of string
 
 and labelled_path =
     path * label option
@@ -84,9 +77,16 @@ val modal_p : t -> bool
     (** includes modality or not *)
 
 val simp : t -> t
-    (** property simplifier similar to Ldlsimp.simp, albeit limited *)
+    (** property simplifier similar to Ldlsimp.simp, albeit more limited *)
 
 val split : t -> ((string * (base_t * int)) list * t) list
+    (** split a property p that includes term variables x1, .., xn into a set of pairs,
+	each of which is of the form:
+	([x1, (t1, v1); x2, (t2, v2); ..], q)
+	where
+	- v1, v2, ... : values for the variables
+	- q : p[v1/x1, v2/x2, ...]
+     *)
 
 val propositionalize : t -> t
     (** expand prop w. terms to prop w/o terms *)

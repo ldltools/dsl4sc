@@ -22,22 +22,16 @@ type t =
       prop_seq : Property.labelled_property list;
 
       rule_seq : Rule.t list;
-
-      (* deprecated*)
-      label_seq : string list;
     }
 
 let rec rules_to_spec (rules : Rules.t) =
   { event_seq = List.map fst rules.event_decls;
     proto_seq = List.map snd rules.proto_decls;
 
-    pvar_seq = List.map fst rules.pvar_decls;
+    pvar_seq = List.map (fun ((x, t), _) -> x) rules.var_decls;
     prop_seq = List.map snd rules.prop_decls;
 
     rule_seq = List.map filter_rule_spec rules.rule_decls;
-
-    (* deprecated*)
-    label_seq = rules.label_decls;
   }
 
 and filter_rule_spec (rspec : Rules.rule_spec) =
@@ -49,4 +43,4 @@ and filter_rule_spec (rspec : Rules.rule_spec) =
 	| Rule.Act_do -> rslt
 	| _ -> rslt @ [act, code_opt])
       [] r.action
-  in { event = r.event; condition = r.condition; action = acts'; path = None}
+  in { event = r.event; condition = r.condition; action = acts'; }

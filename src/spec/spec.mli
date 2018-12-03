@@ -22,9 +22,6 @@ type t =
       prop_seq : Property.labelled_property list;
 
       rule_seq : Rule.t list;
-
-      (* deprecated*)
-      label_seq : string list;
     }
 
 val rules_to_spec : Rules.t -> t

@@ -148,8 +148,7 @@ and prop_to_formula nbit es (p : Property.property) =
   | Prop_modal (m, lr, lp) ->
       let m' = match m with Mod_ex -> Ldl.Mod_ex | Mod_all -> Ldl.Mod_all in
       Ldl_modal (m', lpath_to_path nbit es lr, lprop_to_formula nbit es lp)
-  | Prop_label l ->
-      failwith ("prop_to_formula:label(" ^ l ^ ")")
+  | _ -> failwith "[prop_to_formula]"
 
 and lpath_to_path nbit es (r, r_opt) =
   match (r : Property.path) with
@@ -158,8 +157,7 @@ and lpath_to_path nbit es (r, r_opt) =
   | Path_sum rs -> Ldl.Path_sum (List.map (lpath_to_path nbit es) rs)
   | Path_test p -> Ldl.Path_test (prop_to_formula nbit es p)
   | Path_star r -> Ldl.Path_star (lpath_to_path nbit es r)
-  | Path_label l ->
-      failwith ("lpath_to_path:label(" ^ l ^ ")")
+  | _ -> failwith "[lpath_to_path]"
 
 (* ================================================================================
    translation of rule

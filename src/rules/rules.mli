@@ -23,12 +23,7 @@ type rules =
       prop_decls : property_spec list;
 
       rule_decls : rule_spec list;
-      impl_decls : string list;
-
-      (* deprecated *)
-      pvar_decls : proposition_spec list;	(* propositional variable *)
-      path_decls : path_spec list;	
-      label_decls : string list;
+      extra_decls : string list;
     }
 
 (** event *)
@@ -50,11 +45,6 @@ and variable_type =
   | VT_prop
   | VT_nat of int
 
-(** proposition -- deprecated *)
-and proposition_spec =
-    (* name, code *)
-    string * string option
-
 (** property *)
 and property_spec =
     (string * string list) option * Property.labelled_property
@@ -64,10 +54,6 @@ and property_spec =
 and rule_spec =
     (string * string list) option * Rule.rule
     (* (name, args), rule *)
-
-(** path -- deprecated *)
-and path_spec =
-    string option * Property.labelled_path
 
 type t = rules
 
@@ -87,11 +73,6 @@ type decl =
 
   (* extras *)
   | Decl_impl of string
-
-  (* deprecated *)
-  | Decl_proposition of proposition_spec
-  | Decl_path of path_spec
-  | Decl_label of string
 
 val decls_to_rules : ?event_sort:bool -> decl list -> t
 

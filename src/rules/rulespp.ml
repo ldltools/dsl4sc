@@ -166,7 +166,7 @@ let update_terms_rule tenv (r : Rule.t) =
 	a_opt)
       r.action
   in
-  { event = r.event; condition = c'; action = a'; path = r.path; }
+  { event = r.event; condition = c'; action = a'; }
 
 (* add_undeclared *)
 let add_undeclared (decls : Rules.decl list) =
@@ -343,8 +343,7 @@ let rec align_propositions decls =
     List.fold_left
       (fun rslt decl ->
 	match decl with
-	| Decl_variable ((p, VT_prop), p_opt)
-	| Decl_proposition (p, p_opt) ->
+	| Decl_variable ((p, VT_prop), p_opt) ->
 	    let prop : Property.property =
 	      (* [true*] (<p>!p & <!p>p -> <true>!_idle) *)
 	      let tt = Prop_atomic "true" in
@@ -409,7 +408,7 @@ let rec discard_codes decls =
       | Decl_rule (None, r) ->
 	  let (e, _), (c, _) = r.event, r.condition
 	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
-	  let r' = { event = (e, None); condition = (c, None); action = a'; path = None; }
+	  let r' = { event = (e, None); condition = (c, None); action = a'; }
 	  in rslt @ [Decl_rule (None, r')]
 
       | Decl_rule (Some (name, _), r) ->
@@ -441,13 +440,11 @@ let expand_preserve (events : string list) (decls : decl list) =
 			    { event = (Ev_name e, None);
 			      condition = ((Prop_atomic p, None), None);
 			      action = [(Act_ensure (Prop_atomic p)), None];
-			      path = None;
 			    }
 			  and r2 =
 			    { event = (Ev_name e, None);
 			      condition = ((Prop_neg (Prop_atomic p), None), None);
 			      action = [(Act_ensure (Prop_neg (Prop_atomic p))), None];
-			      path = None;
 			    }
 			  in rslt @ [r1; r2])
 			rslt ps)
@@ -561,10 +558,9 @@ let rec preprocess
 	{ event = Ev_name "_skip", None;
 	  condition = (Prop_atomic "true", None), None;
 	  action = [(Act_ensure (Prop_atomic "true")), None];
-	  path = None
-	} in
+	}
       (* insert r *)
-      let _, decls' =
+      in let _, decls' =
 	List.fold_left
 	  (fun (b, rslt) decl ->
 	    if b then b, rslt @ [decl] else

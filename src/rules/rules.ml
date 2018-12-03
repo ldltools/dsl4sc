@@ -23,12 +23,7 @@ type rules =
       prop_decls : property_spec list;
 
       rule_decls : rule_spec list;
-      impl_decls : string list;
-
-      (* deprecated *)
-      pvar_decls : proposition_spec list;
-      path_decls : path_spec list;	
-      label_decls : string list;
+      extra_decls : string list;
     }
 
 (** event *)
@@ -48,11 +43,6 @@ and variable_type =
   | VT_prop
   | VT_nat of int
 
-(** proposition -- deprecated *)
-and proposition_spec =
-    (* name, exp *)
-    string * string option
-
 (** property *)
 and property_spec =
     (string * string list) option * Property.labelled_property
@@ -62,10 +52,6 @@ and property_spec =
 and rule_spec =
     (string * string list) option * Rule.rule
     (* (name, args), rule *)
-
-(** path -- deprecated *)
-and path_spec =
-    string option * Property.labelled_path
 
 [@@deriving show, yojson]
 
@@ -88,10 +74,6 @@ type decl =
   (* extras *)
   | Decl_impl of string
 
-  | Decl_proposition of proposition_spec	(* deprecated *)
-  | Decl_path of path_spec			(* deprecated *)
-  | Decl_label of string			(* deprecated *)
-
 (* decls to rules *)
 let rec decls_to_rules ?(event_sort = true) (decls : decl list) =
   let events, protos, vars, props, rules, impls =
@@ -105,10 +87,7 @@ let rec decls_to_rules ?(event_sort = true) (decls : decl list) =
     prop_decls = props;
 
     rule_decls = rules;
-    impl_decls = impls;
-
-    (* deprecated *)
-    pvar_decls = []; path_decls = []; label_decls = [];
+    extra_decls = impls;
   }
 
 and decls_to_rules_rec (events, protos, vars, props, rules, impls) = function
@@ -242,11 +221,11 @@ let print_rules out (rs : t) =
     end;
 
   (* implementation *)
-  if rs.impl_decls <> [] then
+  if rs.extra_decls <> [] then
     begin
       out "implementation\n";
       out "{\n";
-      List.iter out rs.impl_decls;
+      List.iter out rs.extra_decls;
       out "}\n";
     end;
 
@@ -325,19 +304,6 @@ let rec print_rules_in_xml out (rules : t) =
     rules.prop_decls
     print_property_in_xml;
 
-  (* deprecated *)
-  (*
-    print "propositions"
-    rules.pvar_decls
-    print_proposition_in_xml;
-    print "paths"
-    rules.path_decls
-    print_path_in_xml;
-    print "labels"
-    rules.label_decls
-    print_label_in_xml;
-   *)
-
   out "</preamble>\n";
 
   (* rule -- strip off the special "_skip" rule and its successors.
@@ -351,9 +317,8 @@ let rec print_rules_in_xml out (rules : t) =
 	  { event = Ev_name "_skip", None;
 	    condition = (Prop_atomic "true", None), None;
 	    action = [(Act_ensure (Prop_atomic "true")), None];
-	    path = None
-	  } in
-	let name_opt, (r : Rule.t) = rspec in
+	  }
+	in let name_opt, (r : Rule.t) = rspec in
 	assert (name_opt = None);
 	if r = special_rule then true, rslt else b, rslt @ [rspec])
       (false, []) rules.rule_decls
@@ -367,27 +332,12 @@ let rec print_rules_in_xml out (rules : t) =
   in
 
   print "implementation"
-    rules.impl_decls
+    rules.extra_decls
     (fun out -> escape out);
 
   out "</rules>\n"
 
 (*
-  let pspecs =
-  List.fold_left
-  (fun rslt -> function
-  |	Decl_proposition pspecs -> rslt @ pspecs
-  | _ -> rslt)
-  [] s
-  and rspecs =
-  List.fold_left
-  (fun rslt -> function
-  | Decl_rule (name_opt, (rs : Rule.rule list)) -> rslt @ rspecs
-  | _ -> rslt)
-  [] s
-  in
- *)
-
 and print_proposition_in_xml out ((str, opt) : proposition_spec) =
   out "<proposition variable=\""; out str; out "\"";
   match opt with
@@ -395,6 +345,7 @@ and print_proposition_in_xml out ((str, opt) : proposition_spec) =
   | Some str' ->
       out ">\n<script>"; escape out str'; out "</script>\n";
       out "</proposition>\n"
+ *)
 
 and print_property_in_xml out (name_opt, lp) =
   out "<property";

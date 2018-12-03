@@ -33,7 +33,7 @@ let rec genrule (elts : rule_elt list) =
   and c : labelled_property = Prop_atomic "true", None
   and a : action = [] in
   let e', c', a' = genrule_rec ((e, None), (c, None), a) elts
-  in { event = e'; condition = c'; action = a'; path = None; }
+  in { event = e'; condition = c'; action = a'; }
 
 and genrule_rec ((e, ex), (c, cx), a) elts =
   if elts = [] then ((e, ex), (c, cx), a) else
@@ -642,9 +642,9 @@ path3	: LBRACE property RBRACE
 	| LPAREN path0_or_1_or_2 RPAREN
 	  { $2 }
 
-	// label
-	| label_use
-	  { Path_label $1 }
+//	// label
+//	| label_use
+//	  { Path_label $1 }
 	;	
 
 labelled_path1_or_2
@@ -883,8 +883,8 @@ state2	: NAME
 	  { Prop_neg $2 }
 	| LPAREN state RPAREN
 	  { $2 }
-	| label_use
-	  { Prop_label $1 }
+//	| label_use
+//	  { Prop_label $1 }
 	;
 
 // ------------

@@ -22,9 +22,6 @@ type rule =
     { event : event * string option;
       condition : Property.labelled_property * string option;
       action : action;
-
-      (* deprecated *)
-      path : Property.labelled_path option;
     }
 
 (** event *)
@@ -70,7 +67,7 @@ let propositionalize r =
 	a_opt)
       acts
   in
-  { event = r.event; condition = (p', p_opt), c_opt; action = acts'; path = r.path; }
+  { event = r.event; condition = (p', p_opt), c_opt; action = acts'; }
 
 (** pretty-printing *)
 

@@ -102,10 +102,6 @@ type property =
   | Prop_disj of property list
   | Prop_modal of modality * labelled_path * labelled_property
 
-  (* deprecated *)
-  | Prop_atomic_elt of string * int term list
-  | Prop_label of string
-
 and modality =
   | Mod_all | Mod_ex
 
@@ -120,9 +116,6 @@ and path =
   | Path_sum of labelled_path list
   | Path_test of property
   | Path_star of labelled_path
-
-  (* deprecated *)
-  | Path_label of string
 
 and labelled_path =
     path * label option
@@ -154,7 +147,6 @@ let rec modal_p = function
   | Prop_conj ps | Prop_disj ps ->
       (match List.find_opt modal_p ps with None -> false | _ -> true)
   | Prop_modal _ -> true
-  | Prop_label _ -> failwith "[modal_p]"
 
 (* simplifaction w/o term value info *)
 
@@ -648,9 +640,6 @@ and print_property_rec out ?(fancy=false) (f : property) =
       then print_labelled_property out f'
       else (out "("; print_labelled_property out f'; out ")")
 
-  | Prop_label l ->
-      out "$"; out l
-
   | _ -> failwith ("[print_property_rec] " ^ show_property f)
 
 (* precedence: neg < and < lor < implies *)
@@ -662,7 +651,7 @@ and prec = function
   | Prop_disj _ -> 200
   (*| Prop_impl _ -> 300*)
   | Prop_modal _ -> 30
-  | Prop_label _ -> 0
+  (*| Prop_label _ -> 0*)
 
 and print_labelled_path out (r, l_opt) =
   match l_opt with
@@ -671,7 +660,7 @@ and print_labelled_path out (r, l_opt) =
       out l; out ":";
       let _ =
 	match r with
-	| Path_prop _ | Path_label _ ->
+	| Path_prop _ ->
 	    print_path out r
 	| _ ->
 	    out "("; print_path out r; out ")"
@@ -720,10 +709,6 @@ and print_path out ?(fancy=false) r =
   | Path_star r' ->
       out "("; print_labelled_path out r'; out ")*"
 
-  (* label *)
-  | Path_label l ->
-      out "$"; out l
-
   | _ -> failwith ("[print_path] " ^ show_path r)
 
 (* precedence: grouping (()) < *, ? < concat (;) < choice (+) *)
@@ -733,7 +718,7 @@ and path_prec = function
   | Path_sum rs -> 200
   | Path_test f -> 50
   | Path_star r -> 30
-  | Path_label _ -> 0
+(*| Path_label _ -> 0*)
 
 (** pretty-printing (string conversion) *)
 

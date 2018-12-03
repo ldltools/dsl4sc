@@ -22,19 +22,19 @@ type rule =
         (** trigger condition (with optional expression) *)
       action : action;
         (** action that includes a set of unit actions *)
-
-      (* deprecated *)
-      path : Property.labelled_path option;
     }
 
 (** event *)
 and event =
   | Ev_name of string
-	(** rules2ldl only takes this into account *)
+	(** case "on e".
+	    rules2ldl only takes this into account.
+	    the following cases are substitued in the preprocessing stage *)
 
   | Ev_name_seq of string list
+	(** case "on e1, e2, .." *)
   | Ev_name_seq_compl of string list
-	(** these are eliminated in the preprocessing stage *)
+	(** case "except on e1, e2, .." *)
 
 (** action *)
 and action =
