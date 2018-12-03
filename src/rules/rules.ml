@@ -98,7 +98,7 @@ let rec decls_to_rules ?(event_sort = true) (decls : decl list) =
     List.fold_left decls_to_rules_rec ([], [], [], [], [], []) decls
   in
   { event_decls =
-      if event_sort then List.sort (fun (e1, _) (e2, _) -> compare e1 e2) events else events;
+      if event_sort then List.sort_uniq (fun (e1, _) (e2, _) -> compare e1 e2) events else events;
     proto_decls = protos;
 
     var_decls = vars;

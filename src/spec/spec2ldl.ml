@@ -227,6 +227,7 @@ and action_unit_to_formula nbit es (a : action_unit) =
 let rec translate (s : Spec.t) =
   (* protocols -> formulas *)
   let es : string list = s.event_seq in
+  assert (List.length (List.sort_uniq compare es) = List.length es);
   assert (not @@ List.mem "_skip" es);
   let nev = List.length es + 1 (* es + 1 extra event for "_skip" *) in
   let nbit = int_of_float @@ ceil @@ log (float_of_int nev) /. log 2.0 in

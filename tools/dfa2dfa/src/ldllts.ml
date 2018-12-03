@@ -114,6 +114,7 @@ let read_in (ic : in_channel) =
       and events =
 	if not (List.mem_assoc "event" attrs) then [] else
 	tokenize (List.assoc "event" attrs) in
+      assert (List.length (List.sort_uniq compare events) = List.length events);
       let props : formula list =
 	List.fold_left
 	  (fun rslt str ->
@@ -125,7 +126,12 @@ let read_in (ic : in_channel) =
 	  [] (tokenize lab)
       in
       Fsa.transition_add m n1 (Some (Fsa.sigma_add m (tid, props, events)), n2);
-      if !verbose > 0 then eprintf "  transition: %s (%s->%s)\n" tid q1 q2;
+      if !verbose > 0 then
+	begin
+	  eprintf "  transition: %s (%s->%s) " tid q1 q2;
+	  eprintf "events: "; List.iter (eprintf " %s") events;
+	  eprintf "\n"
+	end;
       ())
     (Xml.children edges);
   if !verbose > 0 then
@@ -277,7 +283,7 @@ and split_transition (m : t) final (i, nexts) =
 	  (* transition (i -tid-> j) that accompanies events es *)
 	  let (tid, props, es) : label = Fsa.sigma_get m k in
 	  if !verbose > 1 then
-	    eprintf "** del_transition: %d -(%d)-> %d\n" i (List.length es) j;
+	    eprintf "** del_transition: %s (%d -> %d)\n" tid i j;
 
 	  (* remove (i -tid-> j) *)
 	  Fsa.transition_del m i (Some k, j);

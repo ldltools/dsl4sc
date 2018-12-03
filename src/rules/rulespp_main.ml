@@ -24,23 +24,33 @@ let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 let opt_parse_only = ref false
 
+(* protocol *)
+let opt_relax_protocols = ref false
+(* property *)
+let opt_split_cases = ref true
+let opt_propositionalize = ref true
+let opt_extra_properties = ref true
+(* rule *)
+let opt_discard_codes = ref false
+
+(* deprecated *)
+(*
 let opt_expand_macros = ref false
 let opt_expand_arrays = ref false
 let opt_add_undeclared = ref true
-let opt_apply_interleaving = ref false
-let opt_relax_protocols = ref false
 let opt_align_propositions = ref true
-let opt_discard_codes = ref false
-(*let opt_label2proposition = ref true*)
-(*let opt_allow_skip = ref false*)
+let opt_apply_interleaving = ref false
+let opt_label2proposition = ref true
+let opt_allow_skip = ref false
+*)
 
 let synopsis prog =
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
-    ^ "  -p\t\t\tparse-only\n"
     ^ "  -o <file>\t\toutput to <file>\n"
     ^ "  -t <fmt>\t\toutput rules in <fmt> (rules, caml, json, xml)\n"
+    ^ "  -p\t\t\tparse-only\n"
     ^ "  -h\t\t\tdisplay this message\n"
   in output_string stdout msg
 
@@ -72,7 +82,8 @@ let main argc argv =
   and infile = ref "/dev/stdin"
   and outfile = ref "/dev/stdout" in
   while !i < argc do
-    let _ =
+    let len = String.length argv.(!i)
+    in let _ =
       match argv.(!i) with
       | "-" ->
 	  infile := "/dev/stdin";
@@ -93,44 +104,22 @@ let main argc argv =
       | "-p" | "--parse-only"  ->
 	  opt_parse_only := true
 
-      | "--expand-macros" ->
-	  opt_expand_macros := true
-      | "--no-expand-macros" ->
-	  opt_expand_macros := false
-      | "--expand-arrays" ->
-	  opt_expand_arrays := true
-      | "--no-expand-arrays" ->
-	  opt_expand_arrays := false
-      | "--add-undeclared" ->
-	  opt_add_undeclared := true
-      | "--no-add-undeclared" ->
-	  opt_add_undeclared := false
-
-      | "--apply-interleaving" ->
-	  opt_apply_interleaving := true
-      | "--no-apply-interleaving" ->
-	  opt_apply_interleaving := false
-      | "--relax-protocols" ->
+      (* protocol *)
+      | _ when 6 < len && 0 <= compare "--relax-protocols" argv.(!i) ->
 	  opt_relax_protocols := true
-      | "--no-relax-protocols" ->
-	  opt_relax_protocols := false
-
-      | "--align-propositions" ->
-	  opt_align_propositions := true
-      | "--no-align-propositions" ->
-	  opt_align_propositions := false
-
+      (* property *)
+      | _ when 6 < len && 0 <= compare "--no-split-cases" argv.(!i) ->
+	  opt_split_cases := false
+      | _ when 6 < len && 0 <= compare "--no-propositionalize" argv.(!i) ->
+	  opt_propositionalize := false
+      | _ when 6 < len && 0 <= compare "--no-extra-properties" argv.(!i) ->
+	  opt_extra_properties := false
+      (* rule *)
       | "--discard-codes" ->
 	  opt_discard_codes := true
       | "--no-discard-codes" ->
 	  opt_discard_codes := false
 
-(*
-      | "--allow-skip" ->
-	  opt_allow_skip := true
-      | "--no-allow-skip" ->
-	  opt_allow_skip := false
- *)
       | _  when argv.(!i).[0] = '-' ->
 	  failwith ("unknown option: " ^ argv.(!i))
 
@@ -151,23 +140,15 @@ let main argc argv =
   let decls : Rules.decl list = input_rules ic !opt_fmt_in in
   if !opt_parse_only then
     (output_rules oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
-(*
-  List.iter
-    (function
-      | Rules.Decl_rule (_, r) ->
-	  Rule.print_rule (output_string stderr) r; output_string stderr "\n"
-      | _ -> ())
-    decls;
- *)
 
   (* decls -> decls' *)
   let decls' =
     Rulespp.preprocess
-      ~undeclared_add:!opt_add_undeclared
-      ~protocol_relax:!opt_relax_protocols
-      ~proposition_align:!opt_align_propositions
-      ~code_discard:!opt_discard_codes
-      (*~skip_allow:!opt_allow_skip*)
+      ~protocol_relax: !opt_relax_protocols
+      ~case_split: !opt_split_cases
+      ~propositionalize: !opt_propositionalize
+      ~extra_properties: !opt_extra_properties
+      ~code_discard: !opt_discard_codes
       decls in
   let rules : Rules.t = Rules.decls_to_rules decls' in
   output_rules oc rules !opt_fmt_out;

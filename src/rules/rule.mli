@@ -60,6 +60,13 @@ type t = rule
 
 val event_name : event -> string
 
+(** rule ops *)
+
+val propositionalize : t -> t
+    (** propositional the property parts in a rule.
+	refer also to Property.propositionalize.
+     *)
+
 (** pretty-printing *)
 
 val print_rule : (string -> unit) -> ?fancy:bool -> rule -> unit

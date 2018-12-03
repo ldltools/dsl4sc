@@ -15,30 +15,30 @@
  *)
 
 val preprocess :
-    ?undeclared_add:bool ->
+    (* protocol *)
     ?any_expand:bool ->
-    ?protocol_relax:bool ->
-    ?proposition_align:bool ->
-    ?code_discard:bool ->
-    ?preserve_expand:bool ->
-    (*?skip_allow:bool ->*)
+    ?protocol_relax: bool ->
+
+    (* property *)
+    ?case_split: bool ->
+    ?propositionalize: bool ->
+    ?extra_properties: bool ->
+
+    (* rule *)
+    ?code_discard: bool ->
+    ?preserve_expand: bool ->
+
     Rules.decl list -> Rules.decl list 
-  (** preprocess rules
-       - add missing proposition/event/label decls
-       - relax protocols
-       - align propositions w. events -- add extra properties
-       - discard code fragments in rules
-    *)
+	(** preprocess rules
+	    - relax protocols
+	    - align propositions w. events -- add extra properties
+	    - discard code fragments in rules
+	 *)
 
 (** event / variable *)
 
 val add_undeclared : Rules.decl list -> Rules.decl list
     (* add missing proposition/event/label declarations *)
-
-val find_declared : Rules.decl list -> string list * string list * string list
-    (* decls -> (propositions, events, labels) *)
-val find_undeclared : Rules.decl list -> string list * string list * string list
-    (* decls -> (propositions, events, labels) *)
 
 (** protocol *)
 

@@ -20,7 +20,7 @@ let opt_o = ref "unspecified"
 let opt_o_channel = ref stdout
 let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
-let opt_verbose = ref false
+let opt_verbose = ref 0
 
 let synopsis prog =
   printf "usage: %s <dfa_file>\n" (Filename.basename prog)
@@ -47,9 +47,11 @@ let main argc argv =
 	  opt_fmt_out := argv.(!i+1); incr i;
 
       | "-v" | "--verbose" ->
-	  opt_verbose := true
+	  opt_verbose := 1
+      | "-vv" ->
+	  opt_verbose := 2
       | "-q" | "--silent" ->
-	  opt_verbose := false
+	  opt_verbose := 0
       | "-h" | "--help"  ->
 	  synopsis argv.(0); exit 0
 
@@ -69,18 +71,18 @@ let main argc argv =
   let oc = open_out !outfile in
 
   (* verbosity *)
-  Ldllts.verbose := if !opt_verbose then 1 else 0;
+  Ldllts.verbose := !opt_verbose;
 
   (* read dfa (in xml) from file into m *)
   let ic = open_in !infile in
   let alist, (m : Ldllts.t), (rs : Ldllts.rule list) = Ldllts.read_in ic in
-  if !opt_verbose then
+  if !opt_verbose > 0 then
     (eprintf "** parsed from %S\n" !infile;
      Ldllts.debug_print m; List.iter Ldllts.debug_print_rule rs);
 
   (* update m to m' *)
   let m', (alist' : (string * string list) list) = Ldllts.update m rs in
-  if !opt_verbose then
+  if !opt_verbose > 0 then
     (eprintf "** updated\n";
      Ldllts.debug_print m';
      List.iter

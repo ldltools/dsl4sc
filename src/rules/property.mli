@@ -14,26 +14,24 @@
  * limitations under the License.
  *)
 
-(** type-carrying term *)
+(** term *)
 type _ term =
-  | Tm_val : 'a * 'a term_t -> 'a term
-  | Tm_var : string * 'a term_t -> 'a term
+  | Tm_const : 'a * base_t -> 'a term
+  | Tm_var : string * base_t -> 'a term
 	(** var_name, var_type *)
   | Tm_app : ('a -> 'b) term * 'a term -> 'b term
 	(** application Tm_app (f, e) *)
   | Tm_abs : ('a term -> 'b term) -> ('a -> 'b) term
 	(** abstraction Tm_abs (fun e -> e') *)
-  | Tm_bop : string -> ('a -> 'a -> 'a) term
-	(** binary op *)
+  | Tm_op : string * 'a term list -> 'a term
+	(** 'a operation *)
   | Tm_eq : 'a term * 'a term -> bool term
 	(** equality *)
 
-and _ term_t =
-  | Ty_prop : bool term_t
-  | Ty_nat : int -> int term_t
+and base_t =
+  | Ty_prop
+  | Ty_nat of int
       (** [Ty_nat n] denotes {0, 1, ..., n - 1} *)
-
-  | Ty_fun : 'a term_t * 'b term_t -> ('a -> 'b) term_t
 
 (** property *)
 type property =
@@ -77,17 +75,25 @@ type t = property
 
 (** term ops *)
 
-val eval_term : (string -> int term) -> int term -> int term
-
 val term_to_propositions : int term -> string list
+    (** variable of nat (n) -> m propositions where m = log2 (n) *)
 
 (** property ops *)
 
 val modal_p : t -> bool
     (** includes modality or not *)
 
+val simp : t -> t
+    (** property simplifier similar to Ldlsimp.simp, albeit limited *)
+
+val split : t -> ((string * (base_t * int)) list * t) list
+
 val propositionalize : t -> t
     (** expand prop w. terms to prop w/o terms *)
+
+val find_term_variables : t -> (string * base_t) list
+
+val include_term_variable_p : t -> bool
 
 (** equality -- ppx-generated *)
 

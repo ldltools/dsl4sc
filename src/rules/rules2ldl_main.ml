@@ -23,18 +23,24 @@ let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 
+(* rules_p *)
 let opt_parse_only = ref false
-let opt_no_pp = ref false
+(* rulespp *)
+let opt_preprocessing = ref true
+let opt_extra_properties = ref true
+(* spec2ldl *)
 let opt_map_out = ref "/dev/null"
 
 let synopsis prog =
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
+    ^ "  -o <file>\t\toutput ldl formula to <file>\n"
+    ^ "  -t <fmt>\t\toutput rules in <fmt> (ldl, caml, json)\n"
+    ^ "  --map <file>\t\toutput event mappings to <file> (in xml)\n"
     ^ "  -p\t\t\tparse-only\n"
     ^ "  --no-pp\t\tsuppress preprocessing\n"
-    ^ "  --map <file>\t\toutput event mappings to <file>\n"
-    ^ "  -o <file>\t\toutput to <file>\n"
+    ^ "  --no-ex\t\tsuppress generation of extra properties\n"
     ^ "  -h\t\t\tdisplay this message\n"
   in output_string stdout msg
 
@@ -166,10 +172,15 @@ let main argc argv =
       | "--json" ->
 	  opt_fmt_in := "json"
 
+      (* rules_p *)
       | "-p" | "--parse-only" ->
 	  opt_parse_only := true
+      (* rulespp *)
       | "--no-pp" ->
-	  opt_no_pp := true
+	  opt_preprocessing := false
+      | "--no-ex" | "--no-extra-properties" ->
+	  opt_extra_properties := false
+      (* spec2ldl *)
       | "--map"  ->
 	  opt_map_out := argv.(!i+1); incr i;
 
@@ -200,9 +211,9 @@ let main argc argv =
 
   (* rulespp: decls -> decls' *)
   let decls' =
-    if !opt_no_pp
-    then decls
-    else Rulespp.preprocess ~code_discard:true decls in
+    if !opt_preprocessing
+    then Rulespp.preprocess ~extra_properties: !opt_extra_properties ~code_discard: true decls
+    else decls in
 
   (* decls' -> rules *)
   let rules : Rules.t = Rules.decls_to_rules decls' in

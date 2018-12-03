@@ -21,150 +21,176 @@ open Rules
 
 (** event / variable *)
 
-(* find_declared -- propositions/events/labels *)
+(* find_declared -- events / variables *)
+
 let rec find_declared decls =
-  let props, events, labs =
-    List.fold_left find_declared1 ([], [], []) decls
-  in (props @ ["_idle"], events @ ["_epsilon"; "_skip"; "_any"], labs)
+  let events, props, terms =
+    List.fold_left
+      (fun (events, props, terms) -> function
+	| Decl_event (e, _) when not (List.mem e events) ->
+	    (*Printf.printf "(event:%s)" e;*)
+	    events @ [e], props, terms
+	| Decl_variable ((p, VT_prop), _) when not (List.mem p props) ->
+	    (*Printf.printf "(proposition:%s)" p;*)
+	    events, props @ [p], terms
+	| Decl_variable ((x, VT_nat n), _) when not (List.mem_assoc x terms) ->
+	    events, props, terms @ [x, n]
+	| _ -> events, props, terms)
+      ([], [], []) decls
+  in events @ ["_epsilon"; "_skip"; "_any"], props @ ["_idle"], terms
 
-and find_declared1 ((props : string list), (events : string list), (labs : string list)) = function
-  | Decl_event (e, _) when not (List.mem e events) ->
-      (*Printf.printf "(event:%s)" e;*)
-      (props, events @ [e], labs)
-  | Decl_variable ((x, _), _) ->
-      (*Printf.printf "(proposition:%s)" p;*)
-      (props @ [x], events, labs)
-(*
-  | Decl_label l ->
-      (*Printf.printf "(label:%s)" l;*)
-      (props, events, labs  @ [l])
-  | Decl_proposition (p, _) ->
-      (*Printf.printf "(proposition:%s)" p;*)
-      (props @ [p], events, labs)
- *)
-  | _ -> (props, events, labs)
+(* find_undeclared -- events and proposition/term variables *)
 
-(* find_undeclared -- propositions/events/labels *)
 let rec find_undeclared decls =
-  let props1, events1, labs1 = find_declared decls in
-  let props2, (events2 : string list), labs2 =
-    List.fold_left find_undeclared1 (props1, events1, labs1) decls in
-  let rec drop n xs = if n = 0 then xs else drop (n - 1) (List.tl xs) in
-  let props3 : string list = drop (List.length props1) props2
-  and events3 : string list = drop (List.length events1) events2
-  and labs3 : string list = drop (List.length labs1) labs2
-  in props3, events3, labs3
+  let events1, props1, terms1 = find_declared decls in
+  let events2, props2, terms2 =
+    List.fold_left
+      (fun declared -> function
+	| Decl_protocol (_, p) ->
+	    find_undeclared1_protocol declared p
+	| Decl_property (_, f) ->
+	    find_undeclared1_labelled_property declared f
+	| Decl_rule (_, r) ->
+	    find_undeclared1_rule declared (r : Rule.t)
+	| _ -> declared)
+      (events1, props1, terms1) decls in
 
-and find_undeclared1 declared = function
-  | Decl_protocol (_, p) ->
-      find_undeclared1_protocol declared p
-  | Decl_property (_, f) ->
-      find_undeclared1_labelled_property declared f
- (*
-  | Decl_path (_, r) ->
-      find_undeclared1_labelled_path declared r
-  *)
-  | Decl_rule (_, r) ->
-      find_undeclared1_rule declared (r : Rule.t)
-  | _ -> declared
+  (* post-processing: remove declared *)
+  let rec drop n xs =
+    if n = 0 then xs else drop (n - 1) (List.tl xs)
+  in let events3 = drop (List.length events1) events2
+  and props3 = drop (List.length props1) props2
+  and terms3 = drop (List.length terms1) terms2
+  in events3, props3, terms3
 
-and find_undeclared1_protocol (props, events, labs) = function
-  | Protocol.Proto_event e when not (List.mem e events) -> (props, events @ [e], labs)
-  | Protocol.Proto_event e -> (props, events, labs)
+(* protocol *)
+and find_undeclared1_protocol (events, props, terms) = function
+  | Protocol.Proto_event e when not (List.mem e events) ->
+      events @ [e], props, terms
+  | Protocol.Proto_event e -> events, props, terms
 
   | Protocol.Proto_seq ps ->
-      List.fold_left find_undeclared1_protocol (props, events, labs) ps
+      List.fold_left find_undeclared1_protocol (events, props, terms) ps
   | Protocol.Proto_sum ps ->
-      List.fold_left find_undeclared1_protocol (props, events, labs) ps
+      List.fold_left find_undeclared1_protocol (events, props, terms) ps
   | Protocol.Proto_star p ->
-      find_undeclared1_protocol (props, events, labs) p
+      find_undeclared1_protocol (events, props, terms) p
+  | _ -> events, props, terms
 
-(*
-  | Protocol.Proto_0or1 p ->
-      find_undeclared1_protocol (props, events, labs) p
-  | Protocol.Proto_prop f -> find_undeclared1_protocol_prop (props, events, labs) f
-  | _ -> failwith "find_undeclared1_protocol"
+(* property *)
+and find_undeclared1_labelled_property (events, props, terms) (f, _) =
+  find_undeclared1_property (events, props, terms) f
 
-and find_undeclared1_protocol_prop (props, events, labs) = function
-  | Protocol.PProp_event e when not (List.mem e events) -> (props, events @ [e], labs)
-(*
-  | PProp_neg f -> find_undeclared1_protocol_prop (props, events, labs) f
- *)
-  | _ -> (props, events, labs)
-*)
-
-and find_undeclared1_labelled_property (props, events, labs) = function
-  | (f, Some l) when not (List.mem l labs) ->
-      find_undeclared1_property (props, events, labs @ [l]) f
-  | (f, _) ->
-      find_undeclared1_property (props, events, labs) f
-
-and find_undeclared1_property ((props : string list), events, (labs : string list)) = function
-  | Property.Prop_atomic "true" | Property.Prop_atomic "false" -> (props, events, labs)
-  | Property.Prop_atomic "last" -> (props, events, labs)
-  | Property.Prop_atomic a when not (List.mem a props) -> (props @ [a], events, labs)
-  | Property.Prop_neg f -> find_undeclared1_property (props, events, labs) f
+and find_undeclared1_property (events, props, terms) = function
+  | Property.Prop_atomic "true" | Property.Prop_atomic "false" -> events, props, terms
+  | Property.Prop_atomic "last" -> events, props, terms
+  | Property.Prop_atomic a when not (List.mem a props) -> events, props @ [a], terms
+  | Property.Prop_equal (e1, e2) ->
+      List.fold_left find_undeclared1_term (events, props, terms) [e1; e2]
+  | Property.Prop_neg f -> find_undeclared1_property (events, props, terms) f
   | Property.Prop_conj fs | Property.Prop_disj fs ->
-      List.fold_left find_undeclared1_property (props, events, labs) fs
+      List.fold_left find_undeclared1_property (events, props, terms) fs
   | Property.Prop_modal (_, r, f) ->
-      let rslt = find_undeclared1_labelled_path (props, events, labs) r
+      let rslt = find_undeclared1_labelled_path (events, props, terms) r
       in find_undeclared1_labelled_property rslt f
-  | Property.Prop_label l when not (List.mem l labs) -> (props, events, labs @ [l])
-  | _ -> (props, events, labs)
+  | _ -> events, props, terms
 
-and find_undeclared1_labelled_path (props, events, labs) = function
-  | (r, Some l) when not (List.mem l labs) ->
-      find_undeclared1_path (props, events, labs @ [l]) r
-  | (r, _) ->
-      find_undeclared1_path (props, events, labs) r
+and find_undeclared1_term (events, props, terms) = function
+  | Tm_var (x, Ty_nat n) when not (List.mem_assoc x terms) ->
+      (* note: "VT_nat n" part is set in the parsing stage *)
+      events, props, terms @ [x, n]
+  | Tm_op (_, es) ->
+      List.fold_left find_undeclared1_term (events, props, terms) es
+  | _ -> events, props, terms
 
-and find_undeclared1_path (props, events, labs) = function
+and find_undeclared1_labelled_path (events, props, terms) (p, _) =
+  find_undeclared1_path (events, props, terms) p
+
+and find_undeclared1_path (events, props, terms) = function
   | Property.Path_prop f | Property.Path_test f ->
-      find_undeclared1_property (props, events, labs) f
+      find_undeclared1_property (events, props, terms) f
   | Property.Path_seq rs | Property.Path_sum rs ->
-      List.fold_left find_undeclared1_labelled_path (props, events, labs) rs
-  | Property.Path_star r -> find_undeclared1_labelled_path (props, events, labs) r
-  | Property.Path_label l when not (List.mem l labs) -> (props, events, labs @ [l])
-  | _ -> (props, events, labs)
+      List.fold_left find_undeclared1_labelled_path (events, props, terms) rs
+  | Property.Path_star r -> find_undeclared1_labelled_path (events, props, terms) r
+  | _ -> events, props, terms
 
-and find_undeclared1_rule (props, (events : string list), labs) (r : Rule.t) =
-  let es : string list =
+(* rule *)
+and find_undeclared1_rule (events, props, terms) (r : Rule.t) =
+  let events1 =
     match fst r.event with
     | Ev_name e -> [e]
-    | Ev_name_seq es -> es
-    | Ev_name_seq_compl es -> es in
-  let es =
-    let acts = r.action in
+    | Ev_name_seq es | Ev_name_seq_compl es ->
+	List.filter (fun e -> not (List.mem e events)) es
+  in let events', props', terms' =
     List.fold_left
-      (fun es (act, _) ->
+      (fun (events, props, terms) (act, _) ->
 	match act with
-	| Act_raise es' ->
-	    List.fold_left
-	      (fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
-	      es es'
-	| _ -> es)
-      es acts
+	| Act_raise es ->
+	    let events' = 
+	      List.fold_left
+		(fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
+		events es
+	    in events', props, terms
+	| _ -> events, props, terms)
+      (events @ events1, props, terms) r.action
+  in events', props', terms'
+
+(* upate terms *)
+let rec update_terms_property tenv (f : Property.t) =
+  match f with
+  | Prop_equal (e1, e2) -> Prop_equal (update_term tenv e1, update_term tenv e2)
+  | Prop_neg f' -> Prop_neg (update_terms_property tenv f')
+  | Prop_conj fs -> Prop_conj (List.map (update_terms_property tenv) fs)
+  | Prop_disj fs -> Prop_disj (List.map (update_terms_property tenv) fs)
+  | Prop_modal (m, lp, (f, l_opt)) -> Prop_modal (m, lp, (update_terms_property tenv f, l_opt))
+  | _ -> f
+
+and update_term tenv e =
+  match e with
+  | Tm_var (x, Ty_nat n) when List.mem_assoc x tenv ->
+      Tm_var (x, Ty_nat (List.assoc x tenv))
+  | Tm_var (x, Ty_nat n) ->
+      raise Not_found
+  | Tm_op (op, es) -> Tm_op (op, List.map (update_term tenv) es)
+  | _ -> e
+
+let update_terms_rule tenv (r : Rule.t) =
+  let (p, p_opt), c_opt = r.condition
+  in let c' = (update_terms_property tenv p, p_opt), c_opt
+  in let a' =
+    List.map
+      (fun (act, a_opt) ->
+	(match act with
+	| Act_ensure p -> Act_ensure (update_terms_property tenv p)
+	| _ -> act),
+	a_opt)
+      r.action
   in
-  let events' =
-    List.fold_left
-      (fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
-      events es
-  in (props, events', labs)
+  { event = r.event; condition = c'; action = a'; path = r.path; }
 
 (* add_undeclared *)
 let add_undeclared (decls : Rules.decl list) =
-  let (props : string list), (events : string list), (labs : string list) = find_undeclared decls in
-  let decls' =
+  let (events : string list), (props : string list), terms = find_undeclared decls
+  in let decls' =
     decls
-    @ (List.map (fun p -> Decl_variable ((p, VT_prop), None)) props)
     @ (List.map (fun e -> Decl_event (e, None) ) events)
-    @ (List.map (fun l -> Decl_label l) labs)
-  in  decls'
+    @ (List.map (fun p -> Decl_variable ((p, VT_prop), None)) props)
+    @ (List.map (fun (x, n) -> Decl_variable ((x, VT_nat n), None)) terms) in
 
-(* find_labels *)
-let find_labels (p : Property.labelled_property) =
-  let _, _, labs = find_undeclared1_labelled_property ([], [], []) p
-  in labs
+  (* post processing: update terms in properties/rules *)
+  let decls', _ =
+    List.fold_left
+      (fun (rslt, terms) decl ->
+	match decl with
+	| Decl_variable ((x, VT_nat n), _) when not (List.mem_assoc x terms) ->
+	    rslt @ [decl], terms @ [x, n]
+	| Decl_property (hd, (p, l_opt)) ->
+	    rslt @ [Decl_property (hd, (update_terms_property terms p, l_opt))], terms
+	| Decl_rule (hd, r) ->
+	    rslt @ [Decl_rule (hd, update_terms_rule terms r)], terms
+	| _ -> rslt @ [decl], terms)
+      ([], terms) decls'
+  in decls'
 
 (** protocol *)
 
@@ -256,71 +282,51 @@ and elim_dup1 ps =
 
 (** property *)
 
-(* propositionalize *)
+(* split and propositionalize *)
 
-let rec propositionalize decls =
-  let decls', _ =
+let split_and_propositionalize ?(split_only = false) decls =
+  let ps, rdecls, rest =
     List.fold_left
-      (fun (rslt, tenv) decl ->
+      (fun (ps, rdecls, rest) decl ->
 	match decl with
-	| Decl_variable ((x, VT_nat n), None) ->
-	  let decls' =
-	    List.map
-	      (fun x' -> Decl_variable ((x', VT_prop), None))
-	      (Property.term_to_propositions (Tm_var (x, Ty_nat n)))
-	  in (rslt @ decls'), (x, n) :: tenv
-	| Decl_variable ((_, VT_nat _), Some _) ->
-	    failwith "[propositionalize]"
-	| Decl_property (hd, (f, l_opt)) ->
-	    let f' = propositionalize_property tenv f
-	    in (rslt @ [Decl_property (hd, (f', l_opt))]), tenv
-	| Decl_rule (hd, r) ->
-	    let (f, l_opt), c_code = r.condition in
-	    let f' = propositionalize_property tenv f in
-	    let c' = (f', l_opt), c_code in
-	    let acts' =
-	      List.map
-		(fun (act, code_opt) -> (propositionalize_action tenv act), code_opt)
-		r.action in
-	    let r' = {event = r.event; condition = c'; action = acts'; path = r.path}
-	    in (rslt @ [Decl_rule (hd, r')]), tenv
-	| _ -> (rslt @ [decl]), tenv)
-      ([], []) decls
-  in decls'
-
-and propositionalize_property tenv f =
-  Property.propositionalize @@ annotate_term_type_to_property tenv f
-
-and propositionalize_action tenv (act : Rule.action_unit) =
-  match act with
-  | Act_ensure f -> Act_ensure (propositionalize_property tenv f)
-  | Act_raise _ -> act
-  | Act_do -> act
-  | Act_preserve _ -> act
-
-and annotate_term_type_to_property tenv f =
-  match f with
-  | Prop_atomic _ -> f
-  | Prop_equal (e1, e2) ->
-      Prop_equal ((annotate_term_type tenv e1), annotate_term_type tenv e2)
-  | Prop_neg g ->
-      Prop_neg (annotate_term_type_to_property tenv g)
-  | Prop_conj gs ->
-      Prop_conj (List.map (annotate_term_type_to_property tenv) gs)
-  | Prop_disj gs ->
-      Prop_disj (List.map (annotate_term_type_to_property tenv) gs)
-  | Prop_modal (m, lp, (g, l_opt)) ->
-      Prop_modal (m, lp, ((annotate_term_type_to_property tenv g), l_opt))
-  | _ -> failwith "[annotate_term_type_to_property]"
-
-and annotate_term_type tenv (e : int term) =
-  match e with
-  | Tm_val _ -> e
-  | Tm_var (x, Ty_nat n) when List.mem_assoc x tenv ->
-      Tm_var (x, Ty_nat (List.assoc x tenv))
-  | Tm_var (x, _) ->
-      failwith ("[annotate_term_type] undeclared variable: " ^ x)
-  | _ -> e
+	| Decl_property (_, (p, _)) when Property.include_term_variable_p p ->
+	    ps @ [p], rdecls, rest
+	| Decl_rule _ -> ps, rdecls @ [decl], rest
+	| _ -> ps, rdecls, rest @ [decl])
+      ([], [], []) decls
+  in let alist : ((string * (Property.base_t * int)) list * Property.t) list =
+    (* split : ps -> alist = [(var_binding, property); ...] *)
+    Property.split (Prop_conj ps)
+  in let qs : Property.t list =
+    (* alist -> qs = properties (for cases) *)
+    List.map
+      (fun (env, q) ->
+	let binds, valid =
+	  List.fold_left
+	    (fun (rslt, valid) (x, (Ty_nat n, n')) ->
+	      (* (x, (ty, n') -> x = n' *)
+	      let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
+	      in
+	      rslt @ [if split_only then eq else Property.propositionalize eq],
+	      valid && n > n')
+	    ([], true) env
+	in let q' = if valid then Property.simp q else Prop_atomic "false"
+	in Prop_disj [Prop_neg (Prop_conj binds); q'])
+      alist
+  in let rdecls' =
+    List.map
+      (function
+	| Decl_rule (hd, r) -> Decl_rule (hd, Rule.propositionalize r)
+	| _ -> failwith "[split_and_propositionalize]")
+      rdecls
+  in
+  (*
+  Property.print_property (output_string stderr) (Prop_disj qs);
+  output_string stderr "\n";
+   *)
+  rest
+  @ (if ps = [] then [] else [Decl_property (None, ((Prop_conj qs), None))])
+  @ rdecls'
 
 (* proposition_align
    for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
@@ -351,6 +357,41 @@ let rec align_propositions decls =
       [] decls
   in decls @ decls'
 
+(* add special properties [_idle1; _idle2; _idle3] *)
+let add_special_properties ?(protocol_relax = false) decls=
+  let props_on_events : Property.property list =
+    let idle1 = Prop_atomic "_idle"
+	(* _idle *)
+    and idle2 =
+      Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
+		  (Prop_disj [Prop_neg (Prop_atomic "last"); Prop_atomic "_idle"], None))
+	(* [true*] (last -> _idle) *)
+    and idle3 =
+      (* this prohibits intermediate _idle states (and thus _skip events).
+	 _idle appears only at the beginning/end of the trace.
+	 included only when relax_protocol is not set *)
+      Prop_modal (Mod_ex, (Path_prop (Prop_atomic "true"), None),
+		  (Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
+			       (Prop_disj [Prop_neg (Prop_atomic "_idle"); Prop_atomic "last"], None)), None))
+	(* <true>[true*] (_idle -> last) *)
+    in [idle1; idle2] @ if protocol_relax (*|| skip_allow*) then [] else [idle3]
+  in
+  List.fold_left
+    (fun rslt p ->
+      (* append special_events to decls when undeclared *)
+      try
+	let _ =
+	  List.find
+	    (function
+	      | Decl_property (None, (p', None)) when equal_property p' p -> true
+	      | _ -> false)
+	    decls
+	in rslt
+      with Not_found -> rslt @ [Decl_property (None, (p, None))])
+    decls props_on_events
+
+(** rule *)
+
 (* code_discard
    strip off code fragments (in JS) from rules
  *)
@@ -369,8 +410,6 @@ let rec discard_codes decls =
 	  failwith ("[discard_codes] named rule (" ^ name ^ ") not permitted")
       | _ -> rslt @ [decl])
     [] decls
-
-(** rule *)
 
 (* preserve_expand
  *)
@@ -459,65 +498,41 @@ let variables_declare decls =
 (** preprocess : Rules.decl list -> Rules.decl list *)
 
 let rec preprocess
-    ?(undeclared_add = true)
+    (* protocol *)
     ?(any_expand = true)
     ?(protocol_relax = false)
-    ?(proposition_align = true)
+
+    (* property *)
+    ?(case_split = true)
+    ?(propositionalize = true)
+    ?(extra_properties = true)
+
+    (* rule *)
     ?(code_discard = false)
     ?(preserve_expand = true)
-    (*?(skip_allow = false)*)
+
     (decls : Rules.decl list) =
 
   let identity decls = decls in
   decls
-  (* find/add undeclared event/variable names *)
-  |> (if undeclared_add then add_undeclared else identity)
 
-  (* event/protocol *)
+  (* event / variable *)
+  |> add_undeclared
+  (*|> variables_declare*)
+
+  (* protocol *)
   |> (if any_expand then expand_any else identity)
-  (*|> (if interleaving_apply then apply_interleaving else identity)*)
   |> minimize_protocols
   |> (if protocol_relax then relax_protocols else identity)
 
-  (* variable/property *)
-  |> propositionalize
-  |> (if proposition_align then align_propositions else identity)
-  |> (if code_discard then discard_codes else identity)
-  (*|> variables_declare*)
-  |> (fun decls ->
-      (* add special properties [_idle1; _idle2; _idle3] *)
-      let props_on_events : Property.property list =
-	let idle1 = Prop_atomic "_idle"
-	    (* _idle *)
-	and idle2 =
-	  Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
-		      (Prop_disj [Prop_neg (Prop_atomic "last"); Prop_atomic "_idle"], None))
-	    (* [true*] (last -> _idle) *)
-	and idle3 =
-	  (* this prohibits intermediate _idle states (and thus _skip events).
-	     _idle appears only at the beginning/end of the trace.
-	     included only when relax_protocol is not set *)
-	  Prop_modal (Mod_ex, (Path_prop (Prop_atomic "true"), None),
-		      (Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
-				   (Prop_disj [Prop_neg (Prop_atomic "_idle"); Prop_atomic "last"], None)), None))
-	    (* <true>[true*] (_idle -> last) *)
-	in [idle1; idle2] @ if protocol_relax (*|| skip_allow*) then [] else [idle3]
-      in
-      List.fold_left
-	(fun rslt p ->
-	  (* append special_events to decls when undeclared *)
-	  try
-	    let _ =
-	      List.find
-		(function
-		  | Decl_property (None, (p', None)) when equal_property p' p -> true
-		  | _ -> false)
-		decls
-	    in rslt
-	  with Not_found -> rslt @ [Decl_property (None, (p, None))])
-	decls props_on_events)
+  (* property *)
+  |> (if case_split then split_and_propositionalize ~split_only: (not propositionalize) else identity)
+  |> (if extra_properties then align_propositions else identity)
+  |> (if extra_properties then add_special_properties ~protocol_relax: protocol_relax else identity)
 
   (* rule *)
+  |> (if code_discard then discard_codes else identity)
+
   (* move "preserve" rules to the last part *)
   |> (fun decls ->
       let decls', pres_rules =

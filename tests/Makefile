@@ -15,15 +15,16 @@ include $(TOP_DIR)/tests/Makefile.common
 
 # shelltest (https://github.com/simonmichael/shelltestrunner) can be installed
 # by running "apt-get install shelltestrunner"
-test::
-	shelltest tests.conf
-
 # examples
 test::	examples.conf
 	shelltest $<
 
-examples.conf:	echo.conf ping_pong.conf accumulator.conf bounded_buffer.conf
+TESTCONFS = $(shell echo {echo,ping_pong,accumulator,bounded_buffer,arith}.conf)
+examples.conf:	$(TESTCONFS)
 	cat $^ > $@
+
+test::
+	shelltest tests.conf
 
 # ----------
 out/%.scxml:	%.rules

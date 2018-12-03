@@ -55,6 +55,23 @@ let event_name ev =
   | Ev_name_seq [e] -> e
   | _ -> failwith ("[event_name] " ^ show_event ev)
 
+(** propositionalize *)
+
+let propositionalize r =
+  let (p, p_opt), c_opt = r.condition
+  in let p' = Property.propositionalize p
+  in let acts = r.action
+  in let acts' =
+    List.map
+      (fun (act, a_opt) ->
+	(match act with
+	| Act_ensure p -> Act_ensure (Property.propositionalize p)
+	| _ -> act),
+	a_opt)
+      acts
+  in
+  { event = r.event; condition = (p', p_opt), c_opt; action = acts'; path = r.path; }
+
 (** pretty-printing *)
 
 let rec print_rule out ?(fancy=false) (r : rule) =

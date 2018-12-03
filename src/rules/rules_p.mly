@@ -335,7 +335,7 @@ var_type
 	    | "bit"    -> Rules.VT_nat 2
 	    | "nibble" -> Rules.VT_nat 16
 	    | "byte"   -> Rules.VT_nat 256
-	    | "nat"    -> Rules.VT_nat 256
+	    | "nat"    -> Rules.VT_nat 16
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
 	| NAME LPAREN CONST RPAREN
@@ -405,7 +405,7 @@ param_seq1
 	: term
 	  { [$1] }
 	| param_seq1 COMMA CONST
-	  { $1 @ [Tm_val ($3, Ty_nat 255)] }
+	  { $1 @ [Tm_const ($3, Ty_nat 255)] }
 	;
 
 /*
@@ -487,10 +487,12 @@ property3
 //	  { Prop_atomic_elt ($1, $2) }
 //	| modal_path property3
 //	  { Ldl_modal (fst $1, snd $1, $2) }
+
 	| term EQUAL term
 	  { Prop_equal ($1, $3) }
 	| term NE term
 	  { Prop_neg (Prop_equal ($1, $3)) }
+
 	| neg property3
 	  { Prop_neg $2 }
 	| LPAREN property RPAREN
@@ -556,21 +558,22 @@ index	: LBRACK term RBRACK
 term	: term1
 	  { $1 }
 	| term PLUS term1
-	  { Tm_app (Tm_app (Tm_bop "+", $1), $3) }
+	  { Tm_op ("+", [$1; $3]) }
 //	| term MINUS term1
-//	  { Tm_app (Tm_app (Tm_bop "-", $1), $3) }
+//	  { Tm_op ("-", [$1; $3]) }
 	;
 
 term1	: term2
 	  { $1 }
 //	| term1 STAR term2
-//	  { Tm_app (Tm_app (Tm_bop "*", $1), $3) }
+//	  { Tm_op ("*", [$1; $3]) }
 	;
 
 term2	: CONST
-	  { Tm_val ($1, Ty_nat 255) }
+	  { if $1 < 0 || $1 > 255 then failwith ("[parsing] out of range: " ^ (string_of_int $1));
+	    Tm_const ($1, Ty_nat 256) }
 	| NAME
-	  { Tm_var ($1, Ty_nat 255) }
+	  { Tm_var ($1, Ty_nat 16) }
 	| LPAREN term RPAREN
 	  { $2 }
 	;
