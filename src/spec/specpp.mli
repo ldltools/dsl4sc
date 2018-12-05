@@ -1,4 +1,4 @@
-(* $Id: spec2ldl.mli,v 1.1 2017/08/25 20:07:53 sato Exp $ *)
+(* $Id: $ *)
 (*
  * (C) Copyright IBM Corp. 2018.
  *
@@ -14,6 +14,4 @@
  * limitations under the License.
  *)
 
-type event_map = (string * Ldl.formula) list
-
-val translate : Spec.t -> Ldl.formula list * event_map
+val preprocess : Spec.t -> Spec.t

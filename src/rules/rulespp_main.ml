@@ -25,16 +25,18 @@ let opt_verbose = ref false
 let opt_parse_only = ref false
 
 (* protocol *)
+let opt_expand_any = ref true
 let opt_relax_protocols = ref false
 (* property *)
 let opt_split_cases = ref true
 let opt_propositionalize = ref true
-let opt_extra_properties = ref true
 (* rule *)
+let opt_expand_preserve = ref true
 let opt_discard_codes = ref false
 
 (* deprecated *)
 (*
+let opt_extra_properties = ref true
 let opt_expand_macros = ref false
 let opt_expand_arrays = ref false
 let opt_add_undeclared = ref true
@@ -48,8 +50,8 @@ let synopsis prog =
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
-    ^ "  -o <file>\t\toutput rules to <file>\n"
-    ^ "  -t <fmt>\t\toutput rules in <fmt> (rules, caml, json, xml)\n"
+    ^ "  -o <file>\t\toutput to <file>\n"
+    ^ "  -t <fmt>\t\toutput in <fmt> (caml, json, xml)\n"
     ^ "  -p\t\t\tparse-only\n"
     ^ "  -h\t\t\tdisplay this message\n"
   in output_string stdout msg
@@ -83,6 +85,8 @@ let main argc argv =
   and outfile = ref "/dev/stdout" in
   while !i < argc do
     let len = String.length argv.(!i)
+    in let matches str =
+      len <= String.length str && argv.(!i) = String.sub str 0 len
     in let _ =
       match argv.(!i) with
       | "-" ->
@@ -105,19 +109,19 @@ let main argc argv =
 	  opt_parse_only := true
 
       (* protocol *)
-      | _ when 6 < len && 0 <= compare "--relax-protocols" argv.(!i) ->
+      | _ when 7 <= len && matches "--relax-protocols" ->
 	  opt_relax_protocols := true
       (* property *)
-      | _ when 6 < len && 0 <= compare "--no-split-cases" argv.(!i) ->
+      | _ when 7 <= len && matches "--no-split-cases" ->
 	  opt_split_cases := false
-      | _ when 6 < len && 0 <= compare "--no-propositionalize" argv.(!i) ->
+      | _ when 8 <= len && matches "--keep-terms" ->
 	  opt_propositionalize := false
-      | _ when 6 < len && 0 <= compare "--no-extra-properties" argv.(!i) ->
-	  opt_extra_properties := false
       (* rule *)
-      | "--discard-codes" ->
+      | _ when 8 <= len && matches "--keep-preserve" ->
+	  opt_expand_preserve := false
+      | _ when 9 <= len && matches "--discard-codes" ->
 	  opt_discard_codes := true
-      | "--no-discard-codes" ->
+      | _ when 9 <= len && matches "--no-discard-codes" ->
 	  opt_discard_codes := false
 
       | _  when argv.(!i).[0] = '-' ->
@@ -144,11 +148,15 @@ let main argc argv =
   (* decls -> decls' *)
   let decls' =
     Rulespp.preprocess
-      ~protocol_relax: !opt_relax_protocols
-      ~case_split: !opt_split_cases
+      ~expand_any: !opt_expand_any
+      ~relax_protocols: !opt_relax_protocols
+
+      ~split_cases: !opt_split_cases
       ~propositionalize: !opt_propositionalize
-      ~extra_properties: !opt_extra_properties
-      ~code_discard: !opt_discard_codes
+
+      ~discard_codes: !opt_discard_codes
+      ~expand_preserve: !opt_expand_preserve
+
       decls in
   let rules : Rules.t = Rules.decls_to_rules decls' in
   output_rules oc rules !opt_fmt_out;

@@ -15,6 +15,12 @@
  *)
 
 (** term *)
+type base_t =
+  | Ty_nat of int
+  | Ty_bool
+(*| Ty_fun : 'a base_t * 'b base_t -> ('a -> 'b) base_t*)
+[@@deriving show, yojson, eq]
+
 type _ term =
   | Tm_const : 'a * base_t -> 'a term
   | Tm_var : string * base_t -> 'a term
@@ -22,11 +28,6 @@ type _ term =
   | Tm_abs : ('a term -> 'b term) -> ('a -> 'b) term
   | Tm_op : string * 'a term list -> 'a term
   | Tm_eq : 'a term * 'a term -> bool term
-
-and base_t =
-  | Ty_prop
-  | Ty_nat of int
-(*| Ty_fun : 'a base_t * 'b base_t -> ('a -> 'b) base_t*)
 
 (* ppx does not support gadt *)
 
@@ -39,16 +40,22 @@ let rec eval_term_int (env : (string * (base_t * int)) list) = function
   | Tm_const (n, Ty_nat _) -> n
   | Tm_var (x, Ty_nat _) when List.mem_assoc x env -> snd (List.assoc x env)
   | Tm_var (x, Ty_nat _) -> raise Not_found
-  | Tm_var (x, Ty_prop) -> invalid_arg "[eval_term_int]"
+  | Tm_var (x, Ty_bool) -> invalid_arg "[eval_term_int]"
+
   | Tm_op ("+", es) ->
       List.fold_left (fun rslt e -> rslt + eval_term_int env e) 0 es
   | Tm_op ("-", e :: es) ->
       List.fold_left (fun rslt e -> rslt - eval_term_int env e) (eval_term_int env e) es
+  | Tm_op ("*", es) ->
+      List.fold_left (fun rslt e -> rslt * eval_term_int env e) 1 es
+  | Tm_op ("/", e :: es) ->
+      List.fold_left (fun rslt e -> rslt / eval_term_int env e) (eval_term_int env e) es
   | Tm_op ("<", [e1; e2]) ->
-      (* work-around: this should be regarded as a bool term *)
+      (* work-around: this actually should be regarded as a bool term, instead of a int term *)
       let n1, n2 = eval_term_int env e1, eval_term_int env e2
       in if n1 < n2 then 1 else 0
   | Tm_op (op, es) -> invalid_arg op
+
   | _ -> failwith "[eval_term]"
 
 (* variable of nat (n) -> m propositions where m = log2 (n) *)
@@ -67,12 +74,28 @@ let rec print_term (out : string -> unit) (e : int term) =
       out (string_of_int n)
   | Tm_var (x, _) ->
       out x
-  | Tm_op ("+", e :: rest) ->
-      out "(";
-      print_term out e;
-      List.iter (fun e -> out " + "; print_term out e) rest;
-      out ")";
+  | Tm_op (op, [e']) when prec e' <= prec e ->
+      print_term out e';
+  | Tm_op (op, [e']) ->
+      out "("; print_term out e'; out ")";
+  | Tm_op (op, e' :: rest) when prec e' <= prec e ->
+      print_term out e';
+      out " "; out op; out " ";
+      print_term out (Tm_op (op, rest))
+  | Tm_op (op, e' :: rest) ->
+      out "("; print_term out e'; out ")";
+      out " "; out op; out " ";
+      print_term out (Tm_op (op, rest))
   | _ -> failwith "[print_term]"
+
+(* precedence: *, / < +, - *)
+and prec = function
+  | Tm_const _ | Tm_var _ -> 0
+  | Tm_app _ -> 50
+  | Tm_op ("*", _) | Tm_op ("/", _) -> 80
+  | Tm_op ("+", _) | Tm_op ("-", _) -> 100
+  | Tm_op ("<", _) -> 200
+  | Tm_op _ -> 200
 
 (** pretty-printing -- ppx-compliant *)
 
@@ -148,6 +171,25 @@ let rec modal_p = function
       (match List.find_opt modal_p ps with None -> false | _ -> true)
   | Prop_modal _ -> true
 
+let rec include_term_variable_p f =
+  match f with
+  | Prop_atomic _ -> false
+  | Prop_equal (e1, e2) ->
+      let rec include_p (e : int term) =
+	match e with
+	| Tm_const _ -> false
+	| Tm_var (x, _) -> true
+	| Tm_op (_, es) ->
+	    (match List.find_opt include_p es with None -> false | Some _ -> true)
+	| _ -> failwith "[include_ter_variable_p]"
+      in include_p e1 || include_p e2
+  | Prop_neg f' -> include_term_variable_p f'
+  | Prop_conj fs | Prop_disj fs ->
+      (match List.find_opt include_term_variable_p fs with None -> false | Some _ -> true)
+  | Prop_modal (m, (r, r_opt), (f', f_opt)) ->
+      include_term_variable_p f'
+  | _ -> failwith "[include_term_variable_p]"
+
 (* simplifaction w/o term value info *)
 
 let rec flatten (f : t) =
@@ -193,12 +235,14 @@ let rec simp_equiv f =
   let tt = Prop_atomic "true" and ff = Prop_atomic "false" in
   match f with
   | Prop_atomic _ -> f
+  | Prop_equal (e1, e2) when not (include_term_variable_p f) ->
+      Prop_atomic (string_of_bool (eval_term_int [] e1 = eval_term_int [] e2))
 
-  | Prop_neg f' when f' = tt -> ff
-  | Prop_neg f' when f' = ff -> tt
-  | Prop_neg (Prop_atomic _) -> f
-  | Prop_neg (Prop_neg f') -> simp_equiv f'
-  | Prop_neg f' -> Prop_neg (simp_equiv f')
+  | Prop_neg f' ->
+      (match simp_equiv f' with
+      | Prop_atomic "true" -> ff
+      | Prop_atomic "false" -> tt
+      | g -> Prop_neg g)
 
   | Prop_conj [] -> tt
   | Prop_conj fs ->
@@ -216,6 +260,7 @@ let rec simp_equiv f =
   | _ -> f
 
 and simp_equiv_conj rslt conj =
+  (* each elt of conj is already simpliefied *)
   let tt = Prop_atomic "true" and ff = Prop_atomic "false" in
   match conj with
   | [] -> rslt
@@ -228,6 +273,7 @@ and simp_equiv_conj rslt conj =
   | f :: rest -> simp_equiv_conj (rslt @ [f]) rest
 
 and simp_equiv_disj rslt disj =
+  (* each elt of disj is already simpliefied *)
   let tt = Prop_atomic "true" and ff = Prop_atomic "false" in
   match disj with
   | [] -> rslt
@@ -264,25 +310,6 @@ and find_term_variables_rec (rslt : (string * base_t) list) f =
   | Prop_modal (_, (r, _), (f', _)) ->
       find_term_variables_rec rslt f'      
   | _ -> failwith "[find_term_variables_rec]"
-
-let rec include_term_variable_p f =
-  match f with
-  | Prop_atomic _ -> false
-  | Prop_equal (e1, e2) ->
-      let rec include_p (e : int term) =
-	match e with
-	| Tm_const _ -> false
-	| Tm_var (x, _) -> true
-	| Tm_op (_, es) ->
-	    (match List.find_opt include_p es with None -> false | Some _ -> true)
-	| _ -> failwith "[include_ter_variable_p]"
-      in include_p e1 || include_p e2
-  | Prop_neg f' -> include_term_variable_p f'
-  | Prop_conj fs | Prop_disj fs ->
-      (match List.find_opt include_term_variable_p fs with None -> false | Some _ -> true)
-  | Prop_modal (m, (r, r_opt), (f', f_opt)) ->
-      include_term_variable_p f'
-  | _ -> failwith "[include_term_variable_p]"
 
 (* property instantiation using term value info *)
 
@@ -721,6 +748,12 @@ and path_prec = function
 (*| Path_label _ -> 0*)
 
 (** pretty-printing (string conversion) *)
+
+let string_of_property p =
+  let str = ref "" in
+  let concat str' = str := !str ^ str' in
+  print_property concat p;
+  !str
 
 let string_of_labelled_property lp =
   let str = ref "" in

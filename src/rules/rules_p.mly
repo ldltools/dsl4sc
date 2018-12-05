@@ -26,7 +26,6 @@ type rule_elt =
   | Elt_condition_opt of string
   | Elt_action of action
 (*| Elt_action_opt of string*)
-(*| Elt_path of labelled_path*)
 
 let rec genrule (elts : rule_elt list) =
   let e : event = Ev_name ""
@@ -45,7 +44,6 @@ and genrule_rec ((e, ex), (c, cx), a) elts =
     | Elt_condition_opt str -> (e, ex), (c, Some str), a
     | Elt_action a'         -> (e, ex), (c, cx), a'
     (*| Elt_action_opt str    -> (e, ex), (c, cx), (a, Some str), r*)
-    (*| Elt_path r'           -> (e, ex), (c, cx), (a, ax), Some r'*)
     | _ -> failwith "genrule_rec"
   in genrule_rec rslt (List.tl elts)
 
@@ -88,8 +86,7 @@ and expand_prop_spec_rec rslt = function
 //%token	<string * string list> NAME_WITH_ARGS
 
 %left	IMPLIES
-%left	GT LT
-//%right	UMIN NEG
+%left	GT LT GE LE
 %right	NOT EXCLAM
 %left	STAR
 %left	QUESTION
@@ -102,13 +99,13 @@ and expand_prop_spec_rec rslt = function
 %token	IMPLIES
 
 %token	EQUAL
-%token	NE GT LT
+%token	NE GT LT GE LE
 
 %token	TILDE
-%token 	EXCLAM DOLLAR HAT
+%token 	EXCLAM HAT
 %token	PLUS MINUS
 %token	QUESTION
-%token	STAR
+%token	STAR SLASH
 
 // extra tokens
 %token	LPAREN RPAREN LBRACE RBRACE LBRACK RBRACK
@@ -167,11 +164,6 @@ decl	: EVENT event_spec_seq
 	| IMPLEMENTATION LBRACE STRING RBRACE
 	  { [Rules.Decl_impl $3] }
 
-//	| PROPOSITION proposition_spec_seq
-//	  { List.map (fun s -> Rules.Decl_proposition s) $2 }
-//	| PATH path_spec_seq
-//	  { List.map (fun s -> Rules.Decl_path s) $2 }
-
 // **conflict
 //	| error
 //	  { raise @@ Rules_l.ParseError "decl" }
@@ -182,9 +174,27 @@ decl	: EVENT event_spec_seq
 // ================================================================================
 
 event_spec_seq
-	: proposition_spec_seq
+	: event_spec_seq1
 	  { $1 }
- 	;
+	| event_spec_seq SEMI event_spec_seq1
+	  { $1 @ $3 }
+	| event_spec_seq SEMI
+	  { $1 }
+	;
+
+event_spec_seq1
+	: event_spec
+	  { $1 }
+	| event_spec_seq1 COMMA event_spec
+	  { $1 @ $3 }
+	;
+
+event_spec
+	: NAME
+	  { [$1, None] }
+	| NAME LBRACE STRING RBRACE
+	  { [$1, Some $3] }
+	;
 
 // ================================================================================
 // protocol
@@ -332,16 +342,16 @@ var_type
 	  { match $1 with
 	    | "prop"   -> Rules.VT_prop
 	    | "bool"   -> Rules.VT_prop
-	    | "bit"    -> Rules.VT_nat 2
-	    | "nibble" -> Rules.VT_nat 16
-	    | "byte"   -> Rules.VT_nat 256
-	    | "nat"    -> Rules.VT_nat 16
+	    | "bit"    -> Rules.VT_term (Ty_nat 2)
+	    | "nibble" -> Rules.VT_term (Ty_nat 16)
+	    | "byte"   -> Rules.VT_term (Ty_nat 256)
+	    | "nat"    -> Rules.VT_term (Ty_nat 16)
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
 	| NAME LPAREN CONST RPAREN
 	  // range type
 	  { match $1 with
-	    | "nat" when 0 < $3 && $3 <= 256 -> Rules.VT_nat $3
+	    | "nat" when 0 < $3 && $3 <= 256 -> Rules.VT_term (Ty_nat $3)
 	    | "nat" -> invalid_arg (sprintf "nat %d : out of range" $3)
 	    | _ -> failwith ("[parsing] unknown type: " ^ $1)
 	  }
@@ -483,25 +493,30 @@ property2
 property3
 	: NAME
 	  { Prop_atomic $1 }
-//	| NAME index_seq
-//	  { Prop_atomic_elt ($1, $2) }
-//	| modal_path property3
-//	  { Ldl_modal (fst $1, snd $1, $2) }
-
-	| term EQUAL term
-	  { Prop_equal ($1, $3) }
-	| term NE term
-	  { Prop_neg (Prop_equal ($1, $3)) }
-
 	| neg property3
 	  { Prop_neg $2 }
 	| LPAREN property RPAREN
 	  { $2 }
-//	| label_use
-//	  { Prop_label $1 }
+	| property3_equal
+	  { $1 }
 	;
 
-labelled_property3
+property3_equal
+	: term EQUAL term
+	  { Prop_equal ($1, $3) }
+	| term NE term
+	  { Prop_neg (Prop_equal ($1, $3)) }
+	| term LT term
+	  { Prop_equal (Tm_op ("<", [$1; $3]), Tm_const (1, Ty_nat 2)) }
+	| term GT term
+	  { Prop_equal (Tm_op ("<", [$3; $1]), Tm_const (1, Ty_nat 2)) }
+	| term LE term
+	  { Prop_equal (Tm_op ("<", [$3; $1]), Tm_const (0, Ty_nat 2)) }
+	| term GE term
+	  { Prop_equal (Tm_op ("<", [$1; $3]), Tm_const (0, Ty_nat 2)) }
+	;
+
+property3_labelled
 	: property3
 	  { $1, None }
 	| label_def property3
@@ -510,7 +525,7 @@ labelled_property3
 
 // Prop_modal of modality * labelled_path * labelled_property
 modal_property
-	: modal_path labelled_property3
+	: modal_path property3_labelled
 	  { Prop_modal (fst $1, snd $1, $2) }
 	| modal_path modal_property
 	  { Prop_modal (fst $1, snd $1, ($2, None)) }
@@ -540,6 +555,7 @@ neg	: NOT
 	    {}
 	;
 
+/*
 index_seq
 	: index
 	  { [$1] }
@@ -550,32 +566,48 @@ index_seq
 index	: LBRACK term RBRACK
 	  { $2 }
 	;
+*/
 
 // --------------------------------------------------------------------------------
 // term
 // --------------------------------------------------------------------------------
 
-term	: term1
+term	: sum_term
 	  { $1 }
-	| term PLUS term1
+	| error
+	  { raise @@ Rules_l.ParseError "term" }
+	;
+
+sum_term
+	: product_term
+	  { $1 }
+	| sum_term PLUS product_term
 	  { Tm_op ("+", [$1; $3]) }
-//	| term MINUS term1
-//	  { Tm_op ("-", [$1; $3]) }
+	| sum_term MINUS product_term
+	  { Tm_op ("-", [$1; $3]) }
 	;
 
-term1	: term2
+product_term
+	: factor
 	  { $1 }
-//	| term1 STAR term2
-//	  { Tm_op ("*", [$1; $3]) }
+	| product_term STAR factor
+	  { Tm_op ("*", [$1; $3]) }
+	| product_term SLASH factor
+	  { Tm_op ("/", [$1; $3]) }
 	;
 
-term2	: CONST
+factor	: atomic_term
+	  { $1 }
+	| LPAREN sum_term RPAREN
+	  { $2 }
+	;
+
+atomic_term
+	: CONST
 	  { if $1 < 0 || $1 > 255 then failwith ("[parsing] out of range: " ^ (string_of_int $1));
 	    Tm_const ($1, Ty_nat 256) }
 	| NAME
 	  { Tm_var ($1, Ty_nat 16) }
-	| LPAREN term RPAREN
-	  { $2 }
 	;
 
 // --------------------------------------------------------------------------------
@@ -686,57 +718,14 @@ label_def_suffix
 	  { $2 }
 	;
 
+/*
 label_use
 	: DOLLAR NAME
 	  { $2 }
 	| AT NAME
 	  { $2 }
 	;
-
-// ================================================================================
-// proposition (deprecated)
-// ================================================================================
-// proposition_spec_seq = (string * string option) list
-proposition_spec_seq
-	: proposition_spec_seq1
-	  { $1 }
-	| proposition_spec_seq SEMI proposition_spec_seq1
-	  { $1 @ $3 }
-	| proposition_spec_seq SEMI
-	  { $1 }
-	;
-
-proposition_spec_seq1
-	: proposition_spec
-	  { $1 }
-	| proposition_spec_seq1 proposition_spec
-	  { $1 @ $2 }
-	| proposition_spec_seq1 COMMA proposition_spec
-	  { $1 @ $3 }
-	;
-
-// proposition_spec = (string * string option) list
-proposition_spec
-	: NAME
-	  { [$1, None] }
-//	| NAME range_seq
-//	  { List.map (fun x -> x, None) (expand_prop_spec $1 $2) }
-	| NAME LBRACE STRING RBRACE
-	  { [$1, Some $3] }
-	;
-
-/*
-range_seq
-	: range
-	  { [$1] }
-	| range_seq range
-	  { $1 @ [$2] }
-	;
-
-range	: LBRACK CONST RBRACK
-	  { $2 }
-	;
- */
+*/
 
 // ================================================================================
 // rule
@@ -934,6 +923,12 @@ preserve_rule_e
 	  { [Elt_event (Ev_name_seq_compl $4)] }
 	;
 
+args	: NAME
+	  { [$1] }
+	| args COMMA NAME
+	  { $1 @ [$3] }
+	;
+
 preserve_rule_a
 	: DO preserve
 	  { $2 }
@@ -945,15 +940,16 @@ preserve_rule_a
 	;
 
 preserve
-	: PRESERVE args
+	: PRESERVE preserve_args
 	  { [Elt_action [(Act_preserve $2), None]] }
- 	| PRESERVE LPAREN args RPAREN
-	  { [Elt_action [(Act_preserve $3), None]] }
+// 	| PRESERVE LPAREN args RPAREN
+//	  { [Elt_action [(Act_preserve $3), None]] }
 	;
 
-args	: NAME
+preserve_args
+	: property3
 	  { [$1] }
-	| args COMMA NAME
+	| preserve_args COMMA property3
 	  { $1 @ [$3] }
 	;
  

@@ -42,8 +42,8 @@ and variable_spec =
     (string * variable_type) * string option
 
 and variable_type =
-  | VT_prop
-  | VT_nat of int
+  | VT_prop			(* propositions *)
+  | VT_term of Property.base_t	(* term type *)
 
 (** property *)
 and property_spec =

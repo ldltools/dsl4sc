@@ -15,13 +15,20 @@
  *)
 
 type t =
-    { event_seq : string list;
-      proto_seq : Protocol.t list;
+    { events : string list;
+      protocols : Protocol.t list;
 
-      pvar_seq : string list;
-      prop_seq : Property.labelled_property list;
+      variables : (string * Rules.variable_type) list;
+      properties : Property.t list;
 
-      rule_seq : Rule.t list;
+      rules : Rule.t list;
     }
 
-val rules_to_spec : Rules.t -> t
+(** ctor *)
+
+val spec_of_rules : Rules.t -> t
+
+(** pretty-printing *)
+
+val print_spec : (string -> unit) -> t -> unit
+val string_of_spec : t -> string

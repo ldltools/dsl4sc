@@ -21,10 +21,14 @@ open Rules
 
 (** event / variable *)
 
+let _builtin_events = ["_any"; "_epsilon"; "_skip"]
+
+let _builtin_props = ["_idle"]
+
 (* find_declared -- events / variables *)
 
 let rec find_declared decls =
-  let events, props, terms =
+  let events, (props : string list), (terms : (string * base_t) list)=
     List.fold_left
       (fun (events, props, terms) -> function
 	| Decl_event (e, _) when not (List.mem e events) ->
@@ -33,8 +37,17 @@ let rec find_declared decls =
 	| Decl_variable ((p, VT_prop), _) when not (List.mem p props) ->
 	    (*Printf.printf "(proposition:%s)" p;*)
 	    events, props @ [p], terms
-	| Decl_variable ((x, VT_nat n), _) when not (List.mem_assoc x terms) ->
-	    events, props, terms @ [x, n]
+	| Decl_variable ((x, VT_term ty), _) when List.mem_assoc x terms ->
+	    if List.assoc x terms <> ty then
+	      failwith ("[find_declared] inconsistent declaration: " ^ x);
+	    events, props, terms
+	| Decl_variable ((x, VT_term ty), _) ->
+	    assert (not (List.mem_assoc x terms));
+	    if List.mem x props then
+	      failwith ("[find_declared] conflict declaration: " ^ x);
+	    events, props, terms @ [x, ty]
+	| Decl_variable ((x, _), _) ->
+	    invalid_arg ("[find_declared] strange variable: " ^ x)
 	| _ -> events, props, terms)
       ([], [], []) decls
   in events @ ["_epsilon"; "_skip"; "_any"], props @ ["_idle"], terms
@@ -60,7 +73,7 @@ let rec find_undeclared decls =
     if n = 0 then xs else drop (n - 1) (List.tl xs)
   in let events3 = drop (List.length events1) events2
   and props3 = drop (List.length props1) props2
-  and terms3 = drop (List.length terms1) terms2
+  and terms3 : (string * base_t) list = drop (List.length terms1) terms2
   in events3, props3, terms3
 
 (* protocol *)
@@ -84,7 +97,10 @@ and find_undeclared1_labelled_property (events, props, terms) (f, _) =
 and find_undeclared1_property (events, props, terms) = function
   | Property.Prop_atomic "true" | Property.Prop_atomic "false" -> events, props, terms
   | Property.Prop_atomic "last" -> events, props, terms
-  | Property.Prop_atomic a when not (List.mem a props) -> events, props @ [a], terms
+  | Property.Prop_atomic a when not (List.mem a props) ->
+      if List.mem_assoc a terms then
+	failwith ("[find_undeclared1_property] conflict declaration: " ^ a);
+      events, props @ [a], terms
   | Property.Prop_equal (e1, e2) ->
       List.fold_left find_undeclared1_term (events, props, terms) [e1; e2]
   | Property.Prop_neg f -> find_undeclared1_property (events, props, terms) f
@@ -97,8 +113,8 @@ and find_undeclared1_property (events, props, terms) = function
 
 and find_undeclared1_term (events, props, terms) = function
   | Tm_var (x, Ty_nat n) when not (List.mem_assoc x terms) ->
-      (* note: "VT_nat n" part is set in the parsing stage *)
-      events, props, terms @ [x, n]
+      (* note: "Ty_nat n" part is set in the parsing stage *)
+      events, props, terms @ [x, Ty_nat n]
   | Tm_op (_, es) ->
       List.fold_left find_undeclared1_term (events, props, terms) es
   | _ -> events, props, terms
@@ -125,18 +141,25 @@ and find_undeclared1_rule (events, props, terms) (r : Rule.t) =
     List.fold_left
       (fun (events, props, terms) (act, _) ->
 	match act with
+	| Act_ensure p ->
+	    find_undeclared1_property (events, props, terms) p
 	| Act_raise es ->
 	    let events' = 
 	      List.fold_left
 		(fun rslt e -> if List.mem e rslt then rslt else rslt @ [e])
 		events es
 	    in events', props, terms
+	| Act_preserve ps ->
+	    List.fold_left
+	      (fun (events, props, terms) p ->
+		find_undeclared1_property (events, props, terms) p)
+	      (events, props, terms) ps
 	| _ -> events, props, terms)
       (events @ events1, props, terms) r.action
   in events', props', terms'
 
 (* upate terms *)
-let rec update_terms_property tenv (f : Property.t) =
+let rec update_terms_property (tenv : (string * base_t) list) (f : Property.t) =
   match f with
   | Prop_equal (e1, e2) -> Prop_equal (update_term tenv e1, update_term tenv e2)
   | Prop_neg f' -> Prop_neg (update_terms_property tenv f')
@@ -148,7 +171,7 @@ let rec update_terms_property tenv (f : Property.t) =
 and update_term tenv e =
   match e with
   | Tm_var (x, Ty_nat n) when List.mem_assoc x tenv ->
-      Tm_var (x, Ty_nat (List.assoc x tenv))
+      Tm_var (x, List.assoc x tenv)
   | Tm_var (x, Ty_nat n) ->
       raise Not_found
   | Tm_op (op, es) -> Tm_op (op, List.map (update_term tenv) es)
@@ -169,21 +192,22 @@ let update_terms_rule tenv (r : Rule.t) =
   { event = r.event; condition = c'; action = a'; }
 
 (* add_undeclared *)
-let add_undeclared (decls : Rules.decl list) =
-  let (events : string list), (props : string list), terms = find_undeclared decls
+let pp_add_undeclared (decls : Rules.decl list) =
+  let (events : string list), (props : string list), (terms : (string * base_t) list) =
+    find_undeclared decls
   in let decls' =
     decls
     @ (List.map (fun e -> Decl_event (e, None) ) events)
     @ (List.map (fun p -> Decl_variable ((p, VT_prop), None)) props)
-    @ (List.map (fun (x, n) -> Decl_variable ((x, VT_nat n), None)) terms) in
+    @ (List.map (fun (x, ty) -> Decl_variable ((x, VT_term ty), None)) terms) in
 
   (* post processing: update terms in properties/rules *)
   let decls', _ =
     List.fold_left
       (fun (rslt, terms) decl ->
 	match decl with
-	| Decl_variable ((x, VT_nat n), _) when not (List.mem_assoc x terms) ->
-	    rslt @ [decl], terms @ [x, n]
+	| Decl_variable ((x, VT_term ty), _) when not (List.mem_assoc x terms) ->
+	    rslt @ [decl], terms @ [x, ty]
 	| Decl_property (hd, (p, l_opt)) ->
 	    rslt @ [Decl_property (hd, (update_terms_property terms p, l_opt))], terms
 	| Decl_rule (hd, r) ->
@@ -195,7 +219,7 @@ let add_undeclared (decls : Rules.decl list) =
 (** protocol *)
 
 (* any_expand *)
-let rec expand_any decls =
+let rec pp_expand_any decls =
   let declared, _, _ = find_declared decls in
 
   let user_events =
@@ -226,7 +250,7 @@ and expand_any_protocol any_expanded p =
 
 (* eliminate_epsilon *)
 
-let rec minimize_protocols ?(always = false) decls =
+let rec pp_minimize_protocols ?(always = false) decls =
   List.fold_left
     (fun rslt -> function
       | Decl_protocol (None, p) when always || Protocol.mem_event "_epsilon" p ->
@@ -237,7 +261,7 @@ let rec minimize_protocols ?(always = false) decls =
 
 (* protocol_relax *)
 
-let rec relax_protocols decls =
+let rec pp_relax_protocols decls =
   List.fold_left
     (fun rslt -> function
       | Decl_protocol (None, p) ->
@@ -290,41 +314,80 @@ and elim_dup1 ps =
 
 (* split and propositionalize *)
 
-let split_and_propositionalize ?(split_only = false) decls =
-  let ps, rdecls, rest =
+let pp_split_and_propositionalize ?(split_only = false) decls =
+  let (env : (string * variable_type) list), ps, rdecls, rest =
+    (* env = [(x, t); ..]
+       ps = properties that include term variables
+     *)
     List.fold_left
-      (fun (ps, rdecls, rest) decl ->
+      (fun (env, ps, rdecls, rest) decl ->
 	match decl with
-	| Decl_property (_, (p, _)) when Property.include_term_variable_p p ->
-	    ps @ [p], rdecls, rest
-	| Decl_rule _ -> ps, rdecls @ [decl], rest
-	| _ -> ps, rdecls, rest @ [decl])
-      ([], [], []) decls
+	| Decl_variable ((x, VT_term (Ty_nat n)), opt) when not split_only ->
+	    let xs = Property.term_to_propositions (Tm_var (x, Ty_nat n)) in
+	    env @ [x, VT_term (Ty_nat n)] @ List.map (fun x -> x, VT_prop) xs,
+	    ps, rdecls,
+	    rest @ 
+	    List.map (fun x' -> Decl_variable ((x', VT_prop), None)) xs
+	| Decl_variable ((x, ty), _) ->
+	    env @ [x, ty],
+	    ps, rdecls,
+	    rest @ [decl]
+	| Decl_property (hd, (p, opt)) ->
+	    let p' = Property.simp p in
+	    if Property.include_term_variable_p p'
+	    then env, ps @ [p'], rdecls, rest
+	    else env, ps, rdecls, rest @ [Decl_property (hd, (p', opt))]
+	| Decl_rule _ -> env, ps, rdecls @ [decl], rest
+	| _ -> env, ps, rdecls, rest @ [decl])
+      ([], [], [], []) decls
+
   in let alist : ((string * (Property.base_t * int)) list * Property.t) list =
     (* split : ps -> alist = [(var_binding, property); ...] *)
     Property.split (Prop_conj ps)
+
   in let qs : Property.t list =
     (* alist -> qs = properties (for cases) *)
     List.map
       (fun (env, q) ->
-	let binds, valid =
+	(* for each case (env, q) in alist *)
+	let binds, in_range =
 	  List.fold_left
-	    (fun (rslt, valid) (x, (Ty_nat n, n')) ->
+	    (fun (rslt, in_range) (x, (Ty_nat n, n')) ->
 	      (* (x, (ty, n') -> x = n' *)
 	      let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
 	      in
 	      rslt @ [if split_only then eq else Property.propositionalize eq],
-	      valid && n > n')
+	      in_range && n > n')
 	    ([], true) env
-	in let q' = if valid then Property.simp q else Prop_atomic "false"
+	in let q' = if in_range then Property.simp q else Prop_atomic "false"
 	in Prop_disj [Prop_neg (Prop_conj binds); q'])
       alist
   in let rdecls' =
-    List.map
-      (function
-	| Decl_rule (hd, r) -> Decl_rule (hd, Rule.propositionalize r)
+    List.fold_left
+      (fun rslt decl ->
+	match decl with
+	| Decl_rule (hd, r) ->
+(*
+	    (* ensure no term variable appears in preserve rules -- unsupported *)
+	    List.iter
+	      (fun (act, _) ->
+		match act with
+		| Act_preserve ps ->
+		    (* if xs includes a nat variable of nat*)
+		    (match
+		      List.find_opt
+			(fun x ->
+			  assert (List.mem_assoc x env);
+			  match List.assoc x env with
+			  | VT_nat _ -> true | _ -> false)
+			ps
+		    with None -> () | Some _ -> ())
+		| _ -> ())
+	      r.action;
+*)
+	    rslt @ [Decl_rule (hd, Rule.propositionalize r)]
 	| _ -> failwith "[split_and_propositionalize]")
-      rdecls
+      [] rdecls
   in
   (*
   Property.print_property (output_string stderr) (Prop_disj qs);
@@ -333,6 +396,193 @@ let split_and_propositionalize ?(split_only = false) decls =
   rest
   @ (if ps = [] then [] else [Decl_property (None, ((Prop_conj qs), None))])
   @ rdecls'
+
+(** rule *)
+
+(* discard codes
+   strip off code fragments (in JS) from rules
+ *)
+
+let rec pp_discard_codes decls =
+  List.fold_left
+    (fun rslt decl ->
+      match decl with
+      | Decl_rule (None, r) ->
+	  let (e, _), (c, _) = r.event, r.condition
+	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
+	  let r' = { event = (e, None); condition = (c, None); action = a'; }
+	  in rslt @ [Decl_rule (None, r')]
+
+      | Decl_rule (Some (name, _), r) ->
+	  failwith ("[discard_codes] named rule (" ^ name ^ ") not permitted")
+      | _ -> rslt @ [decl])
+    [] decls
+
+(* expand preserve rules
+   - "events" include all user-defined events (used for finding complement events)
+   - rules generated by expansion are all named "_r_preserve"
+     which will be looked up by Rules.print_rules_in_xml
+ *)
+
+let pp_expand_preserve (events : string list) (decls : decl list) =
+  List.fold_left
+    (fun (rslt : decl list) decl ->
+      match decl with
+      | Decl_rule (None, r) ->
+	  (*print_rule (output_string stderr) r; output_string stderr "\n";*)
+	  (*output_string stderr ((show_rule r) ^ "\n");*)
+	  let (e, _), (c, _), acts = r.event, r.condition, r.action in
+	  let decls' =
+	    match acts with
+	    | [(Act_preserve (ps : Property.t list)), None] ->
+		(* event_names -> prop_names -> rules *)
+		let expand (es : string list) ps =
+		  List.fold_left
+		    (fun rslt (e : string) ->
+		      List.fold_left
+			(fun rslt p ->
+			  match p with
+			  | Prop_atomic x ->
+			      let r1 =
+				{ event = (Ev_name e, None);
+				  condition = ((Prop_atomic x, None), None);
+				  action = [(Act_ensure (Prop_atomic x)), None];
+				}
+			      and r2 =
+				{ event = (Ev_name e, None);
+				  condition = ((Prop_neg (Prop_atomic x), None), None);
+				  action = [(Act_ensure (Prop_neg (Prop_atomic x))), None];
+				}
+			      in rslt @ [r1; r2]
+			  | _ ->
+			      let msg = Property.string_of_property p in
+			      invalid_arg ("[pp_expand_preserve] cannot expand: " ^ msg))
+			rslt ps)
+		    [] es
+		(* es_all -> es -> {e' | e' ∉ es } *)
+		and complement es_all es =
+		  (* returns (es_all - es) *)
+		  List.filter (fun e -> not (List.mem e es)) es_all
+		in
+		let rs' =
+		  match e with
+		  | Ev_name e' -> expand [e'] ps
+		  | Ev_name_seq es -> expand es ps
+		  | Ev_name_seq_compl es -> expand (complement events es) ps
+		in
+		List.map (fun r' -> Decl_rule (Some ("_r_preserve", []), r')) rs'
+	    | _ ->
+		(* non-preserve rule *)
+		[Decl_rule (None, r)]
+	  in
+	  rslt @ decls'
+
+      | Decl_rule (Some (name, _), r) ->
+	  failwith ("[expand_preserve] named rule (" ^ name ^ ") not permitted")
+      | _ -> rslt @ [decl])
+    [] decls
+
+(** preprocess : Rules.decl list -> Rules.decl list *)
+
+let rec preprocess
+    (* protocol *)
+    ?(expand_any = true)
+    ?(relax_protocols = false)
+
+    (* property *)
+    ?(split_cases = true)
+    ?(propositionalize = true)
+    (*?(extra_properties = true)*)
+
+    (* rule *)
+    ?(discard_codes = false)
+    ?(expand_preserve = true)
+
+    (decls : Rules.decl list) =
+
+  let identity decls = decls in
+  decls
+
+  (* event / variable *)
+  |> pp_add_undeclared
+  (*|> variables_declare*)
+
+  (* protocol *)
+  |> (if expand_any then pp_expand_any else identity)
+  |> pp_minimize_protocols
+  |> (if relax_protocols then pp_relax_protocols else identity)
+
+  (* property *)
+  |> (if split_cases then pp_split_and_propositionalize ~split_only: (not propositionalize) else identity)
+  (*
+  |> (if extra_properties then align_propositions else identity)
+  |> (if extra_properties then add_special_properties ~protocol_relax: protocol_relax else identity)
+   *)
+
+  (* rule *)
+  |> (if discard_codes then pp_discard_codes else identity)
+
+  (* move "preserve" rules to the last part *)
+  |> (fun decls ->
+      let decls', pres_rules =
+	List.fold_left
+	  (fun (decls', pres_rules) decl ->
+	    match decl with
+	    | Decl_rule (None, r)
+	      when (match r.action with [(Act_preserve _), _] -> true | _ -> false) ->
+		decls', pres_rules @ [decl]
+	    | _ -> decls' @ [decl], pres_rules)
+	  ([], []) decls
+      in decls' @ pres_rules)
+
+  (* expand "preserve" rules to normal ones
+     note: each expanded rule is named "_r_preserve"
+     which will be looked up by Rules.print_rules_in_xml
+   *)
+  |> (fun decls ->
+      if not expand_preserve then decls else
+      let events : string list =
+	(* events = all user-defined events *)
+	List.fold_left
+	  (fun rslt -> function
+	    | Decl_event (e, _) when not (List.mem e ["_skip"]) ->
+		(* collect events (except built-in events) *)
+		rslt @ [e]
+	    | _ -> rslt)
+	  [] decls
+      in
+      pp_expand_preserve events decls)
+
+(** deprecated *)
+
+(* variables_declare *)
+
+(*
+let variables_declare decls =
+  List.fold_left
+    (fun (rslt : decl list) decl ->
+      match decl with
+      | Decl_variable (("", Ty_impl None), Some str) ->
+	  (* str = "x1=e1; x2=e2; ...;" *)
+	  List.fold_left
+	    (fun (rslt : decl list) str' ->
+	      let pair = String.split_on_char '=' str' in
+	      match List.length pair with
+	      | 1 ->
+		  let x :: _ = pair in
+		  let x = String.trim x in
+		  rslt @ if x = "" then [] else [Decl_variable ((x, Ty_impl None), None)]
+	      | 2 ->
+		  let x :: e :: _ = pair in
+		  let x = String.trim x in
+		  rslt @ if x = "" then [] else [Decl_variable ((x, Ty_impl None), Some (String.trim e))]
+	      | _ -> failwith "variables_declare 1")
+	    rslt (String.split_on_char ';' str)
+      | Decl_variable (("", Ty_impl _), _) ->
+	  failwith "variables_declare 2"
+      | _ -> rslt @ [decl])
+    [] decls
+ *)
 
 (* proposition_align
    for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
@@ -395,162 +645,11 @@ let add_special_properties ?(protocol_relax = false) decls=
       with Not_found -> rslt @ [Decl_property (None, (p, None))])
     decls props_on_events
 
-(** rule *)
-
-(* code_discard
-   strip off code fragments (in JS) from rules
- *)
-
-let rec discard_codes decls =
-  List.fold_left
-    (fun rslt decl ->
-      match decl with
-      | Decl_rule (None, r) ->
-	  let (e, _), (c, _) = r.event, r.condition
-	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
-	  let r' = { event = (e, None); condition = (c, None); action = a'; }
-	  in rslt @ [Decl_rule (None, r')]
-
-      | Decl_rule (Some (name, _), r) ->
-	  failwith ("[discard_codes] named rule (" ^ name ^ ") not permitted")
-      | _ -> rslt @ [decl])
-    [] decls
-
-(* preserve_expand
- *)
-
-let expand_preserve (events : string list) (decls : decl list) =
-  List.fold_left
-    (fun (rslt : decl list) decl ->
-      match decl with
-      | Decl_rule (None, r) ->
-	  (*print_rule (output_string stderr) r; output_string stderr "\n";*)
-	  (*output_string stderr ((show_rule r) ^ "\n");*)
-	  let (e, _), (c, _), acts = r.event, r.condition, r.action in
-	  let rs : rule list =
-	    match acts with
-	    | [(Act_preserve (ps : string list)), None] ->
-		(* event_names -> prop_names -> rules *)
-		let expand (es : string list) ps =
-		  List.fold_left
-		    (fun rslt (e : string) ->
-		      List.fold_left
-			(fun rslt p ->
-			  let r1 =
-			    { event = (Ev_name e, None);
-			      condition = ((Prop_atomic p, None), None);
-			      action = [(Act_ensure (Prop_atomic p)), None];
-			    }
-			  and r2 =
-			    { event = (Ev_name e, None);
-			      condition = ((Prop_neg (Prop_atomic p), None), None);
-			      action = [(Act_ensure (Prop_neg (Prop_atomic p))), None];
-			    }
-			  in rslt @ [r1; r2])
-			rslt ps)
-		    [] es
-		(* es_all -> es -> {e' | e' ∉ es } *)
-		and complement es_all es =
-		  (* returns (es_all - es) *)
-		  List.filter (fun e -> not (List.mem e es)) es_all
-		in
-		let rs' =
-		  match e with
-		  | Ev_name e' -> expand [e'] ps
-		  | Ev_name_seq es -> expand es ps
-		  | Ev_name_seq_compl es -> expand (complement events es) ps
-		in rs'
-	    | _ -> [r]
-	  in
-	  rslt @ List.map (fun r -> Decl_rule (None, r)) rs
-
-      | Decl_rule (Some (name, _), r) ->
-	  failwith ("[expand_preserve] named rule (" ^ name ^ ") not permitted")
-      | _ -> rslt @ [decl])
-    [] decls
-
-(* variables_declare *)
-
 (*
-let variables_declare decls =
-  List.fold_left
-    (fun (rslt : decl list) decl ->
-      match decl with
-      | Decl_variable (("", VT_impl None), Some str) ->
-	  (* str = "x1=e1; x2=e2; ...;" *)
-	  List.fold_left
-	    (fun (rslt : decl list) str' ->
-	      let pair = String.split_on_char '=' str' in
-	      match List.length pair with
-	      | 1 ->
-		  let x :: _ = pair in
-		  let x = String.trim x in
-		  rslt @ if x = "" then [] else [Decl_variable ((x, VT_impl None), None)]
-	      | 2 ->
-		  let x :: e :: _ = pair in
-		  let x = String.trim x in
-		  rslt @ if x = "" then [] else [Decl_variable ((x, VT_impl None), Some (String.trim e))]
-	      | _ -> failwith "variables_declare 1")
-	    rslt (String.split_on_char ';' str)
-      | Decl_variable (("", VT_impl _), _) ->
-	  failwith "variables_declare 2"
-      | _ -> rslt @ [decl])
-    [] decls
- *)
-
-(** preprocess : Rules.decl list -> Rules.decl list *)
-
-let rec preprocess
-    (* protocol *)
-    ?(any_expand = true)
-    ?(protocol_relax = false)
-
-    (* property *)
-    ?(case_split = true)
-    ?(propositionalize = true)
-    ?(extra_properties = true)
-
-    (* rule *)
-    ?(code_discard = false)
-    ?(preserve_expand = true)
-
-    (decls : Rules.decl list) =
-
-  let identity decls = decls in
-  decls
-
-  (* event / variable *)
-  |> add_undeclared
-  (*|> variables_declare*)
-
-  (* protocol *)
-  |> (if any_expand then expand_any else identity)
-  |> minimize_protocols
-  |> (if protocol_relax then relax_protocols else identity)
-
-  (* property *)
-  |> (if case_split then split_and_propositionalize ~split_only: (not propositionalize) else identity)
-  |> (if extra_properties then align_propositions else identity)
-  |> (if extra_properties then add_special_properties ~protocol_relax: protocol_relax else identity)
-
-  (* rule *)
-  |> (if code_discard then discard_codes else identity)
-
-  (* move "preserve" rules to the last part *)
-  |> (fun decls ->
-      let decls', pres_rules =
-	List.fold_left
-	  (fun (decls', pres_rules) decl ->
-	    match decl with
-	    | Decl_rule (None, r)
-	      when (match r.action with [(Act_preserve _), _] -> true | _ -> false) ->
-		decls', pres_rules @ [decl]
-	    | _ -> decls' @ [decl], pres_rules)
-	  ([], []) decls
-      in decls' @ pres_rules)
-
-  (* add a special "_skip" rule to mark the end of "normal" rules,
+  (* if a "preserve" rule is included in (the last part of) decls,
+     insert a special "_skip" rule to mark the end of non-preserve rules,
      which suggests the subsequent rules can be ignored in statechart generation
+     (this marker event will be looked up by Rules.print_rules_in_xml)
    *)
   |> (fun decls ->
       (* special rule r *)
@@ -563,6 +662,7 @@ let rec preprocess
       in let _, decls' =
 	List.fold_left
 	  (fun (b, rslt) decl ->
+	    (* "b = true" indicates that _skip rule (r) has already been inserted *)
 	    if b then b, rslt @ [decl] else
 	    match decl with
 	    | Decl_rule (None, r')
@@ -571,15 +671,4 @@ let rec preprocess
 	    | _ -> b, rslt @ [decl])
 	  (false, []) decls
       in decls')
-
-  (* expand "preserve" rules to normal ones *)
-  |> (fun decls ->
-      if not preserve_expand then decls else
-      let events : string list =
-	List.fold_left
-	  (fun rslt -> function
-	    | Decl_event (e, _) when not (List.mem e ["_skip"]) ->
-		rslt @ [e]
-	    | _ -> rslt)
-	  [] decls in
-      expand_preserve events decls)
+ *)

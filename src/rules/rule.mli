@@ -42,13 +42,13 @@ and action =
         (** a set of unit actions each may accompany code fragment *)
 
 and action_unit =
-  | Act_ensure of Property.property
+  | Act_ensure of Property.t
 	(** post-condition *)
   | Act_raise of string list
 	(** [raise [e1; e2; ..]] selects/raises one of the events non-deterministically *)
   | Act_do
         (** [do { code }] in dsl4sc corresponds to (Acto_do, Some code) *)
-  | Act_preserve of string list
+  | Act_preserve of Property.t list
 	(** [on e preserve [p; p';..]] indicates p, p', .. should be preserved
 	    thru processing e.
 	    eliminated by preprocessor

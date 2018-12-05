@@ -1,3 +1,8 @@
+# v0.12.0rc
+
+- [rulespp] natural numbers  
+  support all arithmetic operations (add/sub/mul/div) and comparison operators (eq/ne/gt/lt/ge/le).
+
 # v0.11.0 (2018-12-03)
 
 - [rulespp] natural numbers  

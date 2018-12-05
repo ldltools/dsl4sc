@@ -18,6 +18,7 @@ open Protocol
 open Property
 open Rule
 open Rules
+open Spec
 
 open Ldl
 open Ldlsimp
@@ -131,8 +132,8 @@ and event_to_formula_rec nbit (bits : int) fs (i : int) =
    ================================================================================
  *)
 
-let rec translate_property nbit es (lp : Property.labelled_property) =
-  lp |> lprop_to_formula nbit es
+let rec translate_property nbit es (p : Property.t) =
+  p |> prop_to_formula nbit es
 
 (* labelled_property -> formula *)
 and lprop_to_formula nbit (es : string list) (p, p_opt) =
@@ -181,8 +182,8 @@ and translate_rule1 nbit es (s : Spec.t) (e, c, acts) =
   assert (propositional c);
   let c' : path = Path_prop c
   and e' : formula =
-    event_to_formula s.event_seq (match e with Ev_name e' -> e' | _ -> failwith "translate_rule1")
-  and a' : formula = action_to_formula nbit s.event_seq acts
+    event_to_formula s.events (match e with Ev_name e' -> e' | _ -> failwith "translate_rule1")
+  and a' : formula = action_to_formula nbit s.events acts
   in
   (* [true*](<c>e -> <c>(e ^ a)) *)
   Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
@@ -193,8 +194,8 @@ and translate_rule2 nbit es (s : Spec.t) (e, c, acts) =
     match c with
     | Ldl_modal (Mod_ex, r, f) when propositional f -> Path_seq [r; Path_prop f]
     | _ -> failwith "translate_rule2"
-  and e' : formula = event_to_formula s.event_seq (event_name e)
-  and a' : formula = action_to_formula nbit s.event_seq acts
+  and e' : formula = event_to_formula s.events (event_name e)
+  and a' : formula = action_to_formula nbit s.events acts
   in
   (* [true*](<c>e -> <c>(e ^ a)) *)
   Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
@@ -224,7 +225,7 @@ and action_unit_to_formula nbit es (a : action_unit) =
 (* translate : Spec.t -> Ldl.formula list *)
 let rec translate (s : Spec.t) =
   (* protocols -> formulas *)
-  let es : string list = s.event_seq in
+  let es : string list = s.events in
   assert (List.length (List.sort_uniq compare es) = List.length es);
   assert (not @@ List.mem "_skip" es);
   let nev = List.length es + 1 (* es + 1 extra event for "_skip" *) in
@@ -238,7 +239,7 @@ let rec translate (s : Spec.t) =
   output_string stderr "** map:";
   List.iter (fun (e, f) -> output_string stderr (" " ^ e ^ "=" ^ Ldl.show_formula f)) map;
  *)
-  let fs1 : formula list = List.map (translate_protocol nbit s.event_seq) s.proto_seq in
+  let fs1 : formula list = List.map (translate_protocol nbit s.events) s.protocols in
   let fs1 = fs1 @
     (* extra formula to exclude non-existent events *)
     let max = 1 lsl nbit in
@@ -253,9 +254,9 @@ let rec translate (s : Spec.t) =
   in
 
   (* properties -> formulas *)
-  let fs2 = List.map (translate_property nbit es) s.prop_seq in
+  let fs2 = List.map (translate_property nbit es) s.properties in
 
   (* rules -> formulas *)
-  let fs3 = List.map (translate_rule nbit es s) s.rule_seq in
+  let fs3 = List.map (translate_rule nbit es s) s.rules in
 
   (fs1 @ fs2 @ fs3), map

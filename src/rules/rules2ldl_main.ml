@@ -26,9 +26,12 @@ let opt_verbose = ref false
 (* rules_p *)
 let opt_parse_only = ref false
 (* rulespp *)
-let opt_preprocessing = ref true
-let opt_extra_properties = ref true
-(* spec2ldl *)
+let opt_skip_rulespp = ref false
+let opt_rulespp_only = ref false
+(* specpp : Spec.t -> Spec.t *)
+let opt_skip_specpp = ref false
+let opt_specpp_only = ref false
+(* spec2ldl : Spec.t -> Ldl.formula *)
 let opt_map_out = ref "/dev/null"
 
 let synopsis prog =
@@ -36,11 +39,13 @@ let synopsis prog =
   let msg =
     "options:\n"
     ^ "  -o <file>\t\toutput to <file>\n"
-    ^ "  -t <fmt>\t\toutput in <fmt> (ldl, caml, json)\n"
+    ^ "  -t <fmt>\t\toutput in <fmt> (caml, json)\n"
     ^ "  --map <file>\t\toutput event mappings to <file> (in xml)\n"
-    ^ "  -p\t\t\tparse-only\n"
-    ^ "  --no-pp\t\tsuppress preprocessing\n"
-    ^ "  --no-ex\t\tsuppress generation of extra properties\n"
+    ^ "  -p\t\t\tparse only\n"
+    ^ "  -E, --rulespp-only\tterminate after rulespp\n"
+    ^ "  --no-rulespp\t\tsuppress preprocessing (skip rulespp)\n"
+    ^ "  --specpp-only\t\tterminate after specpp\n"
+    ^ "  --no-specpp\t\tsuppress spec-preprocessing (skip specpp)\n"
     ^ "  -h\t\t\tdisplay this message\n"
   in output_string stdout msg
 
@@ -111,6 +116,7 @@ and spec_from_string str = function
       failwith ("spec_from_string: unknown format (" ^ fmt ^ ")")
 
 (* spec out *)
+(*
 let output_spec oc (s : Rules.t) = function
   | "spec" | "rules" ->
       Rules.print_rules (fun s -> output_string oc s; flush_all ()) s
@@ -121,6 +127,21 @@ let output_spec oc (s : Rules.t) = function
       let json = Rules.rules_to_yojson s in
       Yojson.Safe.to_channel oc json;
       output_string oc "\n"
+  | fmt ->
+      failwith ("output_spec: unknown format (" ^ fmt ^ ")")
+ *)
+let output_spec oc (s : Spec.t) = function
+  | "spec" | "rules" | "unspecified" ->
+      Spec.print_spec (output_string oc) s
+(*
+  | "caml" ->
+      output_string oc (Spec.show_spec s);
+      output_string oc "\n";
+  | "json" ->
+      let json = Rules.rules_to_yojson s in
+      Yojson.Safe.to_channel oc json;
+      output_string oc "\n"
+ *)
   | fmt ->
       failwith ("output_spec: unknown format (" ^ fmt ^ ")")
 
@@ -176,10 +197,16 @@ let main argc argv =
       | "-p" | "--parse-only" ->
 	  opt_parse_only := true
       (* rulespp *)
-      | "--no-pp" ->
-	  opt_preprocessing := false
-      | "--no-ex" | "--no-extra-properties" ->
-	  opt_extra_properties := false
+      | "--skip-rulespp" | "--no-rulespp" ->
+	  opt_skip_rulespp := true
+      | "-E" | "--rulespp-only" ->
+	  opt_rulespp_only := true
+      (* specpp *)
+      | "--skip-specpp" | "--no-specpp" ->
+	  opt_skip_specpp := true
+      | "--no-specpp" ->
+	  opt_specpp_only := true
+
       (* spec2ldl *)
       | "--map"  ->
 	  opt_map_out := argv.(!i+1); incr i;
@@ -201,27 +228,29 @@ let main argc argv =
     (synopsis argv.(0); invalid_arg ("file does not exist: '" ^ !infile ^ "'"));
 
   (* output *)
-  let oc = open_out !outfile in
+  let oc = open_out !outfile
 
   (* parse a set of declarations *)
-  let ic = open_in !infile in
-  let decls : Rules.decl list = input_rules ic !opt_fmt_in in
+  in let ic = open_in !infile
+  in let decls : Rules.decl list = input_rules ic !opt_fmt_in in
   if !opt_parse_only then
-    (output_spec oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
+    (output_rules oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
 
-  (* rulespp: decls -> decls' *)
-  let decls' =
-    if !opt_preprocessing
-    then Rulespp.preprocess ~extra_properties: !opt_extra_properties ~code_discard: true decls
-    else decls in
+  (* rulespp: decls -> decls *)
+  let decls =
+    if !opt_skip_rulespp
+    then decls
+    else Rulespp.preprocess ~discard_codes: true decls
+  in
 
-  (* decls' -> rules *)
-  let rules : Rules.t = Rules.decls_to_rules decls' in
+  (* decls -> rules *)
+  let rules : Rules.t = Rules.decls_to_rules decls in
 
   (* ensure rules include no code *)
   List.iter
     (function
-      | None, (r : Rule.t) ->
+      | None, (r : Rule.t)
+      | Some ("_r_preserve", _), r ->
 	  let (e, e_opt), (_, c_opt), a = r.event, r.condition, r.action in
 	  (match e_opt, c_opt with
 	  | Some _, _ | _, Some _ ->
@@ -232,8 +261,19 @@ let main argc argv =
       | _ -> ())
     rules.rule_decls;
 
+  if !opt_rulespp_only then (output_rules oc rules !opt_fmt_out; raise Exit);
+
   (* rules -> spec *)
-  let spec : Spec.t = Spec.rules_to_spec rules in
+  let spec : Spec.t = Spec.spec_of_rules rules in
+
+  (* specpp: spec -> spec *)
+  let spec =
+    if !opt_skip_specpp
+    then spec
+    else Specpp.preprocess spec
+  in
+
+  if !opt_specpp_only then (output_spec oc spec !opt_fmt_out; raise Exit);
 
   (* spec -> ldl *)
   let formulas, map = Spec2ldl.translate spec in

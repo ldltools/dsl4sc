@@ -38,7 +38,7 @@ and action_unit =
   | Act_ensure of Property.property
   | Act_raise of string list (* nondeterministic choice *)
   | Act_do
-  | Act_preserve of string list
+  | Act_preserve of Property.property list
 
 [@@deriving show, yojson, eq]
 
@@ -124,11 +124,10 @@ and print_action1 out = function
       List.iter (fun e' -> out @@ " + " ^ e') es
   | Act_do ->
       out "do"
-  | Act_preserve ps ->
+  | Act_preserve (p :: ps) ->
       out "preserve ";
-      assert (List.length ps > 0);
-      out (List.hd ps);
-      List.iter (fun p -> out (", " ^ p)) (List.tl ps)
+      print_property out p;
+      List.iter (fun p -> out ", "; print_property out p) ps
   | _ ->
       failwith "[print_action1]"
 

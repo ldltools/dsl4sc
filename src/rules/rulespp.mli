@@ -15,49 +15,51 @@
  *)
 
 val preprocess :
+
     (* protocol *)
-    ?any_expand: bool ->
-    ?protocol_relax: bool ->
+    ?expand_any: bool ->
+    ?relax_protocols: bool ->
 
     (* property *)
-    ?case_split: bool ->
+    ?split_cases: bool ->
     ?propositionalize: bool ->
-    ?extra_properties: bool ->
 
     (* rule *)
-    ?code_discard: bool ->
-    ?preserve_expand: bool ->
+    ?discard_codes: bool ->
+    ?expand_preserve: bool ->
 
     Rules.decl list -> Rules.decl list 
 	(** preprocess rules
-	    - relax protocols
-	    - align propositions w. events -- add extra properties
+	    - expand any: any -> e1 + e2 + ...
+	    - relax protocols: e -> _skip*; e; _skip*
+	    - split cases
+	    - propositionalize
 	    - discard code fragments in rules
 	 *)
 
 (** event / variable *)
 
-val add_undeclared : Rules.decl list -> Rules.decl list
+val pp_add_undeclared : Rules.decl list -> Rules.decl list
     (* add missing proposition/event/label declarations *)
 
 (** protocol *)
 
-val relax_protocols : Rules.decl list -> Rules.decl list
-val relax_protocol : Protocol.t -> Protocol.t
+val pp_expand_any : Rules.decl list -> Rules.decl list
 
-(** property *)
+val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
 
-val align_propositions : Rules.decl list -> Rules.decl list
-    (** proposition_align
-	for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
-     *)
+val pp_relax_protocols : Rules.decl list -> Rules.decl list
+
+(** variable *)
+
+val pp_split_and_propositionalize : ?split_only: bool -> Rules.decl list -> Rules.decl list
 
 (** rule *)
 
-val expand_preserve : string list -> Rules.decl list -> Rules.decl list
+val pp_expand_preserve : string list -> Rules.decl list -> Rules.decl list
     (** preserve_expand *)
 
-val discard_codes  : Rules.decl list -> Rules.decl list
+val pp_discard_codes  : Rules.decl list -> Rules.decl list
     (** code_discard
 	strip off code fragments (in JavaScript, etc) from rules
      *)

@@ -15,23 +15,25 @@
  *)
 
 type t =
-    { event_seq : string list;
-      proto_seq : Protocol.t list;
+    { events : string list;
+      protocols : Protocol.t list;
 
-      pvar_seq : string list;
-      prop_seq : Property.labelled_property list;
+      variables : (string * Rules.variable_type) list;
+      properties : Property.t list;
 
-      rule_seq : Rule.t list;
+      rules : Rule.t list;
     }
 
-let rec rules_to_spec (rules : Rules.t) =
-  { event_seq = List.map fst rules.event_decls;
-    proto_seq = List.map snd rules.proto_decls;
+(** ctor *)
 
-    pvar_seq = List.map (fun ((x, t), _) -> x) rules.var_decls;
-    prop_seq = List.map snd rules.prop_decls;
+let rec spec_of_rules (rules : Rules.t) =
+  { events = List.map fst rules.event_decls;
+    protocols = List.map snd rules.proto_decls;
 
-    rule_seq = List.map filter_rule_spec rules.rule_decls;
+    variables = List.map (function ((x, ty), _) -> x, ty) rules.var_decls;
+    properties = List.map (fun (_, (p, _)) -> p) rules.prop_decls;
+
+    rules = List.map filter_rule_spec rules.rule_decls;
   }
 
 and filter_rule_spec (rspec : Rules.rule_spec) =
@@ -44,3 +46,63 @@ and filter_rule_spec (rspec : Rules.rule_spec) =
 	| _ -> rslt @ [act, code_opt])
       [] r.action
   in { event = r.event; condition = r.condition; action = acts'; }
+
+(** pretty-printing *)
+
+let print_spec out (s : t) =
+  (* event *)
+  if s.events <> [] then
+    begin
+      out "event ";
+      out (List.hd s.events);
+      List.iter	(function e -> out ", "; out e) (List.tl s.events);
+      out ";\n";
+    end;
+
+  (* protocol *)
+  if s.protocols <> [] then
+    begin
+      out "protocol\n";
+      List.iter
+	(fun p -> out " "; Protocol.print_protocol out p; out ";;\n")
+	s.protocols;
+    end;
+
+  (* variable *)
+  if s.variables <> [] then
+    begin
+      out "variable\n";
+      List.iter
+	(function
+	  | x, Rules.VT_prop ->
+	      out " "; out x;
+	      out " : prop;\n"
+	  | x, Rules.VT_term (Property.Ty_nat n) ->
+	      out " "; out x;
+	      out " : nat ("; out (string_of_int n); out ");\n")
+	s.variables;
+    end;
+
+  (* propery *)
+  if s.properties <> [] then
+    begin
+      out "property\n";
+      List.iter
+	(fun f -> out " "; Property.print_property out f; out ";\n")
+	s.properties;
+    end;
+
+  (* rule *)
+  if s.rules <> [] then
+    begin
+      out "rule\n";
+      List.iter (fun r -> out " "; Rule.print_rule out r; out "\n") s.rules;
+    end;
+
+  ()
+
+let string_of_spec (s : t) =
+  let str = ref "" in
+  let concat str' = str := !str ^ str' in
+  print_spec concat s;
+  !str

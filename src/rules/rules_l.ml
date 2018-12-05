@@ -143,13 +143,11 @@ and token_rec (buf : lexbuf) =
   | "implementation"	-> mode := 1; IMPLEMENTATION
 
   (* inequality *)
-  | "!="		-> NE
-(*
-  | "=="		-> EQ
+(*| "=="		-> EQ*)
   | "!="		-> NE
   | "<="		-> LE
   | ">="		-> GE
- *)
+
 
   (* logical connectives *)
   | "not"		-> NOT

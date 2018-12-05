@@ -40,8 +40,8 @@ and variable_spec =
     (string * variable_type) * string option
 
 and variable_type =
-  | VT_prop
-  | VT_nat of int
+  | VT_prop			(* type of propositional variables. *)
+  | VT_term of Property.base_t	(* term type *)
 
 (** property *)
 and property_spec =
@@ -166,10 +166,10 @@ let print_rules out (rs : t) =
 	  | (x, VT_prop), Some e ->
 	      out " "; out x; out " { "; out e; out " }";
 	      out " : prop;\n"
-	  | (x, VT_nat n), None ->
+	  | (x, VT_term (Ty_nat n)), None ->
 	      out " "; out x;
 	      out " : nat ("; out (string_of_int n); out ");\n"
-	  | (x, VT_nat n), Some e ->
+	  | (x, VT_term (Ty_nat n)), Some e ->
 	      out " "; out x; out " { "; out e; out " }";
 	      out " : nat ("; out (string_of_int n); out ");\n"
 	  | _ -> ())
@@ -309,6 +309,7 @@ let rec print_rules_in_xml out (rules : t) =
   (* rule -- strip off the special "_skip" rule and its successors.
      cf. Rulespp.preprocess
    *)
+  (*
   let _, (r_specs : rule_spec list) =
     List.fold_left
       (fun (b, rslt) (rspec : rule_spec) ->
@@ -322,6 +323,11 @@ let rec print_rules_in_xml out (rules : t) =
 	assert (name_opt = None);
 	if r = special_rule then true, rslt else b, rslt @ [rspec])
       (false, []) rules.rule_decls
+   *)
+  let r_specs =
+    List.filter
+      (function Some ("_r_preserve", _), _ -> false | _ -> true)
+      rules.rule_decls
   in
   let _ =
     List.fold_left
@@ -616,7 +622,7 @@ and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
     match ty with
     | VT_prop ->
 	out " type=\"prop\""
-    | VT_nat n ->
+    | VT_term (Ty_nat n) ->
 	out (Printf.sprintf " type=\"nat(%d)\"" n)
   in ();
   match init_opt with
