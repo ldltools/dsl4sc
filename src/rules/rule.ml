@@ -69,6 +69,24 @@ let propositionalize r =
   in
   { event = r.event; condition = (p', p_opt), c_opt; action = acts'; }
 
+let rec include_term_variable_p r =
+  let (p, _), _ = r.condition
+  in
+  if Property.include_term_variable_p p then true else
+  let acts = r.action 
+  in let found_opt =
+    List.find_opt
+      (fun (act, _) ->
+	match act with
+	| Act_ensure p -> Property.include_term_variable_p p
+	| Act_preserve ps ->
+	    (match List.find_opt Property.include_term_variable_p ps with
+	     Some _ -> true | None -> false)
+	| _ -> false)
+      acts
+  in
+  match found_opt with Some _ -> true | None -> false
+
 (** pretty-printing *)
 
 let rec print_rule out ?(fancy=false) (r : rule) =

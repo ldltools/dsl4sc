@@ -19,10 +19,7 @@ val preprocess :
     (* protocol *)
     ?expand_any: bool ->
     ?relax_protocols: bool ->
-
-    (* property *)
-    ?split_cases: bool ->
-    ?propositionalize: bool ->
+    ?minimize_protocols_always: bool ->
 
     (* rule *)
     ?discard_codes: bool ->
@@ -32,27 +29,23 @@ val preprocess :
 	(** preprocess rules
 	    - expand any: any -> e1 + e2 + ...
 	    - relax protocols: e -> _skip*; e; _skip*
-	    - split cases
-	    - propositionalize
+	    - minimize protocols by means of dfa minimization
 	    - discard code fragments in rules
+	    - expand preserve
 	 *)
 
 (** event / variable *)
 
 val pp_add_undeclared : Rules.decl list -> Rules.decl list
-    (* add missing proposition/event/label declarations *)
+    (* add missing proposition/event/label declarations -- mandatory *)
 
 (** protocol *)
 
 val pp_expand_any : Rules.decl list -> Rules.decl list
 
-val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
-
 val pp_relax_protocols : Rules.decl list -> Rules.decl list
 
-(** variable *)
-
-val pp_split_and_propositionalize : ?split_only: bool -> Rules.decl list -> Rules.decl list
+val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
 
 (** rule *)
 

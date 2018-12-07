@@ -172,7 +172,7 @@ let print_rules out (rs : t) =
 	  | (x, VT_term (Ty_nat n)), Some e ->
 	      out " "; out x; out " { "; out e; out " }";
 	      out " : nat ("; out (string_of_int n); out ");\n"
-	  | _ -> ())
+	  | (x, _), _ -> failwith ("[print_rules] strange variable: " ^ x))
 	rs.var_decls;
     end;
 
@@ -455,9 +455,9 @@ and print_rule_in_xml out ?(id = None) ((name_opt, r) : rule_spec) =
   in ();
 
   (* condition *)
-  let c, c_opt = r.condition in
+  let (c, _), c_opt = r.condition in
   out "<condition><formula>";
-  escape out (Property.string_of_labelled_property c);
+  escape out (Property.string_of_property @@ Property.propositionalize c);
   out "</formula>";
   let _ =
     match c_opt with
@@ -475,7 +475,7 @@ and print_rule_in_xml out ?(id = None) ((name_opt, r) : rule_spec) =
 	match act with
 	| Rule.Act_ensure p ->
 	    out "<ensure>";
-	    escape out (Property.string_of_labelled_property (p, None));
+	    escape out (Property.string_of_property @@ Property.propositionalize p);
 	    out "</ensure>";
 	    rslt
 	| Rule.Act_raise [e] ->
@@ -613,18 +613,30 @@ and print_rule_in_xml out ?(id = None) ((name_opt, r) : rule_spec) =
 
  *)
 
-and print_variable_in_xml out (((name, ty), init_opt) : variable_spec) =
-  assert (name <> "");
-  out "<variable name=\"";
-  out (if name <> "" then name else invalid_arg "variable with no name");
-  out "\"";
-  let _ =
+and print_variable_in_xml out (vspec : variable_spec) =
+print_variable_in_xml_rec out [vspec]
+
+and print_variable_in_xml_rec out (vspec_seq : variable_spec list) =
+  if vspec_seq = [] then () else
+  let ((x, ty), init_opt) :: rest = vspec_seq
+  in
+  assert (x <> "");
+  if x = "" then invalid_arg "[print_variable_in_xml] variable with no name";
+  out ("<variable name=\"" ^ x ^ "\"");
+  let rest' =
     match ty with
     | VT_prop ->
-	out " type=\"prop\""
+	out " type=\"prop\"";
+	rest
     | VT_term (Ty_nat n) ->
-	out (Printf.sprintf " type=\"nat(%d)\"" n)
-  in ();
-  match init_opt with
-  | None -> out "/>\n"
-  | Some str -> out ">"; out str; out "</variable>\n"
+	let props = Property.term_to_propositions (Tm_var (x, Ty_nat n))
+	in let nbit = List.length props
+	in
+	out (Printf.sprintf " type=\"nat%d\" max=\"%d\"" nbit (n - 1));
+	(List.map (fun p -> (p, VT_prop), None) props) @ rest
+  in let _ =
+    match init_opt with
+    | None -> out "/>\n"
+    | Some str -> out ">"; out str; out "</variable>\n"
+  in
+  print_variable_in_xml_rec out rest'

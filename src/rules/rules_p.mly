@@ -341,7 +341,7 @@ var_type
 	: NAME
 	  { match $1 with
 	    | "prop"   -> Rules.VT_prop
-	    | "bool"   -> Rules.VT_prop
+	    | "bool"   -> Rules.VT_term (Ty_nat 2)
 	    | "bit"    -> Rules.VT_term (Ty_nat 2)
 	    | "nibble" -> Rules.VT_term (Ty_nat 16)
 	    | "byte"   -> Rules.VT_term (Ty_nat 256)
@@ -507,12 +507,16 @@ property3_equal
 	| term NE term
 	  { Prop_neg (Prop_equal ($1, $3)) }
 	| term LT term
+	  // e1 < e2
 	  { Prop_equal (Tm_op ("<", [$1; $3]), Tm_const (1, Ty_nat 2)) }
 	| term GT term
+	  // e1 > e2 => e2 < e1
 	  { Prop_equal (Tm_op ("<", [$3; $1]), Tm_const (1, Ty_nat 2)) }
 	| term LE term
+	  // e1 <= e2 => !(e2 < e1)
 	  { Prop_equal (Tm_op ("<", [$3; $1]), Tm_const (0, Ty_nat 2)) }
 	| term GE term
+	  // e1 >= e2 => !(e1 < e2)
 	  { Prop_equal (Tm_op ("<", [$1; $3]), Tm_const (0, Ty_nat 2)) }
 	;
 
@@ -796,6 +800,12 @@ rule_e	: args
 	  { (List.map (fun arg -> Elt_event (Ev_name arg)) $1) @ [Elt_event_opt $3] }
 	;
 
+args	: NAME
+	  { [$1] }
+	| args COMMA NAME
+	  { $1 @ [$3] }
+	;
+
 rule_c	: labelled_property
 	  { [Elt_condition $1] }
 	| labelled_property LBRACE STRING RBRACE
@@ -923,18 +933,11 @@ preserve_rule_e
 	  { [Elt_event (Ev_name_seq_compl $4)] }
 	;
 
-args	: NAME
-	  { [$1] }
-	| args COMMA NAME
-	  { $1 @ [$3] }
-	;
-
 preserve_rule_a
-	: DO preserve
-	  { $2 }
-	| preserve
+	: preserve
 	  { $1 }
-
+//	| DO preserve
+//	  { $2 }
 //	| SLASH labelled_ldl_path SLASH
 //	  { [Elt_path $2] }
 	;
@@ -942,15 +945,17 @@ preserve_rule_a
 preserve
 	: PRESERVE preserve_args
 	  { [Elt_action [(Act_preserve $2), None]] }
+	| PRESERVE property
+	  { [Elt_action [(Act_preserve [$2]), None]] }
 // 	| PRESERVE LPAREN args RPAREN
 //	  { [Elt_action [(Act_preserve $3), None]] }
 	;
 
 preserve_args
-	: property3
-	  { [$1] }
-	| preserve_args COMMA property3
-	  { $1 @ [$3] }
+	: NAME COMMA NAME
+	  { [Prop_atomic $1; Prop_atomic $3] }
+	| preserve_args COMMA NAME
+	  { $1 @ [Prop_atomic $3] }
 	;
  
 %%

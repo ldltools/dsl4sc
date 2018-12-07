@@ -96,11 +96,11 @@ all::	$(LIBS) $(BINS)
 
 $(BUILD_DIR)/dsl4sc.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmo \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmo \
 	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmo
 $(BUILD_DIR)/dsl4sc.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
-	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmx \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmx \
 	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmx
 
 # $(BINS.byte)

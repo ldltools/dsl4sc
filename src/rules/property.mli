@@ -87,7 +87,7 @@ val split : t -> ((string * (base_t * int)) list * t) list
 	- q : p[v1/x1, v2/x2, ...]
      *)
 
-val propositionalize : t -> t
+val propositionalize : ?keep_terms: bool -> t -> t
     (** expand prop w. terms to prop w/o terms *)
 
 val find_term_variables : t -> (string * base_t) list

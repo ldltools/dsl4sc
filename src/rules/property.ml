@@ -103,10 +103,12 @@ let rec pp_term (pp : Format.formatter -> int -> unit) (fmt : Format.formatter) 
   match tm with
   | Tm_const (n, Ty_nat _) -> Format.pp_print_int fmt n
   | Tm_var (x, Ty_nat _) -> Format.pp_print_string fmt x
-  | Tm_op ("+", e :: rest) ->
+  | Tm_op (op, e :: rest) ->
       Format.pp_print_string fmt "(";
       pp_term pp fmt e;
-      List.iter (fun e -> Format.pp_print_string fmt " + "; pp_term pp fmt e) rest;
+      List.iter
+	(fun e -> Format.pp_print_string fmt (" " ^ op ^ " "); pp_term pp fmt e)
+	rest;
       Format.pp_print_string fmt ")"
   | _ -> failwith "[pp_term]"
 
@@ -181,14 +183,23 @@ let rec include_term_variable_p f =
 	| Tm_var (x, _) -> true
 	| Tm_op (_, es) ->
 	    (match List.find_opt include_p es with None -> false | Some _ -> true)
-	| _ -> failwith "[include_ter_variable_p]"
+	| _ -> failwith "[include_term_variable_p]"
       in include_p e1 || include_p e2
   | Prop_neg f' -> include_term_variable_p f'
   | Prop_conj fs | Prop_disj fs ->
       (match List.find_opt include_term_variable_p fs with None -> false | Some _ -> true)
-  | Prop_modal (m, (r, r_opt), (f', f_opt)) ->
-      include_term_variable_p f'
+  | Prop_modal (_, (r, _), (f', _)) ->
+      include_term_variable_in_path_p r || include_term_variable_p f'
   | _ -> failwith "[include_term_variable_p]"
+
+and include_term_variable_in_path_p (r : path) =
+  match r with
+  | Path_prop p -> include_term_variable_p p
+  | Path_seq rs | Path_sum rs ->
+      (match List.find_opt (fun (r', _) -> include_term_variable_in_path_p r') rs with
+      | Some _ -> true | None -> false)
+  | Path_test p -> include_term_variable_p p
+  | Path_star (r', _) -> include_term_variable_in_path_p r'
 
 (* simplifaction w/o term value info *)
 
@@ -311,7 +322,7 @@ and find_term_variables_rec (rslt : (string * base_t) list) f =
       find_term_variables_rec rslt f'      
   | _ -> failwith "[find_term_variables_rec]"
 
-(* property instantiation using term value info *)
+(* property instantiation using term value info (env) *)
 
 let rec instantiate (env : (string * (base_t * int)) list) (p : t) =
   instantiate_rec env p
@@ -324,10 +335,10 @@ and instantiate_rec env p =
   | Prop_neg p' -> Prop_neg (instantiate_rec env p')
   | Prop_conj ps -> Prop_conj (List.map (instantiate_rec env) ps)
   | Prop_disj ps -> Prop_disj (List.map (instantiate_rec env) ps)
-  | Prop_modal (m, (r, r_opt), (p, p_opt)) ->
-      Prop_modal (m, (instantiate_path env r, r_opt), (instantiate env p, p_opt))
+  | Prop_modal _ -> p
   | _ -> p
 
+(*
 and instantiate_path env r =
   match r with
   | Path_prop p -> Path_prop (instantiate env p)
@@ -336,8 +347,9 @@ and instantiate_path env r =
   | Path_test p -> Path_test (instantiate env p)
   | Path_star (r', r_opt) -> Path_star (instantiate_path env r', r_opt)
   | _ -> r
+ *)
 
-(* split *)
+(* split : p -> [env1, q1; env2, q2; ...] *)
 
 let rec split p =
   let alist, _ =
@@ -359,9 +371,11 @@ let rec split p =
   in let nbit = List.fold_left (fun rslt (_, (_, _, len)) -> rslt + len) 0 alist
   in
   if nbit > 8 then failwith ("[split] too many combinations: 2^" ^ string_of_int nbit);
+  if nbit = 0 then [] else
   split_rec p alist nbit [] 0
 
 and split_rec p alist nbit rslt i =
+  (* generate (env(i), (instaniate env(i) p)) and add it to rslt *)
   if i = 1 lsl nbit then rslt else
   let bits : bool list = gen_bits nbit i
   in let env : (string * (base_t * int)) list =
@@ -378,10 +392,9 @@ and split_rec p alist nbit rslt i =
       [] alist
   in let q = instantiate env p
   in
-  assert (find_term_variables q = []);
   split_rec p alist nbit (rslt @ [env, q]) (i + 1)
 
-(* gen_bits nbit c returns [b(0); b(1); ...; b(nbit - 1)] = bit-representation of c
+(* gen_bits nbit n returns [b(0); b(1); ...; b(nbit - 1)] = bit-representation of n
  *)
 and gen_bits nbit (n : int) =
   gen_bits_rec nbit n [] 0
@@ -392,15 +405,38 @@ and gen_bits_rec nbit (n : int) rslt i =
   else
     gen_bits_rec nbit n (rslt @ [n land (1 lsl i) <> 0]) (i + 1)
 
-(* propositionalization *)
+(* propositionalize f *)
 
-let rec propositionalize_eq (e1 : int term) (e2 : int term) =
+let rec propositionalize ?(keep_terms = false) f =
+  match f with
+  | Prop_atomic _ -> f
+  | Prop_equal (e1, e2) ->
+      propositionalize_eq ~keep_terms e1 e2
+  | Prop_neg f' -> Prop_neg (propositionalize ~keep_terms f')
+
+  | Prop_conj fs -> Prop_conj (List.map (propositionalize ~keep_terms) fs)
+  | Prop_disj fs -> Prop_disj (List.map (propositionalize ~keep_terms) fs)
+
+  | Prop_modal (m, p, (f, opt)) ->
+      let p' = propositionalize_lpath ~keep_terms p
+      and f' = propositionalize ~keep_terms f
+      in Prop_modal (m, p', (f', opt))
+
+  | _ -> failwith "[propositionalize]"
+
+and propositionalize_eq ?(keep_terms = false) (e1 : int term) (e2 : int term) =
   match e1, e2 with
-  | Tm_const (c1, Ty_nat n1), Tm_const (c2, Ty_nat n2) ->
+  | Tm_const (c1, Ty_nat _), Tm_const (c2, Ty_nat _) ->
       (* c1 = c2 *)
       Prop_atomic (string_of_bool (c1 = c2))
 
-  | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat n2) when n1 > c2 ->
+  | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat _) when n1 <= c2 ->
+      (* x1 = c2 *)
+      assert (n1 <= c2);
+      Prop_atomic "false"
+  | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat n2) when keep_terms ->
+      Prop_equal (e1, e2)
+  | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat n2) ->
       (* x1 = c2 *)
       let xs : string list = term_to_propositions e1 in
       let nbit = int_of_float @@ ceil (log (float_of_int n1) /. log 2.0) in
@@ -413,17 +449,14 @@ let rec propositionalize_eq (e1 : int term) (e2 : int term) =
 	    in (rslt @ [f]), i + 1)
 	  ([], 0) xs
       in Prop_conj props
-  | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat n2) ->
-      (* x1 = c2 *)
-      assert (n1 <= c2);
-      Prop_atomic "false"
   | Tm_const _, Tm_var _ ->
       (* c1 = x2 *)
       propositionalize_eq e2 e1
 
   | Tm_var (x1, Ty_nat n1), Tm_var (x2, Ty_nat n2) when x1 = x2 ->
-      (* x = x *)
+      (* x1 = x2 *)
       Prop_atomic "true"
+ (*
   | Tm_var (x1, Ty_nat n1), Tm_var (x2, Ty_nat n2) when n1 >= n2 ->
       (* x1 = x2 *)
       let xs1 : string list = term_to_propositions e1
@@ -439,128 +472,42 @@ let rec propositionalize_eq (e1 : int term) (e2 : int term) =
 	List.init (nbit1 - nbit2)
 	  (fun i -> Prop_neg (Prop_atomic (List.nth xs1 (nbit2 + i))))
       in Prop_conj (conj1 @ conj2)
+  *)
 
-(*
-  | Tm_const _, Tm_op ("+", es2)
-  | Tm_var _, Tm_op ("+", es2) ->
-      propositionalize_eq_summands [e1] es2
-  | Tm_op ("+", es1), Tm_const _
-  | Tm_op ("+", es1), Tm_var _ ->
-      propositionalize_eq_summands es1 [e2]
-  | Tm_op ("+", es1), Tm_op ("+", es2) ->
-      propositionalize_eq_summands es1 es2
-
-  | _ -> failwith "[propositionalize_eq]"
-
-and propositionalize_eq_summands (es1 : int term list) es2 =
-  let extract_vars es =
-    let alist, _ =
-      List.fold_left
-	(fun (rslt, i) e ->
-	  match e with
-	  | Tm_var (x, Ty_nat n) when not (List.mem_assoc x rslt) ->
-	      let nbit = int_of_float @@ ceil (log (float_of_int n) /. log 2.0) in
-	      (rslt @ [x, (i, nbit)]), i + nbit
-	  | _ -> rslt, i)
-	([], 0) es
-    in alist
-  in let alist : (string * (int * int)) list = extract_vars (es1 @ es2)
-  in let nbit = List.fold_left (fun rslt (_, (_, n)) -> rslt + n) 0 alist
-  in
-  assert (alist <> [] && 0 < nbit);
-  if (nbit > 8) then
-    failwith ("[propositionalize_eq_summands] too many combinations: 2^" ^ (string_of_int nbit));
-  let pos, neg = propositionalize_eq_summands_rec es1 es2 alist ([], []) nbit 0
-  in
-  Prop_conj ((Prop_disj pos) :: neg)
-
-and propositionalize_eq_summands_rec es1 es2 alist rslt nbit i =
-  if i = 1 lsl nbit then rslt else
-  let bits : bool list = gen_bits nbit i
-  in let eval_term alist bits es =
-    (* es = [e1; e2; ...] -> e1 + e2 + ... *)
-    List.fold_left
-      (fun rslt e ->
-	match e with
-	| Tm_const (n, Ty_nat _) -> rslt + n
-	| Tm_var (x, Ty_nat _) when List.mem_assoc x alist ->
-	    let pos, len = List.assoc x alist in
-	    let n =
-	      (* n = value of e *)
+  | _ ->
+      (* general case *)
+      let alist = split (Prop_equal (e1, e2))
+      in let qs =
+	List.map
+	  (fun (env, q) ->
+	    (* for each case (env, q) in alist *)
+	    let binds, in_range =
 	      List.fold_left
-		(fun rslt k ->
-		  assert (0 <= pos + k && pos + k < List.length bits);
-		  rslt + if List.nth bits (pos + k) then 1 lsl k else 0)
-		0 (List.init len (fun k -> k))
-	    in
-	    rslt + n
-	| _ -> failwith "[propositionalize_eq_summands_rec] eval_term")
-      0 es
-  in let n1, n2 = eval_term alist bits es1, eval_term alist bits es2
-  in
-  (*
-  output_string stderr "bits:"; List.iter (fun b -> Printf.eprintf " %b" b) bits;
-  output_string stderr "\n";
-  print_term (output_string stderr) (Tm_op ("+", es1)); Printf.eprintf " = %d\n" n1;
-  print_term (output_string stderr) (Tm_op ("+", es2)); Printf.eprintf " = %d\n" n2;
-   *)
-  let var_to_prop alist bits es =
-    (* es = {e_i}_i -> {conj_i}_i where conj_i = conj of props for e_i *)
-    List.fold_left
-      (fun rslt -> function
-	| Tm_var (x, Ty_nat n) ->
-	    assert (List.mem_assoc x alist);
-	    let pos, len = List.assoc x alist in
-	    let ys = term_to_propositions (Tm_var (x, Ty_nat (1 lsl len))) in
-	    assert (List.length ys = len);
-	    let rslt, _ =
-	      List.fold_left
-	      (fun (rslt, k) y ->
-		let rslt' =
-		  rslt @
-		  if List.nth bits (pos + k)
-		  then [Prop_atomic y]
-		  else [Prop_neg (Prop_atomic y)]
-		in rslt', k + 1)
-		(rslt, 0) ys
-	    in rslt
-	| _ -> rslt)
-      [] es
-  in let pos, neg = rslt
-  in let pos', neg' =
-    let conj = var_to_prop alist bits (es1 @ es2)
-    in if n1 = n2
-    then pos @ [Prop_conj conj], neg
-    else pos, neg @ [Prop_neg (Prop_conj conj)]
-  in
-  propositionalize_eq_summands_rec es1 es2 alist (pos', neg') nbit (i + 1)
- *)
+		(fun (rslt, in_range) (x, (Ty_nat n, n')) ->
+		  (* (x, (ty, n') -> x = n' *)
+		  let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
+		  in
+		  rslt @ [if keep_terms then eq else propositionalize eq],
+		  in_range && n > n')
+		([], true) env
+	    in let q' =
+	      if in_range
+	      then propositionalize ~keep_terms (simp q)
+	      else Prop_atomic "false"
+	    in Prop_disj [Prop_neg (Prop_conj binds); q'])
+	  alist
+      in Prop_conj qs
 
-(* propositionalize f *)
+and propositionalize_lpath ?(keep_terms = false) (p, l_opt) =
+  (propositionalize_path ~keep_terms p), l_opt
 
-let rec propositionalize f =
-  match f with
-  | Prop_atomic _ -> f
-  | Prop_equal (e1, e2) ->
-      propositionalize_eq e1 e2
-  | Prop_neg f' -> Prop_neg (propositionalize f')
-  | Prop_conj fs -> Prop_conj (List.map (propositionalize) fs)
-  | Prop_disj fs -> Prop_disj (List.map (propositionalize) fs)
-  | Prop_modal (m, p, (f, opt)) ->
-      let p' = propositionalize_lpath p and f' = propositionalize f
-      in Prop_modal (m, p', (f', opt))
-  | _ -> failwith "[propositionalize]"
-
-and propositionalize_lpath (p, l_opt) =
-  (propositionalize_path p), l_opt
-
-and propositionalize_path p =
+and propositionalize_path ?(keep_terms = false) p =
   match p with
-  | Path_prop f -> Path_prop (propositionalize f)
-  | Path_seq ps -> Path_seq (List.map (propositionalize_lpath) ps)
-  | Path_sum ps -> Path_sum (List.map (propositionalize_lpath) ps)
-  | Path_test f -> Path_test (propositionalize f)
-  | Path_star p' -> Path_star (propositionalize_lpath p')
+  | Path_prop f -> Path_prop (propositionalize ~keep_terms f)
+  | Path_seq ps -> Path_seq (List.map (propositionalize_lpath ~keep_terms) ps)
+  | Path_sum ps -> Path_sum (List.map (propositionalize_lpath ~keep_terms) ps)
+  | Path_test f -> Path_test (propositionalize ~keep_terms f)
+  | Path_star p' -> Path_star (propositionalize_lpath ~keep_terms p')
   | _ -> failwith "[propositionalize_path]"
 
 (** pretty-printing *)
@@ -604,6 +551,12 @@ and print_property_rec out ?(fancy=false) (f : property) =
   | Prop_atomic "false" when fancy -> out bot
   | Prop_atomic a -> out a
 
+  | Prop_equal (Tm_op ("<", [e1; e2]), Tm_const (b, Ty_nat _)) ->
+      (* comparison *)
+      assert (b = 0 || b = 1);
+      print_term out e1;
+      out (if b = 1 then " < " else " >= ");
+      print_term out e2
   | Prop_equal (e1, e2) ->
       print_term out e1;
       out " = ";

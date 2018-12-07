@@ -27,15 +27,14 @@ let opt_parse_only = ref false
 (* protocol *)
 let opt_expand_any = ref true
 let opt_relax_protocols = ref false
-(* property *)
-let opt_split_cases = ref true
-let opt_propositionalize = ref true
 (* rule *)
 let opt_expand_preserve = ref true
 let opt_discard_codes = ref false
 
 (* deprecated *)
 (*
+let opt_split_cases = ref true
+let opt_propositionalize = ref true
 let opt_extra_properties = ref true
 let opt_expand_macros = ref false
 let opt_expand_arrays = ref false
@@ -47,13 +46,15 @@ let opt_allow_skip = ref false
 *)
 
 let synopsis prog =
+  printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
   let msg =
     "options:\n"
     ^ "  -o <file>\t\toutput to <file>\n"
-    ^ "  -t <fmt>\t\toutput in <fmt> (caml, json, xml)\n"
+    ^ "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\", \"xml\")\n"
     ^ "  -p\t\t\tparse-only\n"
-    ^ "  -h\t\t\tdisplay this message\n"
+    ^ "  -V, --version\t\tdisplay version\n"
+    ^ "  -h, --help\t\tdisplay this message\n"
   in output_string stdout msg
 
 let rec input_rules ic = function
@@ -82,11 +83,12 @@ let output_rules oc (rs : Rules.t) = function
 let main argc argv =
   let i = ref 1
   and infile = ref "/dev/stdin"
-  and outfile = ref "/dev/stdout" in
+  and outfile = ref "/dev/stdout"
+  in
   while !i < argc do
     let len = String.length argv.(!i)
-    in let matches str =
-      len <= String.length str && argv.(!i) = String.sub str 0 len
+    in let matches min_len str =
+      len >= min_len && len <= String.length str && argv.(!i) = String.sub str 0 len
     in let _ =
       match argv.(!i) with
       | "-" ->
@@ -98,6 +100,9 @@ let main argc argv =
       | "--json" ->
 	  opt_fmt_in := "json"
 
+      | "-V" | "--version" ->
+	  printf "%s\n" (Version.get ());
+	  raise Exit
       | "-v" | "--verbose" ->
 	  opt_verbose := true
       | "-q" | "--silent" ->
@@ -109,19 +114,24 @@ let main argc argv =
 	  opt_parse_only := true
 
       (* protocol *)
-      | _ when 7 <= len && matches "--relax-protocols" ->
+      | _ when matches 7 "--relax-protocols" ->
 	  opt_relax_protocols := true
       (* property *)
-      | _ when 7 <= len && matches "--no-split-cases" ->
+      (*
+      | _ when matches 9 "--skip-split-cases"
+            || matches 7 "--no-split-cases" ->
 	  opt_split_cases := false
-      | _ when 8 <= len && matches "--keep-terms" ->
+      | _ when matches 7 "--no-propositionalize"
+            || matches 9 "--skip-propositionalize"
+	    || matches 8 "--keep-terms" ->
 	  opt_propositionalize := false
+       *)
       (* rule *)
-      | _ when 8 <= len && matches "--keep-preserve" ->
+      | _ when matches 8 "--keep-preserve" ->
 	  opt_expand_preserve := false
-      | _ when 9 <= len && matches "--discard-codes" ->
+      | _ when matches 9 "--discard-codes" ->
 	  opt_discard_codes := true
-      | _ when 9 <= len && matches "--no-discard-codes" ->
+      | _ when matches 9 "--no-discard-codes" ->
 	  opt_discard_codes := false
 
       | _  when argv.(!i).[0] = '-' ->
@@ -140,8 +150,9 @@ let main argc argv =
   let oc = open_out !outfile in
 
   (* read a set of declarations from file *)
-  let ic = open_in !infile in
-  let decls : Rules.decl list = input_rules ic !opt_fmt_in in
+  let ic = open_in !infile
+  in let decls : Rules.decl list = input_rules ic !opt_fmt_in
+  in
   if !opt_parse_only then
     (output_rules oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
 
@@ -150,10 +161,6 @@ let main argc argv =
     Rulespp.preprocess
       ~expand_any: !opt_expand_any
       ~relax_protocols: !opt_relax_protocols
-
-      ~split_cases: !opt_split_cases
-      ~propositionalize: !opt_propositionalize
-
       ~discard_codes: !opt_discard_codes
       ~expand_preserve: !opt_expand_preserve
 

@@ -20,21 +20,15 @@ open Rule
 open Rules
 open Spec
 
-open Ldl
-open Ldlsimp
-
 open Printf
 
 (* ================================================================================
    preprocessing (moved from Rulespp.ml)
    [property]
    - align propositions
-   - add special properties
+   - add_event_contraints
    [rule]
-   - move "preserve" rules to the last part
-   - add a special "_skip" rule to mark the end of "normal" rules,
-     which suggests the subsequent rules can be ignored in statechart generation
-   - expand "preserve" rules to normal ones
+   - none (see Rulespp.preprocess)
    ================================================================================
  *)
 
@@ -46,13 +40,27 @@ let replace_properties s (props : Property.t list) =
     rules = s.rules
   }
 
-(* align_propositions
-   for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
+(** property *)
+
+(** align_propositions
+
+   for each proposition p, add the following property:
+     [true*] (<p>!p | <!p>p -> <true>!_idle)
+
+   this indicates that, when a variable changes its value by a transition,
+   _idle does not hold in any of the next states
+
+   notes
+   - no proposition value changes in any final transition (to the last states)
+   - the introduced properties excludes a single-state model
+     that denotes the inital and last state.
  *)
-let rec align_propositions s =
+let rec align_propositions (s : Spec.t) =
+  if s.events = [] then s else
+
   let props : Property.t list =
-    List.map
-      (function
+    List.fold_left
+      (fun rslt -> function
 	| p, VT_prop ->
 	    let prop : Property.property =
 	      (* [true*] (<p>!p & <!p>p -> <true>!_idle) *)
@@ -67,32 +75,64 @@ let rec align_propositions s =
 	      in
 	      Prop_modal (Mod_all, (Path_star (Path_prop tt, None), None),
 			  (Prop_disj [Prop_neg p1; p2], None))
-	    in prop
-	| _ -> failwith "[align_propositions]")
-      s.variables
+	    in rslt @ [prop]
+	| p, VT_term _ -> rslt)
+      [] s.variables
   in
   replace_properties s (s.properties @ props)
 
 (* add special properties [_idle1; _idle2; _idle3] *)
-let add_special_properties ?(protocol_relax = false) s =
+let add_event_contraints ?(protocol_relax = false) (s : Spec.t) =
+  if s.events = [] then s else
+
   let props_on_events : Property.property list =
     let idle1 = Prop_atomic "_idle"
-	(* _idle *)
+
+	(* idle1 = _idle
+	   idle1 indicates that no event is observed in the initial state.
+
+	   in general, _idle indicates no event is observed in the current state
+	   - internally, _idle is defined by setting all event-bits to false.
+	     (event-bits are a set of log2(num_of_events) propositions
+	      for representating events)
+	   - when a state transition q -(e)-> q' occurs,
+	     q' is marked with the "event bit" for e set to true.
+	   - for q-(_skip)-> q', all event bits are set to false in q'.
+	     strictly, if _idle holds at q',
+	     it means that in q' there exist no incoming transition with an event
+
+	   note that, if _idle appears in a formula,
+	   the _skip event is also introduced.
+	   this means the length of the event-bits is at least 1.
+	 *)
+
     and idle2 =
       Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
 		  (Prop_disj [Prop_neg (Prop_atomic "last"); Prop_atomic "_idle"], None))
-	(* [true*] (last -> _idle) *)
+	(* idle2 = [true*] (last -> _idle)
+	   idle2 indicates _idle holds in the last state,
+	   hence the last state can only be reached by _skip
+	 *)
+
     and idle3 =
-      (* this prohibits intermediate _idle states (and thus _skip events).
-	 _idle appears only at the beginning/end of the trace.
-	 included only when relax_protocol is not set *)
       Prop_modal (Mod_ex, (Path_prop (Prop_atomic "true"), None),
 		  (Prop_modal (Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None),
 			       (Prop_disj [Prop_neg (Prop_atomic "_idle"); Prop_atomic "last"], None)), None))
-	(* <true>[true*] (_idle -> last) *)
+
+      (* idle3 = <true>[true*] (_idle -> last)
+	 idle3 indicates, except the first (initial) state,
+	 _idle holds only in the last state.
+
+	 note: this prohibits intermediate _idle states (and thus _skip events).
+	 _idle appears only at the beginning/end of the trace.
+	 included only when relax_protocol is not set
+       *)
+
     in [idle1; idle2] @ if protocol_relax (*|| skip_allow*) then [] else [idle3]
   in
   replace_properties s (s.properties @ props_on_events)
 
-let preprocess s =
-  s |> align_propositions |> add_special_properties
+(** preprocess : Spec.t -> Spec.t *)
+
+let preprocess (s : Spec.t) =
+  s |> align_propositions |> add_event_contraints

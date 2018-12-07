@@ -23,31 +23,35 @@ let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 
-(* rules_p *)
-let opt_parse_only = ref false
-(* rulespp *)
-let opt_skip_rulespp = ref false
-let opt_rulespp_only = ref false
-(* specpp : Spec.t -> Spec.t *)
-let opt_skip_specpp = ref false
-let opt_specpp_only = ref false
-(* spec2ldl : Spec.t -> Ldl.formula *)
 let opt_map_out = ref "/dev/null"
+let opt_until = ref "ldl"
+let opt_parse_only = ref false
+let opt_skip_rulespp = ref false
+let opt_skip_specpp = ref false
+let opt_skip_p18n = ref false
+let opt_keep_terms = ref false
 
 let synopsis prog =
+  printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
-  let msg =
-    "options:\n"
-    ^ "  -o <file>\t\toutput to <file>\n"
-    ^ "  -t <fmt>\t\toutput in <fmt> (caml, json)\n"
-    ^ "  --map <file>\t\toutput event mappings to <file> (in xml)\n"
-    ^ "  -p\t\t\tparse only\n"
-    ^ "  -E, --rulespp-only\tterminate after rulespp\n"
-    ^ "  --no-rulespp\t\tsuppress preprocessing (skip rulespp)\n"
-    ^ "  --specpp-only\t\tterminate after specpp\n"
-    ^ "  --no-specpp\t\tsuppress spec-preprocessing (skip specpp)\n"
-    ^ "  -h\t\t\tdisplay this message\n"
-  in output_string stdout msg
+  List.iter (output_string stdout)
+    ["options:\n";
+     "  -o <file>\t\toutput to <file>\n";
+     "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\")\n";
+     "  --map <file>\t\toutput event mappings to <file> in xml\n";
+     "  -p\t\t\tparse-only\n";
+     "  --until <stage>\tterminate at <stage> (\"rules\", \"spec\", \"ldl\")\n";
+     "  -V, --version\t\tdisplay version\n";
+     "  -h, --help\t\tdisplay this message\n"]
+
+let extra_synopsis () =
+  List.iter (output_string stdout)
+    ["\n";
+     "  [for debugging]\n";
+     "  --skip-rulespp\tskip rules-preprocessing\n";
+     "  --skip-specpp\t\tskip spec-preprocessing\n";
+     "  --skip-p18n\t\tskip skip propositionalization\n";
+     "  --keep-terms\t\tkeep terms in propositionalization\n"]
 
 (* rules in/out *)
 let input_rules ic = function
@@ -165,9 +169,11 @@ let output_map oc (m : Spec2ldl.event_map) = function
   | "xml" | "unspecified" ->
       output_string oc "<mappings xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
       List.iter
-	(function e, Ldl.Ldl_conj fs ->
+	(function e, Property.Prop_conj fs ->
 	  fprintf oc "<bits type=\"event\" name=%S>" e;
-	  List.iter (fun f -> fprintf oc "<bit>%s</bit>" (Ldl.string_of_formula f)) fs;
+	  List.iter
+	    (fun f -> fprintf oc "<bit>%s</bit>" (Property.string_of_property f))
+	    fs;
 	  fprintf oc "</bits>\n")
 	m;
       output_string oc "</mappings>\n"
@@ -178,7 +184,8 @@ let output_map oc (m : Spec2ldl.event_map) = function
 let main argc argv =
   let i = ref 1
   and infile = ref "/dev/stdin"
-  and outfile = ref "/dev/stdout" in
+  and outfile = ref "/dev/stdout"
+  in
   while !i < argc do
     let _ =
       match argv.(!i) with
@@ -186,12 +193,29 @@ let main argc argv =
 	  infile := "/dev/stdin";
       | "-o" | "--output" ->
 	  outfile := argv.(!i+1); incr i;
-      | "-f" ->
-	  opt_fmt_in := argv.(!i+1); incr i;
       | "-t" ->
 	  opt_fmt_out := argv.(!i+1); incr i;
+      | "-V" | "--version" ->
+	  printf "%s\n" (Version.get ());
+	  raise Exit
+      | "-v" | "--verbose" ->
+	  opt_verbose := true
+      | "-q" | "--silent" ->
+	  opt_verbose := false
+      | "-h" | "--help"  ->
+	  synopsis argv.(0); exit 0
+      | "-hh" ->
+	  synopsis argv.(0); extra_synopsis (); exit 0
+
+      | "-f" ->
+	  opt_fmt_in := argv.(!i+1); incr i;
       | "--json" ->
 	  opt_fmt_in := "json"
+      | "--map"  ->
+	  opt_map_out := argv.(!i+1); incr i;
+      | "-u" | "--until"  ->
+	  let stage = argv.(!i+1) in
+	  opt_until := stage; incr i;
 
       (* rules_p *)
       | "-p" | "--parse-only" ->
@@ -199,24 +223,14 @@ let main argc argv =
       (* rulespp *)
       | "--skip-rulespp" | "--no-rulespp" ->
 	  opt_skip_rulespp := true
-      | "-E" | "--rulespp-only" ->
-	  opt_rulespp_only := true
       (* specpp *)
       | "--skip-specpp" | "--no-specpp" ->
 	  opt_skip_specpp := true
-      | "--no-specpp" ->
-	  opt_specpp_only := true
-
       (* spec2ldl *)
-      | "--map"  ->
-	  opt_map_out := argv.(!i+1); incr i;
-
-      | "-v" | "--verbose" ->
-	  opt_verbose := true
-      | "-q" | "--silent" ->
-	  opt_verbose := false
-      | "-h" | "--help"  ->
-	  synopsis argv.(0); exit 0
+      | "--skip-p18n" ->
+	  opt_skip_p18n := true
+      | "--keep-terms" ->
+	  opt_keep_terms := true
 
       | _    ->
 	  infile :=argv.(!i)
@@ -244,7 +258,9 @@ let main argc argv =
   in
 
   (* decls -> rules *)
-  let rules : Rules.t = Rules.decls_to_rules decls in
+  let rules : Rules.t = Rules.decls_to_rules decls
+  in
+  if !opt_until = "rules" then (output_rules oc rules !opt_fmt_out; raise Exit);
 
   (* ensure rules include no code *)
   List.iter
@@ -261,8 +277,6 @@ let main argc argv =
       | _ -> ())
     rules.rule_decls;
 
-  if !opt_rulespp_only then (output_rules oc rules !opt_fmt_out; raise Exit);
-
   (* rules -> spec *)
   let spec : Spec.t = Spec.spec_of_rules rules in
 
@@ -272,17 +286,29 @@ let main argc argv =
     then spec
     else Specpp.preprocess spec
   in
+  if !opt_until = "spec" then (output_spec oc spec !opt_fmt_out; raise Exit);
 
-  if !opt_specpp_only then (output_spec oc spec !opt_fmt_out; raise Exit);
-
-  (* spec -> ldl *)
-  let formulas, map = Spec2ldl.translate spec in
+  (* spec -> property list *)
+  let props, map =
+    Spec2ldl.translate
+      ~propositionalize: (not !opt_skip_p18n)
+      ~keep_terms: !opt_keep_terms
+      spec
+  in
   if !opt_map_out != "/dev/null" then
     (let oc_map = open_out !opt_map_out in
      output_map oc_map map "unspecified"; close_out oc_map);
+  if !opt_skip_p18n || !opt_keep_terms || !opt_until <> "ldl" then
+    (output_string oc "property\n";
+     List.iter
+       (fun p -> Property.print_property (output_string oc) p; output_string oc ";\n")
+       props;
+     raise Exit);
 
   (* print out *)
-  output_formula oc (Ldl.Ldl_conj formulas) !opt_fmt_out;
+  assert (!opt_until = "ldl");
+  let f : Ldl.formula = Spec2ldl.formula_of_property map (Property.Prop_conj props) in
+  output_formula oc f !opt_fmt_out;
 
   (* clean-up *)
   ()
