@@ -307,7 +307,7 @@ let main argc argv =
 
   (* print out *)
   assert (!opt_until = "ldl");
-  let f : Ldl.formula = Spec2ldl.formula_of_property map (Property.Prop_conj props) in
+  let f : Ldl.formula = Spec2ldl.formula_of_property (Property.Prop_conj props) in
   output_formula oc f !opt_fmt_out;
 
   (* clean-up *)

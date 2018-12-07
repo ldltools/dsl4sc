@@ -14,3 +14,7 @@
  *)
 
 val get : unit -> string
+
+val get_major : unit -> int
+val get_minor : unit -> int
+val get_micro : unit -> int

@@ -87,6 +87,40 @@ and protocol_to_path map (p : Protocol.t) =
     | _ -> failwith "[protocol_to_path]"
   in r, None
 
+(** property
+    expand built-in properties like _idle
+ *)
+
+let rec expand_property (map : event_map) p =
+  match p with
+  | Prop_atomic "_idle" -> List.assoc "_skip" map
+  | Prop_atomic a -> Prop_atomic a
+  | Prop_equal (e1, e2) -> p
+  | Prop_neg p'  -> Prop_neg (expand_property map p')
+  | Prop_conj ps -> Prop_conj (List.map (expand_property map) ps)
+  | Prop_disj ps -> Prop_disj (List.map (expand_property map) ps)
+  | Prop_modal (m, (r, r_opt), (q, q_opt)) ->
+      Prop_modal (m, (expand_path map r, r_opt), (expand_property map q, q_opt))      
+
+  | _ ->
+      failwith ("[expand_property] invalid property: " ^ Property.string_of_property p)
+
+(*
+and expand_lpath map ((r, r_opt) : Property.labelled_path) =
+  expand_path map r
+ *)
+
+and expand_path map (r : Property.path) =
+  match r with
+  | Path_prop p -> Path_prop (expand_property map p)
+  | Path_seq rs ->
+      Path_seq (List.map (fun (r, _) -> (expand_path map r, None)) rs)
+  | Path_sum rs ->
+      Path_sum (List.map (fun (r, _) -> expand_path map r, None) rs)
+  | Path_test p -> Path_test (expand_property map p)
+  | Path_star (r, _) -> Path_star (expand_path map r, None)
+  | _ -> failwith "[expand_path]"
+
 (** rule
     ⟦ on e when c do a ⟧ = [true*]>(<c>done(e) -> <c>(done(e) ∧ a))
     ⟦ on e when <ρ>c do a ⟧ = [true*](<ρ;c>done(e) -> <ρ;c>(done(e) ^ a))
@@ -95,7 +129,7 @@ and protocol_to_path map (p : Protocol.t) =
 let rec property_of_rule (map : event_map) (r : Rule.t) =
   let (e, _), ((c, _), _), acts = r.event, r.condition, r.action
   in let e_done : Property.t = List.assoc (Rule.event_name e) map
-  and c_path : Property.path = property_to_path c
+  and c_path : Property.path = property_to_path map c
   and a' = action_to_property map acts
   in
   Prop_modal (Mod_all,
@@ -106,10 +140,11 @@ let rec property_of_rule (map : event_map) (r : Rule.t) =
 	       None))
 
 (* <ρ1><ρ2>ψ -> ρ1; ρ2; ..; ψ *)
-and property_to_path (p : Property.t) =
+and property_to_path map (p : Property.t) =
   match p with
-  | _ when not (Property.modal_p p) -> Path_prop p
-  | Prop_modal (Mod_ex, r, (p', _)) -> Path_seq [r; property_to_path p', None]
+  | _ when not (Property.modal_p p) -> Path_prop (expand_property map p)
+  | Prop_modal (Mod_ex, r, (p', _)) ->
+      Path_seq [r; property_to_path map @@ expand_property map p', None]
   | _ ->
       failwith ("[property_to_path] invalid property: " ^ Property.string_of_property p)
 
@@ -119,7 +154,7 @@ and action_to_property map (acts : Rule.action) =
       (fun rslt (act, _) ->
 	rslt @
 	match act with
-	| Act_ensure p -> [p]
+	| Act_ensure p -> [expand_property map p]
 	| Act_raise es -> 
 	    (* raise e1 + e2 + .. -> <true>(done(e1) ∨ done(e2) ∨ ..) *)
 	    [Prop_modal (Mod_ex,
@@ -140,11 +175,12 @@ let rec translate
 
   let map = events_to_map s.events in
   let ps1 = List.map (property_of_protocol map) s.protocols
-  and ps2 = List.map (property_of_rule map) s.rules
+  and ps2 = List.map (expand_property map) s.properties
+  and ps3 = List.map (property_of_rule map) s.rules
   in
-  if not propositionalize then ps1 @ s.properties @ ps2, map else
+  if not propositionalize then ps1 @ ps2 @ ps3, map else
   (* propositionalize *)
-  ps1 @ List.map (Property.propositionalize ~keep_terms) (s.properties @ ps2), map
+  ps1 @ List.map (Property.propositionalize ~keep_terms) (ps2 @ ps3), map
 
 (*
 and split_and_propositionalize ?(split_only = false) props =
@@ -184,25 +220,28 @@ and split_and_propositionalize ?(split_only = false) props =
 
 (** formula *)
 
-let rec formula_of_property (map : event_map) (p : Property.t) =
+let rec formula_of_property (p : Property.t) =
   match p with
-  | Prop_atomic "_idle" -> formula_of_property map (List.assoc "_skip" map)
+  | Prop_atomic a when List.mem a ["_idle"] ->
+      failwith ("[formula_of_property] unrecognized property: " ^ a)
   | Prop_atomic a -> Ldl.Ldl_atomic a
-  | Prop_neg p'  -> Ldl.Ldl_neg (formula_of_property map p')
-  | Prop_conj ps -> Ldl.Ldl_conj (List.map (formula_of_property map) ps)
-  | Prop_disj ps -> Ldl.Ldl_disj (List.map (formula_of_property map) ps)
+  | Prop_neg p' -> Ldl.Ldl_neg (formula_of_property p')
+  | Prop_conj ps -> Ldl.Ldl_conj (List.map formula_of_property ps)
+  | Prop_disj ps -> Ldl.Ldl_disj (List.map formula_of_property ps)
   | Prop_modal (m, (r, _), (p', _)) ->
       let m' = match m with Mod_ex -> Ldl.Mod_ex | Mod_all -> Ldl.Mod_all in
-      Ldl.Ldl_modal (m', path_to_path map r, formula_of_property map p')
+      Ldl.Ldl_modal (m', path_to_path r, formula_of_property p')
   | _ ->
       failwith ("[formula_of_property] invalid property: " ^ Property.string_of_property p)
 
-and path_to_path map (r : Property.path) =
+and path_to_path (r : Property.path) =
   match r with
-  | Path_prop p -> Ldl.Path_prop (formula_of_property map p)
-  | Path_seq rs -> Ldl.Path_seq (List.map (fun (r, _) -> path_to_path map r) rs)
-  | Path_sum rs -> Ldl.Path_sum (List.map (fun (r, _) -> path_to_path map r) rs)
-  | Path_test p -> Ldl.Path_test (formula_of_property map p)
-  | Path_star (r, _) -> Ldl.Path_star (path_to_path map r)
-  | _ -> failwith "[lpath_to_path]"
+  | Path_prop p -> Ldl.Path_prop (formula_of_property p)
+  | Path_seq rs ->
+      Ldl.Path_seq (List.map (fun (r, _) -> path_to_path r) rs)
+  | Path_sum rs ->
+      Ldl.Path_sum (List.map (fun (r, _) -> path_to_path r) rs)
+  | Path_test p -> Ldl.Path_test (formula_of_property p)
+  | Path_star (r, _) -> Ldl.Path_star (path_to_path r)
+  | _ -> failwith "[path_to_path]"
     
