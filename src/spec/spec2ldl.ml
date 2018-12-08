@@ -182,42 +182,6 @@ let rec translate
   (* propositionalize *)
   ps1 @ List.map (Property.propositionalize ~keep_terms) (ps2 @ ps3), map
 
-(*
-and split_and_propositionalize ?(split_only = false) props =
-  let ps1, ps2 =
-    (* term not included, term included *)
-    List.fold_left
-      (fun (ps1, ps2) p ->
-	if Property.include_term_variable_p p
-	then ps1, ps2 @ [p]
-	else ps1 @ [p], ps2)
-      ([], []) props
-  in let alist : ((string * (Property.base_t * int)) list * Property.t) list =
-    (* split : ps -> alist = [(var_binding, instantiated_property); ...] *)
-    Property.split (Prop_conj ps2)
-  in let qs : Property.t list =
-    (* alist -> qs = properties (for cases) *)
-    List.map
-      (fun (env, q) ->
-	(* for each case (env, q) in alist *)
-	let binds, in_range =
-	  List.fold_left
-	    (fun (rslt, in_range) (x, (Ty_nat n, n')) ->
-	      (* (x, (ty, n') -> x = n' *)
-	      let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
-	      in
-	      rslt @ [if split_only then eq else Property.propositionalize eq],
-	      in_range && n > n')
-	    ([], true) env
-	in let q' =
-	  if in_range
-	  then Property.propositionalize (Property.simp q)
-	  else Prop_atomic "false"
-	in Prop_disj [Prop_neg (Prop_conj binds); q'])
-      alist
-  in List.map Property.simp ps1 @ qs
- *)
-
 (** formula *)
 
 let rec formula_of_property (p : Property.t) =

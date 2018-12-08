@@ -93,17 +93,17 @@ all::	$(BINS)
 
 $(BUILD_DIR)/dfa2dfa.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{ldlrule,ldllts}.cmo
+	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmo
 $(BUILD_DIR)/dfa2dfa.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{ldlrule,ldllts}.cmx
+	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmx
 
 # $(BINS.byte)
-$(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/dfa2dfa_main.cmo
+$(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
 	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) $^
 
 # $(BINS.opt)
-$(BUILD_DIR)/dfa2dfa.opt:	$(LIBS.opt) $(BUILD_DIR)/dfa2dfa_main.cmx
+$(BUILD_DIR)/dfa2dfa.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 
 #

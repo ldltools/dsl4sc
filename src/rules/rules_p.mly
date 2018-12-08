@@ -162,7 +162,7 @@ decl	: EVENT event_spec_seq
 	  { List.map (fun s -> Rules.Decl_rule s) $2 }
 
 	| IMPLEMENTATION LBRACE STRING RBRACE
-	  { [Rules.Decl_impl $3] }
+	  { [Rules.Decl_extra $3] }
 
 // **conflict
 //	| error
@@ -208,15 +208,15 @@ protocol_spec_seq
 
 protocol_spec
 	: protocol_or_pcall SEMISEMI
-	  { None, $1 }
+	  { $1 }
 
-	// deprecated
-	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
-	  { let args =
-	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
-	    in Some ($1, args), $6 }
-	| LBRACE protocol_or_pcall RBRACE
-	  { None, $2 }
+//	// deprecated
+//	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
+//	  { let args =
+//	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
+//	    in Some ($1, args), $6 }
+//	| LBRACE protocol_or_pcall RBRACE
+//	  { $2 }
 	;
 
 protocol_or_pcall
@@ -373,22 +373,22 @@ property_spec_seq
 
 property_spec
 	: property_or_pcall SEMI
-	  { None, $1 }
+	  { $1 }
 
-	// deprecated
-	| NAME LPAREN param_seq RPAREN LBRACE labelled_property RBRACE
-	  { let args =
-	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
-	    in Some ($1, args), $6 }
-	| LBRACE property_or_pcall RBRACE
-	  { None, $2 }
+//	// deprecated
+//	| NAME LPAREN param_seq RPAREN LBRACE labelled_property RBRACE
+//	  { let args =
+//	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
+//	    in Some ($1, args), $6 }
+//	| LBRACE property_or_pcall RBRACE
+//	  { $2 }
 	;
 
 property_or_pcall
-	: labelled_property
+	: property
 	  { $1 }
-	| NAME LPAREN param_seq RPAREN
-	  { raise @@ Rules_l.ParseError "property_or_pcall" }
+//	| NAME LPAREN param_seq RPAREN
+//	  { raise @@ Rules_l.ParseError "property_or_pcall" }
 	;
 
 /*
@@ -743,7 +743,7 @@ rule_spec_seq
 
 rule_spec
 	: rule
-	  { None, genrule $1 }
+	  { genrule $1, None }
 	| rule_spec SEMI
 	  { $1 }
 
@@ -789,7 +789,7 @@ rule	: ON rule_e WHEN rule_c rule_a
 	  { $2 @ $3 }
 
 // special case
-	| preserve_rule
+	| preserve_rule_except
 	  { $1 }
 	;
 
@@ -816,6 +816,8 @@ rule_c	: labelled_property
 
 rule_a	: action_seq
 	  { [Elt_action $1] }
+	| preserve_rule_a
+	  { $1 }
 	;
 
 // ------
@@ -911,11 +913,9 @@ event_sum1
 // ----------------------
 // special case: preserve
 // ----------------------
-preserve_rule
-	: ON rule_e preserve_rule_a
-	  { $2 @ $3 }
-	| preserve_rule_e preserve_rule_a
-	  { $1 @ $2 }
+preserve_rule_except
+	: preserve_rule_e preserve_rule_c preserve_rule_a
+	  { $1 @ $2 @ $3 }
 	;
 
 preserve_rule_e
@@ -931,6 +931,13 @@ preserve_rule_e
 	  { [Elt_event (Ev_name_seq_compl $3)] }
 	| EXCEPT ON LPAREN args RPAREN
 	  { [Elt_event (Ev_name_seq_compl $4)] }
+	;
+
+preserve_rule_c
+	:
+	  { [] }
+	| WHEN labelled_property
+	  { [Elt_condition $2] }
 	;
 
 preserve_rule_a

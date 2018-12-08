@@ -22,8 +22,9 @@ val preprocess :
     ?minimize_protocols_always: bool ->
 
     (* rule *)
-    ?discard_codes: bool ->
     ?expand_preserve: bool ->
+    ?mark_conditions: bool ->
+    ?discard_codes: bool ->
 
     Rules.decl list -> Rules.decl list 
 	(** preprocess rules
@@ -50,7 +51,11 @@ val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
 (** rule *)
 
 val pp_expand_preserve : string list -> Rules.decl list -> Rules.decl list
-    (** preserve_expand *)
+    (** pp_preserve_expand events decls
+	events are looked up when rules are of the form "except on e1, e2, .."
+     *)
+
+val pp_mark_conditions : Rules.decl list -> Rules.decl list
 
 val pp_discard_codes  : Rules.decl list -> Rules.decl list
     (** code_discard

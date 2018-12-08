@@ -17,7 +17,7 @@
 (** spec to ldl translation *)
 
 type event_map = (string * Property.t) list
-      (** event name -> atomic propositions *)
+      (** event name -> conjunction of atomic propositions *)
 
 val translate :
     ?propositionalize: bool ->

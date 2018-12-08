@@ -265,17 +265,17 @@ let main argc argv =
   (* ensure rules include no code *)
   List.iter
     (function
-      | None, (r : Rule.t)
-      | Some ("_r_preserve", _), r ->
+      | (r : Rule.t), None
+      | r, Some "_r_preserve" ->
 	  let (e, e_opt), (_, c_opt), a = r.event, r.condition, r.action in
 	  (match e_opt, c_opt with
 	  | Some _, _ | _, Some _ ->
 	      failwith ("[rules2ldl] rule for event (" ^ (Rule.event_name e) ^ ") carries code")
 	  | _ -> ())
-      | Some (name, _), _ ->
-	  failwith ("[rules2ldl] named rule (" ^ name ^ ") not allowed")
+      | _, Some annot ->
+	  failwith ("[rules2ldl] annotated rule (" ^ annot ^ ") not allowed")
       | _ -> ())
-    rules.rule_decls;
+    rules.rules;
 
   (* rules -> spec *)
   let spec : Spec.t = Spec.spec_of_rules rules in

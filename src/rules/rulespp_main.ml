@@ -29,6 +29,7 @@ let opt_expand_any = ref true
 let opt_relax_protocols = ref false
 (* rule *)
 let opt_expand_preserve = ref true
+let opt_mark_conditions = ref false
 let opt_discard_codes = ref false
 
 (* deprecated *)
@@ -56,6 +57,14 @@ let synopsis prog =
     ^ "  -V, --version\t\tdisplay version\n"
     ^ "  -h, --help\t\tdisplay this message\n"
   in output_string stdout msg
+
+let extra_synopsis () =
+  List.iter (output_string stdout)
+    ["\n";
+     "  [for debugging]\n";
+     "  --keep-preserve\tkeep preserve-rules as they are\n";
+     "  --mark-conditions\t(experimental) add propositions for rule conditions\n";
+     "  --discard-codes\tdiscard codes carried by rules\n"]
 
 let rec input_rules ic = function
   | "rules" | "unspecified" ->
@@ -107,8 +116,10 @@ let main argc argv =
 	  opt_verbose := true
       | "-q" | "--silent" ->
 	  opt_verbose := false
-      | "-h" | "--help"  ->
+      | "-h" | "--help" ->
 	  synopsis argv.(0); exit 0
+      | "-hh" ->
+	  synopsis argv.(0); extra_synopsis (); exit 0
 
       | "-p" | "--parse-only"  ->
 	  opt_parse_only := true
@@ -129,6 +140,8 @@ let main argc argv =
       (* rule *)
       | _ when matches 8 "--keep-preserve" ->
 	  opt_expand_preserve := false
+      | _ when matches 6 "--mark-conditions" ->
+	  opt_mark_conditions := true
       | _ when matches 9 "--discard-codes" ->
 	  opt_discard_codes := true
       | _ when matches 9 "--no-discard-codes" ->

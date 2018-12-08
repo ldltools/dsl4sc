@@ -59,11 +59,11 @@ let rec find_undeclared decls =
   let events2, props2, terms2 =
     List.fold_left
       (fun declared -> function
-	| Decl_protocol (_, p) ->
+	| Decl_protocol p ->
 	    find_undeclared1_protocol declared p
-	| Decl_property (_, f) ->
-	    find_undeclared1_labelled_property declared f
-	| Decl_rule (_, r) ->
+	| Decl_property f ->
+	    find_undeclared1_property declared f
+	| Decl_rule (r, _) ->
 	    find_undeclared1_rule declared (r : Rule.t)
 	| _ -> declared)
       (events1, props1, terms1) decls in
@@ -208,10 +208,10 @@ let pp_add_undeclared (decls : Rules.decl list) =
 	match decl with
 	| Decl_variable ((x, VT_term ty), _) when not (List.mem_assoc x terms) ->
 	    rslt @ [decl], terms @ [x, ty]
-	| Decl_property (hd, (p, l_opt)) ->
-	    rslt @ [Decl_property (hd, (update_terms_property terms p, l_opt))], terms
-	| Decl_rule (hd, r) ->
-	    rslt @ [Decl_rule (hd, update_terms_rule terms r)], terms
+	| Decl_property p ->
+	    rslt @ [Decl_property (update_terms_property terms p)], terms
+	| Decl_rule (r, opt) ->
+	    rslt @ [Decl_rule (update_terms_rule terms r, opt)], terms
 	| _ -> rslt @ [decl], terms)
       ([], terms) decls'
   in decls'
@@ -233,8 +233,8 @@ let rec pp_expand_any decls =
   List.map
     (fun decl ->
       match decl with
-      | Decl_protocol (None, p) ->
-	  let p' = expand_any_protocol any_expanded p in Decl_protocol (None, p')
+      | Decl_protocol p ->
+	  let p' = expand_any_protocol any_expanded p in Decl_protocol p'
       | Decl_protocol _ -> failwith "[expand_any]"
       | _ -> decl)
     decls
@@ -253,9 +253,8 @@ and expand_any_protocol any_expanded p =
 let rec pp_minimize_protocols ?(always = false) decls =
   List.fold_left
     (fun rslt -> function
-      | Decl_protocol (None, p) when always || Protocol.mem_event "_epsilon" p ->
-	  rslt @ [Decl_protocol (None, Protocol.minimize p)]
-      | Decl_protocol (Some _, _) -> failwith "[minimize_protocols]"
+      | Decl_protocol p when always || Protocol.mem_event "_epsilon" p ->
+	  rslt @ [Decl_protocol (Protocol.minimize p)]
       | decl -> rslt @ [decl])
     [] decls
 
@@ -264,8 +263,8 @@ let rec pp_minimize_protocols ?(always = false) decls =
 let rec pp_relax_protocols decls =
   List.fold_left
     (fun rslt -> function
-      | Decl_protocol (None, p) ->
-	  let p' = relax_protocol p in rslt @ [Decl_protocol (None, p')]
+      | Decl_protocol p ->
+	  let p' = relax_protocol p in rslt @ [Decl_protocol p']
       | Decl_protocol _ -> failwith "[relax_protocols]"
       | decl -> rslt @ [decl])
     [] decls
@@ -312,22 +311,14 @@ and elim_dup1 ps =
 
 (** rule *)
 
-(* discard codes
-   strip off code fragments (in JS) from rules
- *)
-
-let rec pp_discard_codes decls =
+let pp_mark_conditions (decls : decl list) =
   List.fold_left
-    (fun rslt decl ->
+    (fun (rslt : decl list) decl ->
       match decl with
-      | Decl_rule (None, r) ->
-	  let (e, _), (c, _) = r.event, r.condition
-	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
-	  let r' = { event = (e, None); condition = (c, None); action = a'; }
-	  in rslt @ [Decl_rule (None, r')]
-
-      | Decl_rule (Some (name, _), r) ->
-	  failwith ("[discard_codes] named rule (" ^ name ^ ") not permitted")
+      | Decl_rule (r, _) ->
+	  let e, c, a = r.event, r.condition, r.action
+	  in
+	  rslt @ [decl]
       | _ -> rslt @ [decl])
     [] decls
 
@@ -341,7 +332,7 @@ let pp_expand_preserve (events : string list) (decls : decl list) =
   List.fold_left
     (fun (rslt : decl list) decl ->
       match decl with
-      | Decl_rule (None, r) ->
+      | Decl_rule (r, None) ->
 	  (*print_rule (output_string stderr) r; output_string stderr "\n";*)
 	  (*output_string stderr ((show_rule r) ^ "\n");*)
 	  let (e, _), (c, _), acts = r.event, r.condition, r.action in
@@ -378,15 +369,34 @@ let pp_expand_preserve (events : string list) (decls : decl list) =
 		  | Ev_name_seq es -> expand es ps
 		  | Ev_name_seq_compl es -> expand (complement events es) ps
 		in
-		List.map (fun r' -> Decl_rule (Some ("_r_preserve", []), r')) rs'
+		List.map (fun r' -> Decl_rule (r', Some "_r_preserve")) rs'
 	    | _ ->
 		(* non-preserve rule *)
-		[Decl_rule (None, r)]
+		[Decl_rule (r, None)]
 	  in
 	  rslt @ decls'
 
-      | Decl_rule (Some (name, _), r) ->
-	  failwith ("[expand_preserve] named rule (" ^ name ^ ") not permitted")
+      | Decl_rule (r, Some annot) ->
+	  failwith ("[expand_preserve] annotated rule (" ^ annot ^ ") not permitted")
+      | _ -> rslt @ [decl])
+    [] decls
+
+(* discard codes
+   strip off code fragments (in JS) from rules
+ *)
+
+let rec pp_discard_codes decls =
+  List.fold_left
+    (fun rslt decl ->
+      match decl with
+      | Decl_rule (r, None) ->
+	  let (e, _), (c, _) = r.event, r.condition
+	  and a' = List.map (fun (act, _) -> (act, None)) r.action in
+	  let r' = { event = (e, None); condition = (c, None); action = a'; }
+	  in rslt @ [Decl_rule (r', None)]
+
+      | Decl_rule (r, Some annot) ->
+	  failwith ("[discard_codes] annotated rule (" ^ annot ^ ") not permitted")
       | _ -> rslt @ [decl])
     [] decls
 
@@ -404,8 +414,9 @@ let rec preprocess
     (*?(extra_properties = true)*)
 
     (* rule *)
-    ?(discard_codes = false)
     ?(expand_preserve = true)
+    ?(mark_conditions = false)
+    ?(discard_codes = false)
 
     (decls : Rules.decl list) =
 
@@ -437,7 +448,7 @@ let rec preprocess
 	List.fold_left
 	  (fun (decls', pres_rules) decl ->
 	    match decl with
-	    | Decl_rule (None, r)
+	    | Decl_rule (r, None)
 	      when (match r.action with [(Act_preserve _), _] -> true | _ -> false) ->
 		decls', pres_rules @ [decl]
 	    | _ -> decls' @ [decl], pres_rules)
@@ -605,7 +616,7 @@ let rec align_propositions decls =
 	      in
 	      Prop_modal (Mod_all, (Path_star (Path_prop tt, None), None),
 			  (Prop_disj [Prop_neg p1; p2], None))
-	    in rslt @ [Decl_property (None, (prop, None))]
+	    in rslt @ [Decl_property prop]
 	| _ -> rslt)
       [] decls
   in decls @ decls'
@@ -636,11 +647,11 @@ let add_special_properties ?(protocol_relax = false) decls=
 	let _ =
 	  List.find
 	    (function
-	      | Decl_property (None, (p', None)) when equal_property p' p -> true
+	      | Decl_property p' when equal_property p' p -> true
 	      | _ -> false)
 	    decls
 	in rslt
-      with Not_found -> rslt @ [Decl_property (None, (p, None))])
+      with Not_found -> rslt @ [Decl_property p])
     decls props_on_events
 
 (*

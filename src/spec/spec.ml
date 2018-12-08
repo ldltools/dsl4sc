@@ -27,17 +27,17 @@ type t =
 (** ctor *)
 
 let rec spec_of_rules (rules : Rules.t) =
-  { events = List.map fst rules.event_decls;
-    protocols = List.map snd rules.proto_decls;
+  { events = List.map fst rules.events;
+    protocols = rules.protocols;
 
-    variables = List.map (function ((x, ty), _) -> x, ty) rules.var_decls;
-    properties = List.map (fun (_, (p, _)) -> p) rules.prop_decls;
+    variables = List.map (function ((x, ty), _) -> x, ty) rules.variables;
+    properties = rules.properties;
 
-    rules = List.map filter_rule_spec rules.rule_decls;
+    rules = List.map filter_rule_spec rules.rules;
   }
 
 and filter_rule_spec (rspec : Rules.rule_spec) =
-  let _, r = rspec in
+  let r, _ = rspec in
   let acts' =
     List.fold_left
       (fun rslt (act, code_opt) ->

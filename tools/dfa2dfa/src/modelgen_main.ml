@@ -23,11 +23,12 @@ let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref 0
 
 let synopsis prog =
+  printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <dfa_file>\n" (Filename.basename prog)
 
 let input_nfa ic = function
   | "xml" | "unspecified" ->
-      Ldllts.read_in ic
+      Ldlmodel.read_in ic
   | fmt ->
       failwith ("input_spec: unknown format (" ^ fmt ^ ")")
 
@@ -71,20 +72,20 @@ let main argc argv =
   let oc = open_out !outfile in
 
   (* verbosity *)
-  Ldllts.verbose := !opt_verbose;
+  Ldlmodel.verbosity_set !opt_verbose;
 
   (* read dfa (in xml) from file into m *)
   let ic = open_in !infile in
-  let alist, (m : Ldllts.t), (rs : Ldllts.rule list) = Ldllts.read_in ic in
+  let alist, (m : Ldlmodel.t), (rs : Ldlrule.t list) = Ldlmodel.read_in ic in
   if !opt_verbose > 0 then
     (eprintf "** parsed from %S\n" !infile;
-     Ldllts.debug_print m; List.iter Ldllts.debug_print_rule rs);
+     Ldlmodel.debug_print m; List.iter Ldlrule.debug_print_rule rs);
 
   (* update m to m' *)
-  let m', (alist' : (string * string list) list) = Ldllts.update m rs in
+  let m', (alist' : (string * string list) list) = Modelgen.merge m rs in
   if !opt_verbose > 0 then
     (eprintf "** updated\n";
-     Ldllts.debug_print m';
+     Ldlmodel.debug_print m';
      List.iter
        (fun (rid, tid_seq) ->
 	 eprintf "%s:" rid;
@@ -96,10 +97,10 @@ let main argc argv =
   let out s = output_string oc s in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
   out (Xml.to_string (List.assoc "variables" alist)); out "\n";
-  Ldllts.print_states_in_xml out m;		(* states *)
-  Ldllts.print_transitions_in_xml out m;	(* transitions *)
+  Ldlmodel.print_states_in_xml out m;		(* states *)
+  Ldlmodel.print_transitions_in_xml out m;	(* transitions *)
   (*out (Xml.to_string (List.assoc "variables" alist)); out "\n";*)
-  Ldllts.print_rules_in_xml out m alist' rs;	(* rules *)
+  Ldlmodel.print_rules_in_xml out m alist' rs;	(* rules *)
   if List.mem_assoc "implementation" alist then
     (out (Xml.to_string (List.assoc "implementation" alist)); out "\n");
   out "</dfa>\n";
