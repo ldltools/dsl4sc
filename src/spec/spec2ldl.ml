@@ -39,6 +39,7 @@ and gen_bits_rec nbit (n : int) rslt i =
 let events_to_map (events : string list) =
   assert (not @@ List.mem "_skip" events);
   assert (List.length (List.sort_uniq compare events) = List.length events);
+  if events = [] then [] else
   let es = "_skip" :: List.sort_uniq compare events
   in let n = List.length es
   in let nbit = int_of_float @@ ceil @@ log (float_of_int n) /. log 2.0

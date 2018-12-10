@@ -64,20 +64,6 @@ let any_string = [%sedlex.regexp? Star (Compl ('\n' | '\r'))]
 
 (** lexing *)
 
-let token_queue = Queue.create ()
-let mode = ref 0
-(* 0: normal (dsl4sc top-level)
-   1: in proposition/event/variable. switch to mode=2 when encountering '{'
-   2: in read_string. return to mode=1 when encountering '}'
-   10: in rule.
-   11: in on/when/do.
-       - switch to mode=12 when encountering '{' when depth_angle/brack = 0
-       - switch to mode=10 when encountering '}' when depth_angle/brack = 0
-   12: in read_string. return to mode=11 when encountering '}'
- *)
-let depth_angle = ref 0
-let depth_brack = ref 0
-
 let create_lexbuf ?(file = "") (buf : Sedlexing.lexbuf) =
   let p : Lexing.position =
     { pos_fname = file;
@@ -100,117 +86,89 @@ let update_lnum (buf : lexbuf) =
 let lexeme {_buf} = Sedlexing.Utf8.lexeme _buf
 
 (* token : lexbuf -> Rules_p.token *)
+let token_queue = Queue.create ()
+let mode = ref 0
+let pdepth = ref 0
+
 let rec token (buf : lexbuf) =
-  if Queue.is_empty token_queue
+  if not @@ Queue.is_empty token_queue
   then
-    if !mode <> 2 && !mode <> 12
-    then token_rec buf
-    else read_string 1 [] buf
-  else
     Queue.take token_queue
+  else
+    let _ = () in
+    update_cnum buf;
+    (*eprintf "(%s)" @@ lexeme buf; flush_all ();*)
+    match !mode with
+    | 0 -> toplevel buf
+    | 10 -> event buf
+    | 20 -> protocol buf
+    | 30 -> variable buf
+    | 40 -> property buf
 
-and token_rec (buf : lexbuf) =
-  let _buf = buf._buf in
-  update_cnum buf;
-  (*eprintf "(%s)" @@ lexeme buf; flush_all ();*)
+    | 51 -> rule_event buf
+    | 52 -> property buf
+    | 53 -> rule_ensure buf
+    | 54 -> rule_raise buf
+    | 55 -> rule_preserve buf
+    | 56 -> rule_do buf
+    | 90 -> rule_do buf
+
+    | _ -> failwith ("[token] unrecognized mode: " ^ string_of_int !mode)
+
+and toplevel (buf : lexbuf) =
+  assert (!mode = 0);
+  let _buf : Sedlexing.lexbuf = buf._buf in
   match%sedlex _buf with
-  | "/*"		-> comment 1 buf; token_rec buf
-  | "//", any_string, (newline | eof)
-			-> update_lnum buf; token_rec buf
+  | "event"		-> mode := 10; EVENT
+  | "protocol"		-> mode := 20; PROTOCOL
+  | "variable"		-> mode := 30; VARIABLE
+  | "property"		-> mode := 40; PROPERTY
 
-  | '{'			->
-      assert (List.mem !mode [0; 1; 10; 11]);
-      (*eprintf "{"; flush_all ();*)
-      if !depth_brack = 0 && !depth_angle = 0 then
-	mode := (match !mode with 1 -> 2 | 11 -> 12 | _ -> !mode);
-      LBRACE
-  | '}'			->
-      assert (List.mem !mode [0; 1; 10; 11]);
-      (*eprintf "}"; flush_all ();*)
-      if !depth_brack = 0 && !depth_angle = 0 then
-	mode := (match !mode with 11 -> 10 | _ -> !mode);
-      RBRACE
-
-  (* event/protocol *)
-  | "event"		-> mode := 1; EVENT
-  | "protocol"		-> mode := 0; PROTOCOL
-
-  (* proposition/property/implementation *)
-  | "variable"		-> mode := 1; VARIABLE
-  | "proposition"	-> mode := 1; VARIABLE
-  | "property"		-> mode := 0; PROPERTY
-
-  | "implementation"	-> mode := 1; IMPLEMENTATION
-
-  (* inequality *)
-(*| "=="		-> EQ*)
-  | "!="		-> NE
-  | "<="		-> LE
-  | ">="		-> GE
-
-
-  (* logical connectives *)
-  | "not"		-> NOT
-  | '!'			-> NOT
-  | "and"		-> AND
-  | "&&"		-> AND
-  | '&'			-> AND
-  | "or"		-> OR
-  | "||"		-> OR
-  | '|'			-> OR
-  | "->"		-> IMPLIES
-  | "=>"		-> IMPLIES
-
-  (* rule *)
-  | "rule"		-> mode := 10; RULE
-  | "on"		-> if !mode = 10 then mode := 11; ON
-  | "when"		-> if !mode = 10 then mode := 11; WHEN
-  | "do"		-> if !mode = 10 then mode := 11; DO
-  | "then"		-> if !mode = 10 then mode := 11; DO
-  | "ensure"		-> if !mode = 10 then mode := 11; ENSURE
-  | "raise"		-> if !mode = 10 then mode := 11; RAISE
-  | "preserve"		-> if !mode = 10 then mode := 11; PRESERVE
+  | "rule"		-> RULE
+  | "on"		-> mode := 51; ON
   | "except"		-> EXCEPT
+  | "when"		-> mode := 52; pdepth := 0; WHEN
+  | "ensure"		-> mode := 53; pdepth := 0; ENSURE
+  | "raise"		-> mode := 54; RAISE
+  | "preserve"		-> mode := 55; PRESERVE
+  | "do"		-> mode := 56; DO
 
-  | ";;"		-> SEMISEMI
+  | "implementation"	-> mode := 90; IMPLEMENTATION
 
-  | '~'			-> TILDE
-  | '<'			-> incr depth_angle; LT
-  | '>'			-> decr depth_angle; GT
-  | '('			-> LPAREN
-  | ')'			-> RPAREN
-  | '['			-> incr depth_brack; LBRACK
-  | ']'			-> decr depth_brack; RBRACK
-  | ':'			-> COLON
-  | ';'			-> SEMI
-  | ','			-> COMMA
-(*| '.'			-> DOT*)
-  | '@'			-> AT
-  | '='			-> EQUAL
-  | '+'			-> PLUS
-  | '-'			-> MINUS
-  | '*'			-> STAR
-(*
-  | '/'			-> SLASH
-  | '%'			-> PERCENT
- *)
-  | '?'			-> QUESTION
-(*
-  | '^'			-> HAT
-  | '$'			-> DOLLAR
- *)
+  | newline		-> update_lnum buf; toplevel buf
+  | whitespace		-> toplevel buf
+  | eof			-> (*eprintf "<eof>\n"; flush_all ();*) EOF
+  | "//", any_string, (newline | eof)
+			-> update_lnum buf; toplevel buf
+  | "/*"		-> comment buf; toplevel buf
+  | _			-> failwith ("[toplevel] unexpected character: " ^ lexeme buf)
 
-  (* SYMBOL *)
-  | identifier		->
-      let s = lexeme buf in
-      (*eprintf "<SYM(%s)>" s; flush_all ();*)
-      NAME s
+and common (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | "//", any_string, (newline | eof)
+			-> update_lnum buf; token buf
+  | "/*"		-> comment buf; token buf
 
+  | "event"
+  | "protocol"
+  | "variable"
+  | "property"		-> mode := 0; Sedlexing.rollback _buf; token buf
+  | "rule"
+  | "on"
+  | "except"
+  | "when"
+  | "ensure"
+  | "raise"
+  | "preserve"
+  | "do"		-> mode := 0; Sedlexing.rollback _buf; token buf
+  | "implementation"	-> mode := 0; Sedlexing.rollback _buf; token buf
+
+  (* NAME *)
+  | identifier		-> let sym = lexeme buf in
+			   (*eprintf "(%s)" sym; flush_all ();*)
+			   NAME sym
   (* LITERAL *)
-  | string		->
-      let s = lexeme buf in
-      (*eprintf "<STR(%s)>" s; flush_all ();*)
-      STRING (String.sub s 1 (String.length s - 2))
   | integer		->
       let str = lexeme buf in
       let n =
@@ -228,44 +186,182 @@ and token_rec (buf : lexbuf) =
       let n = float_of_string (lexeme buf) in
       (*Printf.eprintf "<REAL(%.2f)>" n;*)
       REALNUMBER n
+  | string		->
+      let s = lexeme buf in
+      (*eprintf "<STR(%s)>" s; flush_all ();*)
+      STRING (String.sub s 1 (String.length s - 2))
    *)
 
-  | newline		-> update_lnum buf; token_rec buf
-  | whitespace		-> token_rec buf
+  | newline		-> update_lnum buf; token buf
+  | whitespace		-> token buf
   | eof			-> (*eprintf "<eof>\n"; flush_all ();*) EOF
+  | _			-> failwith "[common] nothing to scan"
 
-  | _			 -> failwith ("Unexpected character: " ^ lexeme buf)
-
-and comment n (buf : lexbuf) =
-  let _buf = buf._buf in
+and event (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
   match%sedlex _buf with
-  | "/*"		-> comment (n + 1) buf
-  | "*/"		-> if n > 1 then comment (n - 1) buf
-  | newline		-> update_lnum buf; comment n buf
-  | any			-> comment n buf
-  | _			-> failwith ("Unexpected character: " ^ lexeme buf)
+  | ','			-> COMMA
+  | ';'			-> SEMI
+  | _			-> common buf
 
-and read_string n chars (buf : lexbuf) =
+and protocol (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | '('			-> LPAREN
+  | ')'			-> RPAREN
+  | '+'			-> PLUS
+  | '*'			-> STAR
+  | '?'			-> QUESTION
+
+  | ";;"		-> SEMISEMI
+  | ';'			-> SEMI
+  | '{'			-> enclosed_string buf
+  | '}'			-> RBRACE
+  | _			-> common buf
+
+and variable (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | ','			-> COMMA
+  | ':'			-> COLON
+  | '('			-> LPAREN
+  | ')'			-> RPAREN
+  | '{'			-> enclosed_string buf
+  | '}'			-> RBRACE
+  | ';'			-> SEMI
+  | _			-> common buf
+
+and property (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | "//", any_string, (newline | eof)
+			-> update_lnum buf; token buf
+
+  (* terms *)
+  | '='			-> EQUAL
+  | "!="		-> NE
+  | "~="		-> NE
+  | "<>"		-> NE
+  | "<="		-> LE
+  | ">="		-> GE
+  | '-'			-> MINUS
+  | '/'			-> SLASH
+
+  (* logical connectives *)
+  | '!'			-> NOT
+  | '~'			-> NOT
+  | "&&"		-> AND
+  | '&'			-> AND
+  | "||"		-> OR
+  | '|'			-> OR
+  | "->"		-> IMPLIES
+  | "=>"		-> IMPLIES
+
+  (* modal *)
+  | '['			-> LBRACK
+  | ']'			-> RBRACK
+  | '?'			-> QUESTION
+
+  (* common *)
+  | '+'			-> PLUS
+  | '*'			-> STAR
+  | ';'			-> SEMI
+  | '<'			-> LT
+  | '>'			-> GT
+
+  | '('			-> incr pdepth; LPAREN
+  | ')'			-> decr pdepth; RPAREN
+  | '{'			-> if !pdepth = 0 && List.mem !mode [52; 53]
+			   then enclosed_string buf
+			   else LBRACE
+  | '}'			-> RBRACE
+
+  | _			-> common buf
+
+and rule_event (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | ','			-> COMMA
+  | '('			-> LPAREN
+  | ')'			-> RPAREN
+  | '{'			-> enclosed_string buf
+  | '}'			-> RBRACE
+  | _			-> common buf
+
+and rule_ensure (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | ';'			-> SEMI
+  | _			-> property buf
+
+and rule_raise (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | '+'			-> PLUS
+  | '('			-> LPAREN
+  | ')'			-> RPAREN
+  | '{'			-> enclosed_string buf
+  | '}'			-> RBRACE
+  | ';'			-> SEMI
+  | _			-> common buf
+
+and rule_preserve (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | ','			-> COMMA
+  | ';'			-> SEMI
+  | _			-> property buf
+
+and rule_do (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | '{'			-> enclosed_string buf
+  | '}'			-> RBRACE
+  | ';'			-> SEMI
+  | _			-> common buf
+
+and enclosed_string (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  Sedlexing.rollback _buf;
+  match%sedlex _buf with
+  | '{'			-> Queue.push LBRACE token_queue;
+			   enclosed_string_rec 1 [] buf
+  | _			-> failwith "[read_string_rec]"
+
+and enclosed_string_rec n chars (buf : lexbuf) =
   let _buf = buf._buf in
   match%sedlex _buf with
   | '{'	->
       (*eprintf "{"; flush_all ();*)
-      read_string (n + 1) (chars @ ['{']) buf
+      enclosed_string_rec (n + 1) (chars @ ['{']) buf
   | '}'	->
       (*eprintf "}"; flush_all ();*)
       if n > 1
-      then read_string (n - 1) (chars @ ['}']) buf
-      else
-	(assert (List.mem !mode [2; 12]);
-	 mode := (match !mode with 2 -> 1 | 12 -> 11 | _ -> !mode);
-	 Queue.push RBRACE token_queue;
-	 STRING (String.init (List.length chars) (List.nth chars)))
+      then
+	enclosed_string_rec (n - 1) (chars @ ['}']) buf
+      else (* n = 1 -- end of string *)
+	let str = String.init (List.length chars) (List.nth chars) in
+	(*eprintf "(%S)" str;*)
+	Queue.push (STRING str) token_queue;
+	Queue.push RBRACE token_queue;
+	token buf
   | any	->
       let str = lexeme buf in
-      (*Printf.eprintf "<%s>" str; flush_all ();*)
-      read_string n (chars @ [str.[0]]) buf
+      (*eprintf "<%s>" str; flush_all ();*)
+      enclosed_string_rec n (chars @ [str.[0]]) buf
+  | _	-> failwith "[enclosed_string_rec]"
 
-  | _	-> failwith ("Unexpected character: " ^ lexeme buf)
+and comment (buf : lexbuf) =
+  comment_rec 1 buf
+
+and comment_rec n (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | "/*"		-> comment_rec (n + 1) buf
+  | "*/"		-> if n > 1 then comment_rec (n - 1) buf
+  | newline		-> update_lnum buf; comment_rec n buf
+  | any			-> comment_rec n buf
+  | _			-> failwith ("[comment_rec] unexpected character: " ^ lexeme buf)
 
 (** parsing *)
 

@@ -16,7 +16,6 @@
 
 open Ldl
 open Ldlsimp
-open Ldlrule
 open Printf
 
 type model =
@@ -100,7 +99,7 @@ let read_in (ic : in_channel) =
       assert (List.mem_assoc "id" attrs);
       let qid : string = List.assoc "id" attrs in
       let i = Fsa.state_add m (qid, List.mem_assoc "accepting" attrs, Ldl_atomic "false") in
-      if !verbose > 0 then eprintf "  state: %d, %s\n" i qid;
+      if !verbose > 1 then eprintf "  state: %d, %s\n" i qid;
       ())
     (Xml.children nodes);
   if !verbose > 0 then
@@ -110,7 +109,7 @@ let read_in (ic : in_channel) =
 
   (* transitions *)
   let edges = List.assoc "transitions" alist in
-  if !verbose > 0 then eprintf "** edges: %d\n" (List.length (Xml.children edges));
+  if !verbose > 1 then eprintf "** transitions: %d\n" (List.length (Xml.children edges));
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
@@ -135,10 +134,10 @@ let read_in (ic : in_channel) =
 	  [] (tokenize lab)
       in
       Fsa.transition_add m n1 (Some (Fsa.sigma_add m (tid, props, events)), n2);
-      if !verbose > 0 then
+      if !verbose > 1 then
 	begin
 	  eprintf "  transition: %s (%s->%s) " tid q1 q2;
-	  eprintf "events: "; List.iter (eprintf " %s") events;
+	  eprintf "events:"; List.iter (eprintf " %s") events;
 	  eprintf "\n"
 	end;
       ())
@@ -175,11 +174,11 @@ let read_in (ic : in_channel) =
 	let e : string =
 	  match e_elt with
 	  | Xml.Element ("event", attrs, _) -> List.assoc "name" attrs
-	and c : condition =
+	and c : Ldlrule.condition =
 	  match c_elt with
 	  | Xml.Element ("condition", _, elts) ->
 	      List.fold_left
-		(fun (rslt : condition) -> function
+		(fun (rslt : Ldlrule.condition) -> function
 		  (* rslt : condition = (c, script) *)
 		  | Xml.Element ("formula", _, [Xml.PCData f]) ->
 		      (*eprintf "** formula %S\n" f;*)
@@ -192,11 +191,11 @@ let read_in (ic : in_channel) =
 		      failwith (sprintf "read_in: (condition) %s" tag)
 		  | _ -> failwith "read_in")
 		(Ldl_atomic "false", None) elts
-	and a : action =
+	and a : Ldlrule.action =
 	  match a_elt with
 	  | Xml.Element ("action", _, elts) ->
 	      List.fold_left
-		(fun (rslt : action) -> function
+		(fun (rslt : Ldlrule.action) -> function
 		  | Xml.Element ("ensure", _, [Xml.PCData f]) ->
 		      (*eprintf "** ensure %S\n" f;*)
 		      (fst rslt @ [Act_ensure (formula_of_string f)], snd rslt)
@@ -365,13 +364,14 @@ let rec print_rules_in_xml out (m : t) alist (rs : rule list) =
   List.iter
     (fun r ->
       if List.mem_assoc (rule_id r) alist then
-	print_rule_in_xml out (List.assoc (rule_id r) alist) alist3 r)
+	Ldlrule.print_rule_in_xml out (List.assoc (rule_id r) alist) alist3 r)
     rs;
   out "</rules>\n";
   ()
 
 (* tid = id of transition to which r is applicable.
    alist = [(tid, (w1, w2)); ..] *)
+(*
 and print_rule_in_xml out tid_seq alist (r : rule) =
   let rid, e, (c, c_opt), (a, a_opt) = r in
   out (sprintf "<rule id=%S>\n" rid);
@@ -431,19 +431,21 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
 
   out "</rule>\n";
   ()
+*)
 
 let debug_print m =
+  output_string stderr ";; debug_print\n";
   (*output_string stderr (show_nfa m);*)
   (* states *)
-  output_string stderr "[states]\n";
   (*
+  output_string stderr "states\n";
   List.iter
     (fun (i, q) -> eprintf "%d: %s\n" i (show_state q))
     (Fsa.alist_of_states m);
    *)
   (* transitions *)
-  output_string stderr "[transitions]\n";
   (*
+  output_string stderr "transitions\n";
   List.iter
     (fun (i, delta) ->
       output_string stderr ((state_name m i) ^ ":");

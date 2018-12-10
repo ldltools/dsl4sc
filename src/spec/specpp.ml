@@ -47,13 +47,15 @@ let replace_properties s (props : Property.t list) =
    for each proposition p, add the following property:
      [true*] (<p>!p | <!p>p -> <true>!_idle)
 
-   this indicates that, when a variable changes its value by a transition,
-   _idle does not hold in any of the next states
+   this indicates that, when a variable p changes its value by a transition,
+   it must have been caused by processing an event.
+   (!_idle indicates one or more events have just been processed)
 
    notes
    - no proposition value changes in any final transition (to the last states)
-   - the introduced properties excludes a single-state model
-     that denotes the inital and last state.
+   - the introduced modal property assumes one event bit (_b0) for representing _idle
+   - in case no event is defined, this function does nothing but returns,
+     so each property-only definition is translated into a single-state model.
  *)
 let rec align_propositions (s : Spec.t) =
   if s.events = [] then s else
@@ -81,7 +83,17 @@ let rec align_propositions (s : Spec.t) =
   in
   replace_properties s (s.properties @ props)
 
-(* add special properties [_idle1; _idle2; _idle3] *)
+(** add special properties [_idle1; _idle2; _idle3]
+
+    - idle1 indicates that no event is observed in the initial state.
+
+    - idle2 indicates _idle holds in the last state,
+      hence the last state can only be reached by _skip
+
+    - idle3 indicates, except the first (initial) state,
+      _idle holds only in the last state.
+
+ *)
 let add_event_contraints ?(protocol_relax = false) (s : Spec.t) =
   if s.events = [] then s else
 

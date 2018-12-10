@@ -18,21 +18,20 @@ val preprocess :
 
     (* protocol *)
     ?expand_any: bool ->
+    ?minimize_protocols: int ->
     ?relax_protocols: bool ->
-    ?minimize_protocols_always: bool ->
 
     (* rule *)
     ?expand_preserve: bool ->
-    ?mark_conditions: bool ->
     ?discard_codes: bool ->
 
     Rules.decl list -> Rules.decl list 
 	(** preprocess rules
 	    - expand any: any -> e1 + e2 + ...
-	    - relax protocols: e -> _skip*; e; _skip*
 	    - minimize protocols by means of dfa minimization
-	    - discard code fragments in rules
+	    - relax protocols: e -> _skip*; e; _skip*
 	    - expand preserve
+	    - discard code fragments in rules
 	 *)
 
 (** event / variable *)
@@ -54,8 +53,6 @@ val pp_expand_preserve : string list -> Rules.decl list -> Rules.decl list
     (** pp_preserve_expand events decls
 	events are looked up when rules are of the form "except on e1, e2, .."
      *)
-
-val pp_mark_conditions : Rules.decl list -> Rules.decl list
 
 val pp_discard_codes  : Rules.decl list -> Rules.decl list
     (** code_discard

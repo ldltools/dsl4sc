@@ -370,9 +370,11 @@ let rec split p =
       ([], 0) (find_term_variables p)
   in let nbit = List.fold_left (fun rslt (_, (_, _, len)) -> rslt + len) 0 alist
   in
-  if nbit > 8 then failwith ("[split] too many combinations: 2^" ^ string_of_int nbit);
-  if nbit = 0 then [] else
-  split_rec p alist nbit [] 0
+  if nbit > 8 then
+    failwith ("[split] too many combinations: 2^" ^ string_of_int nbit);
+  if nbit = 0
+  then [[], p]
+  else split_rec p alist nbit [] 0
 
 and split_rec p alist nbit rslt i =
   (* generate (env(i), (instaniate env(i) p)) and add it to rslt *)
@@ -407,24 +409,37 @@ and gen_bits_rec nbit (n : int) rslt i =
 
 (* propositionalize f *)
 
-let rec propositionalize ?(keep_terms = false) f =
+let rec propositionalize ?(keep_terms = false) (f : t) =
+  simp @@
+  propositionalize_rec ~keep_terms f
+
+(* note that propositionalize_eq is called only in the "e1 = e2" case,
+   which means a proposition like "e1 = e2 & f1 = f2" calls propositionalize_eq twice.
+
+ *)
+and propositionalize_rec ?(keep_terms = false) f =
   match f with
   | Prop_atomic _ -> f
   | Prop_equal (e1, e2) ->
       propositionalize_eq ~keep_terms e1 e2
-  | Prop_neg f' -> Prop_neg (propositionalize ~keep_terms f')
-
-  | Prop_conj fs -> Prop_conj (List.map (propositionalize ~keep_terms) fs)
-  | Prop_disj fs -> Prop_disj (List.map (propositionalize ~keep_terms) fs)
-
   | Prop_modal (m, p, (f, opt)) ->
       let p' = propositionalize_lpath ~keep_terms p
-      and f' = propositionalize ~keep_terms f
+      and f' = propositionalize_rec ~keep_terms f
       in Prop_modal (m, p', (f', opt))
 
-  | _ -> failwith "[propositionalize]"
+  | _ when not @@ modal_p f ->
+      if include_term_variable_p f
+      then split_and_propositionalize ~keep_terms f
+      else f
+
+  | Prop_neg f' -> Prop_neg (propositionalize_rec ~keep_terms f')
+  | Prop_conj fs -> Prop_conj (List.map (propositionalize_rec ~keep_terms) fs)
+  | Prop_disj fs -> Prop_disj (List.map (propositionalize_rec ~keep_terms) fs)
+
+  | _ -> failwith "[propositionalize_rec]"
 
 and propositionalize_eq ?(keep_terms = false) (e1 : int term) (e2 : int term) =
+  assert (not @@ modal_p (Prop_equal (e1, e2)));
   match e1, e2 with
   | Tm_const (c1, Ty_nat _), Tm_const (c2, Ty_nat _) ->
       (* c1 = c2 *)
@@ -474,39 +489,47 @@ and propositionalize_eq ?(keep_terms = false) (e1 : int term) (e2 : int term) =
       in Prop_conj (conj1 @ conj2)
   *)
 
+  | _ when not @@ include_term_variable_p (Prop_equal (e1, e2)) ->
+      instantiate [] (Prop_equal (e1, e2))
   | _ ->
-      (* general case *)
-      let alist = split (Prop_equal (e1, e2))
-      in let qs =
-	List.map
-	  (fun (env, q) ->
-	    (* for each case (env, q) in alist *)
-	    let binds, in_range =
-	      List.fold_left
-		(fun (rslt, in_range) (x, (Ty_nat n, n')) ->
-		  (* (x, (ty, n') -> x = n' *)
-		  let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
-		  in
-		  rslt @ [if keep_terms then eq else propositionalize eq],
-		  in_range && n > n')
-		([], true) env
-	    in let q' =
-	      if in_range
-	      then propositionalize ~keep_terms (simp q)
-	      else Prop_atomic "false"
-	    in Prop_disj [Prop_neg (Prop_conj binds); q'])
-	  alist
-      in Prop_conj qs
+      (* general case -- split to cases *)
+      split_and_propositionalize ~keep_terms (Prop_equal (e1, e2))
+
+and split_and_propositionalize ?(keep_terms = false) (p : t) =
+  assert (not (modal_p p) && include_term_variable_p p);
+  let alist = split p
+  (* p -> cases *)
+  in let qs =
+    assert (alist <> []);
+    List.map
+      (fun (env, q) ->
+	(* for each case (env, q) in alist *)
+	let binds, in_range =
+	  List.fold_left
+	    (fun (rslt, in_range) (x, (Ty_nat n, n')) ->
+	      (* (x, (ty, n') -> x = n' *)
+	      let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
+	      in
+	      rslt @ [if keep_terms then eq else propositionalize_rec eq],
+	      in_range && n > n')
+	    ([], true) env
+	in let q' =
+	  if in_range
+	  then propositionalize_rec ~keep_terms (simp q)
+	  else Prop_atomic "false"
+	in Prop_disj [Prop_neg (Prop_conj binds); q'])
+      alist
+  in Prop_conj qs
 
 and propositionalize_lpath ?(keep_terms = false) (p, l_opt) =
   (propositionalize_path ~keep_terms p), l_opt
 
 and propositionalize_path ?(keep_terms = false) p =
   match p with
-  | Path_prop f -> Path_prop (propositionalize ~keep_terms f)
+  | Path_prop f -> Path_prop (propositionalize_rec ~keep_terms f)
   | Path_seq ps -> Path_seq (List.map (propositionalize_lpath ~keep_terms) ps)
   | Path_sum ps -> Path_sum (List.map (propositionalize_lpath ~keep_terms) ps)
-  | Path_test f -> Path_test (propositionalize ~keep_terms f)
+  | Path_test f -> Path_test (propositionalize_rec ~keep_terms f)
   | Path_star p' -> Path_star (propositionalize_lpath ~keep_terms p')
   | _ -> failwith "[propositionalize_path]"
 

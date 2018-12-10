@@ -78,6 +78,9 @@ val modal_p : t -> bool
 val simp : t -> t
     (** property simplifier similar to Ldlsimp.simp, albeit more limited *)
 
+val propositionalize : ?keep_terms: bool -> t -> t
+    (** expand prop w. terms to prop w/o terms *)
+
 val split : t -> ((string * (base_t * int)) list * t) list
     (** split a property p that includes term variables x1, .., xn into a set of pairs,
 	each of which is of the form:
@@ -86,9 +89,6 @@ val split : t -> ((string * (base_t * int)) list * t) list
 	- v1, v2, ... : values for the variables
 	- q : p[v1/x1, v2/x2, ...]
      *)
-
-val propositionalize : ?keep_terms: bool -> t -> t
-    (** expand prop w. terms to prop w/o terms *)
 
 val find_term_variables : t -> (string * base_t) list
 

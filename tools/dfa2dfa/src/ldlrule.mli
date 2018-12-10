@@ -52,4 +52,13 @@ val applicable : rule -> Ldl.formula * Ldl.formula -> bool * int option
      *)
 
 
+(** printing *)
+
+val print_rule_in_xml : (string -> unit) -> (string list) -> (string * (Ldl.formula * Ldl.formula)) list -> t -> unit
+
+(** for debugging *)
+
+val verbosity_set : int -> unit
+val verbosity_get : unit -> int
+
 val debug_print_rule : t -> unit

@@ -313,6 +313,8 @@ var_spec_seq
 	;
 
 // variables of the same type
+// x1, x2, ...
+// x1, x2, ... : t
 var_spec_seq1
 	: var_spec_seq2 SEMI
 	  { List.map (fun (name, code) -> (name, Rules.VT_prop), code) $1 }

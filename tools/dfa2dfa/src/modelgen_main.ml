@@ -24,7 +24,12 @@ let opt_verbose = ref 0
 
 let synopsis prog =
   printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
-  printf "usage: %s <dfa_file>\n" (Filename.basename prog)
+  printf "usage: %s <dfa_file>\n" (Filename.basename prog);
+  List.iter (output_string stdout)
+    ["options:\n";
+     "  -o <file>\t\toutput to <file>\n";
+     "  -V, --version\t\tdisplay version\n";
+     "  -h, --help\t\tdisplay this message\n"]
 
 let input_nfa ic = function
   | "xml" | "unspecified" ->
@@ -46,7 +51,9 @@ let main argc argv =
 	  outfile := argv.(!i+1); incr i;
       | "-t" ->
 	  opt_fmt_out := argv.(!i+1); incr i;
-
+      | "-V" | "--version" ->
+	  printf "%s\n" (Version.get ());
+	  raise Exit
       | "-v" | "--verbose" ->
 	  opt_verbose := 1
       | "-vv" ->
@@ -73,25 +80,18 @@ let main argc argv =
 
   (* verbosity *)
   Ldlmodel.verbosity_set !opt_verbose;
+  Ldlrule.verbosity_set !opt_verbose;
 
   (* read dfa (in xml) from file into m *)
+  if !opt_verbose > 0 then eprintf "[read: %S]\n" !infile;
   let ic = open_in !infile in
   let alist, (m : Ldlmodel.t), (rs : Ldlrule.t list) = Ldlmodel.read_in ic in
-  if !opt_verbose > 0 then
-    (eprintf "** parsed from %S\n" !infile;
-     Ldlmodel.debug_print m; List.iter Ldlrule.debug_print_rule rs);
+  if !opt_verbose > 1 then List.iter Ldlrule.debug_print_rule rs;
 
-  (* update m to m' *)
-  let m', (alist' : (string * string list) list) = Modelgen.merge m rs in
-  if !opt_verbose > 0 then
-    (eprintf "** updated\n";
-     Ldlmodel.debug_print m';
-     List.iter
-       (fun (rid, tid_seq) ->
-	 eprintf "%s:" rid;
-	 List.iter (eprintf " %s") tid_seq;
-	 output_string stderr "\n")
-       alist');
+  (* modelgen: m -> m' *)
+  if !opt_verbose > 0 then eprintf "\n[modelgen]\n";
+  let m', (alist' : (string * string list) list) = Modelgen.merge m rs
+  in
 
   (* output (in xml) *)
   let out s = output_string oc s in

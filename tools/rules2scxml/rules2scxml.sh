@@ -98,7 +98,7 @@ fi
 
 if test $until = spec
 then
-    ${RULES2LDL} --specpp-only $infile -o $outfile
+    ${RULES2LDL} --until spec $infile -o $outfile
     exit 0
 fi
 

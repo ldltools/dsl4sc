@@ -26,14 +26,15 @@ let opt_parse_only = ref false
 
 (* protocol *)
 let opt_expand_any = ref true
+let opt_proto_min = ref 1
 let opt_relax_protocols = ref false
 (* rule *)
 let opt_expand_preserve = ref true
-let opt_mark_conditions = ref false
 let opt_discard_codes = ref false
 
 (* deprecated *)
 (*
+let opt_mark_conditions = ref false
 let opt_split_cases = ref true
 let opt_propositionalize = ref true
 let opt_extra_properties = ref true
@@ -49,24 +50,25 @@ let opt_allow_skip = ref false
 let synopsis prog =
   printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
-  let msg =
-    "options:\n"
-    ^ "  -o <file>\t\toutput to <file>\n"
-    ^ "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\", \"xml\")\n"
-    ^ "  -p\t\t\tparse-only\n"
-    ^ "  -V, --version\t\tdisplay version\n"
-    ^ "  -h, --help\t\tdisplay this message\n"
-  in output_string stdout msg
+  List.iter (output_string stdout)
+    ["options:\n";
+     "  -o <file>\t\toutput to <file>\n";
+     "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\", \"xml\")\n";
+     "  -p\t\t\tparse-only\n";
+     "  -V, --version\t\tdisplay version\n";
+     "  -h, --help\t\tdisplay this message\n"]
 
 let extra_synopsis () =
   List.iter (output_string stdout)
     ["\n";
-     "  [for debugging]\n";
+     "  [advanced/experimental options]\n";
+     "  --force-proto-min\tforce protocol minimization\n";
+     "  --relax-proto\t\tinsert intermediate _skip transitions\n";
      "  --keep-preserve\tkeep preserve-rules as they are\n";
-     "  --mark-conditions\t(experimental) add propositions for rule conditions\n";
-     "  --discard-codes\tdiscard codes carried by rules\n"]
+     "  --discard-codes\tdiscard codes carried by rules\n";
+     "\n"]
 
-let rec input_rules ic = function
+let input_rules ic = function
   | "rules" | "unspecified" ->
       let lbuf : Rules_l.lexbuf = Rules_l.create_lexbuf (Sedlexing.Utf8.from_channel ic)
       in Rules_l.parse Rules_p.decl_seq lbuf
@@ -127,21 +129,12 @@ let main argc argv =
       (* protocol *)
       | _ when matches 7 "--relax-protocols" ->
 	  opt_relax_protocols := true
+      | _ when matches 7 "--force-proto_min" ->
+	  opt_proto_min := 2
       (* property *)
-      (*
-      | _ when matches 9 "--skip-split-cases"
-            || matches 7 "--no-split-cases" ->
-	  opt_split_cases := false
-      | _ when matches 7 "--no-propositionalize"
-            || matches 9 "--skip-propositionalize"
-	    || matches 8 "--keep-terms" ->
-	  opt_propositionalize := false
-       *)
       (* rule *)
       | _ when matches 8 "--keep-preserve" ->
 	  opt_expand_preserve := false
-      | _ when matches 6 "--mark-conditions" ->
-	  opt_mark_conditions := true
       | _ when matches 9 "--discard-codes" ->
 	  opt_discard_codes := true
       | _ when matches 9 "--no-discard-codes" ->
@@ -173,6 +166,7 @@ let main argc argv =
   let decls' =
     Rulespp.preprocess
       ~expand_any: !opt_expand_any
+      ~minimize_protocols: !opt_proto_min
       ~relax_protocols: !opt_relax_protocols
       ~discard_codes: !opt_discard_codes
       ~expand_preserve: !opt_expand_preserve

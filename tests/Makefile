@@ -19,7 +19,7 @@ include $(TOP_DIR)/tests/Makefile.common
 test::	examples.conf
 	shelltest $<
 
-TESTCONFS = $(shell echo {echo,ping_pong,accumulator,bounded_buffer,arith}.conf)
+TESTCONFS = $(shell echo {echo,ping_pong,accumulator,bounded_buffer,equality,arith}.conf)
 examples.conf:	$(TESTCONFS)
 	cat $^ > $@
 

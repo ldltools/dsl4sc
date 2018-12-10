@@ -31,9 +31,6 @@ type t = model
 val read_in : in_channel -> (string * Xml.xml) list * t * Ldlrule.t list
     (* (xml elements, model, rules) *)
 
-val verbosity_set : int -> unit
-val verbosity_get : unit -> int
-
 (** accessors *)
 
 val state_name : t -> int -> string
@@ -51,5 +48,10 @@ val print_rules_in_xml : (string -> unit) -> t -> (string * string list) list ->
     (** print_rules_in_xml out m alist rs
 	where alist is of the form [(rid, [tid; ...]); ..]
      *)
+
+(** for debugging *)
+
+val verbosity_set : int -> unit
+val verbosity_get : unit -> int
 
 val debug_print : t -> unit

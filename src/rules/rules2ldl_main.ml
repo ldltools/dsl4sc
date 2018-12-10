@@ -30,6 +30,7 @@ let opt_skip_rulespp = ref false
 let opt_skip_specpp = ref false
 let opt_skip_p18n = ref false
 let opt_keep_terms = ref false
+let opt_skip_ldlgen = ref false
 
 let synopsis prog =
   printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
@@ -40,18 +41,20 @@ let synopsis prog =
      "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\")\n";
      "  --map <file>\t\toutput event mappings to <file> in xml\n";
      "  -p\t\t\tparse-only\n";
-     "  --until <stage>\tterminate at <stage> (\"rules\", \"spec\", \"ldl\")\n";
      "  -V, --version\t\tdisplay version\n";
      "  -h, --help\t\tdisplay this message\n"]
 
 let extra_synopsis () =
   List.iter (output_string stdout)
     ["\n";
-     "  [for debugging]\n";
+     "  [advanced/experimental options]\n";
+     "  --until <stage>\tterminate at <stage> (\"rules\", \"spec\", \"ldl\")\n";
      "  --skip-rulespp\tskip rules-preprocessing\n";
      "  --skip-specpp\t\tskip spec-preprocessing\n";
-     "  --skip-p18n\t\tskip skip propositionalization\n";
-     "  --keep-terms\t\tkeep terms in propositionalization\n"]
+     "  --skip-p18n\t\tskip propositionalization\n";
+     "  --keep-terms\t\tkeep terms in p18n\n";
+     "  --skip-ldlgen\t\tskip ldl-generation\n";
+     "\n"]
 
 (* rules in/out *)
 let input_rules ic = function
@@ -213,6 +216,7 @@ let main argc argv =
 	  opt_fmt_in := "json"
       | "--map"  ->
 	  opt_map_out := argv.(!i+1); incr i;
+
       | "-u" | "--until"  ->
 	  let stage = argv.(!i+1) in
 	  opt_until := stage; incr i;
@@ -227,11 +231,15 @@ let main argc argv =
       | "--skip-specpp" | "--no-specpp" ->
 	  opt_skip_specpp := true
       (* spec2ldl *)
-      | "--skip-p18n" ->
+      | "--skip-p18n" | "--no-p18n" ->
 	  opt_skip_p18n := true
       | "--keep-terms" ->
 	  opt_keep_terms := true
+      | "--skip-ldlgen" | "--no-ldlgen" ->
+	  opt_skip_ldlgen := true
 
+      | _  when argv.(!i).[0] = '-' ->
+	  failwith ("unknown option: " ^ argv.(!i))
       | _    ->
 	  infile :=argv.(!i)
     in incr i
@@ -298,7 +306,7 @@ let main argc argv =
   if !opt_map_out != "/dev/null" then
     (let oc_map = open_out !opt_map_out in
      output_map oc_map map "unspecified"; close_out oc_map);
-  if !opt_skip_p18n || !opt_keep_terms || !opt_until <> "ldl" then
+  if !opt_skip_ldlgen || !opt_until <> "ldl" then
     (output_string oc "property\n";
      List.iter
        (fun p -> Property.print_property (output_string oc) p; output_string oc ";\n")
