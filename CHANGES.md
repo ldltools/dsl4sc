@@ -1,11 +1,11 @@
 # v0.12.0rc
 
-- [rulespp] natural numbers  
+- [rules2ldl] natural numbers  
   support all arithmetic operations (add/sub/mul/div) and comparison operators (eq/ne/gt/lt/ge/le).
 
 # v0.11.0 (2018-12-03)
 
-- [rulespp] natural numbers  
+- [rules2ldl] natural numbers  
   natural numbers (literals and variables) are supported.
   `variable x : nat (n)` declares a variable `x` that ranges over 0, ..., n - 1.
   expressions such as `x = 1`, `x = y`, and `x + 1 = y + 2` are recognized as propositions.

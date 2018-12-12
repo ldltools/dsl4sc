@@ -74,13 +74,21 @@ let gen_id (prefix : string) =
 
 (* in_channel -> t * rule list *)
 let read_in (ic : in_channel) =
-  let xml = Xml.parse_in ic in
-  let alist : (string * Xml.xml) list =
-    (* elts = [propositions; states; transitions; variables; rules] *)
+  let xml = Xml.parse_in ic
+  in let legal_names = 
+    ["variables"; "states"; "transitions"; "rules"; "scripts"]
+  in let alist : (string * Xml.xml) list =
     let rec trav (rslt : (string * Xml.xml) list) = function
       | Xml.Element ("dfa", _, children) ->
 	  List.map
-	    (fun child -> match child with Xml.Element (name, _, _) -> name, child)
+	    (fun child ->
+	      match child with
+	      | Xml.Element (name, _, _) when List.mem name legal_names ->
+		  name, child
+	      | Xml.Element (name, _, _) ->
+		  failwith ("[Ldlmodel.read_in] unknown element: " ^ name)
+	      | _ ->
+		  failwith "[Ldlmodel.read_in] non-element encountered")
 	    children
       | Xml.Element (_, _, children) ->
 	  List.fold_left (Xml.fold trav) rslt children

@@ -93,7 +93,7 @@ let main argc argv =
   let m', (alist' : (string * string list) list) = Modelgen.merge m rs
   in
 
-  (* output (in xml) *)
+  (* output dfa (in xml) *)
   let out s = output_string oc s in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
   out (Xml.to_string (List.assoc "variables" alist)); out "\n";
@@ -101,8 +101,8 @@ let main argc argv =
   Ldlmodel.print_transitions_in_xml out m;	(* transitions *)
   (*out (Xml.to_string (List.assoc "variables" alist)); out "\n";*)
   Ldlmodel.print_rules_in_xml out m alist' rs;	(* rules *)
-  if List.mem_assoc "implementation" alist then
-    (out (Xml.to_string (List.assoc "implementation" alist)); out "\n");
+  if List.mem_assoc "scripts" alist then
+    (out (Xml.to_string (List.assoc "scripts" alist)); out "\n");
   out "</dfa>\n";
 
   (* clean-up *)

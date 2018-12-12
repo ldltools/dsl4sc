@@ -133,7 +133,8 @@ and toplevel (buf : lexbuf) =
   | "preserve"		-> mode := 55; PRESERVE
   | "do"		-> mode := 56; DO
 
-  | "implementation"	-> mode := 90; IMPLEMENTATION
+  | "implementation"
+  | "script"		-> mode := 90; SCRIPT
 
   | newline		-> update_lnum buf; toplevel buf
   | whitespace		-> toplevel buf
@@ -162,7 +163,8 @@ and common (buf : lexbuf) =
   | "raise"
   | "preserve"
   | "do"		-> mode := 0; Sedlexing.rollback _buf; token buf
-  | "implementation"	-> mode := 0; Sedlexing.rollback _buf; token buf
+  | "implementation"
+  | "script"		-> mode := 0; Sedlexing.rollback _buf; token buf
 
   (* NAME *)
   | identifier		-> let sym = lexeme buf in
@@ -241,7 +243,6 @@ and property (buf : lexbuf) =
   | '='			-> EQUAL
   | "!="		-> NE
   | "~="		-> NE
-  | "<>"		-> NE
   | "<="		-> LE
   | ">="		-> GE
   | '-'			-> MINUS

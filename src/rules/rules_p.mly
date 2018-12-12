@@ -72,7 +72,7 @@ and expand_prop_spec_rec rslt = function
 %token	PROTOCOL
 %token	VARIABLE
 %token	PROPERTY
-%token	IMPLEMENTATION
+%token	SCRIPT
 
 %token	RULE
 %token	ON WHEN DO
@@ -161,7 +161,7 @@ decl	: EVENT event_spec_seq
 	  // rules enclosed by braces
 	  { List.map (fun s -> Rules.Decl_rule s) $2 }
 
-	| IMPLEMENTATION LBRACE STRING RBRACE
+	| SCRIPT LBRACE STRING RBRACE
 	  { [Rules.Decl_extra $3] }
 
 // **conflict

@@ -165,7 +165,7 @@ let print_rules out (rs : t) =
   (* extra *)
   if rs.extras <> [] then
     begin
-      out "implementation\n";
+      out "script\n";
       out "{\n";
       List.iter out rs.extras;
       out "}\n";
@@ -206,9 +206,7 @@ let rec print_rules_in_xml out (rules : t) =
 	List.iter (p out) seq;
 	out ("</" ^ tag ^ ">\n")
   in    
-  out "<rules xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
-
-  out "<preamble>\n";
+  out "<system xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
 
   print "events"
     rules.events
@@ -224,8 +222,7 @@ let rec print_rules_in_xml out (rules : t) =
     rules.properties
     print_property_in_xml;
 
-  out "</preamble>\n";
-
+  out "<rules>\n";
   (* rule -- strip off the special "_skip" rule and its successors.
      cf. Rulespp.preprocess
    *)
@@ -241,12 +238,13 @@ let rec print_rules_in_xml out (rules : t) =
 	i + 1)
       1 r_specs
   in
+  out "</rules>\n";
 
-  print "implementation"
+  print "scripts"
     rules.extras
-    (fun out -> escape out);
+    print_script_in_xml;
 
-  out "</rules>\n"
+  out "</system>\n"
 
 and print_property_in_xml out p =
   out "<property>";
@@ -273,6 +271,11 @@ and print_protocol_in_xml out (p : Protocol.t) =
   out "<protocol>";
   escape out (Protocol.string_of_protocol p);
   out "</protocol>\n"
+
+and print_script_in_xml out (str : string) =
+  out "<script>";
+  escape out str;
+  out "</script>\n"
 
 and print_rule_in_xml out ?(id = None) ((r, annot_opt) : rule_spec) =
   out "<rule";
