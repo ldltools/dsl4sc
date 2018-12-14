@@ -1,0 +1,15 @@
+// e; (case1 + case2) -- upon e, execution internally splits to 2 cases
+
+protocol e; (case1 + case2) ;;
+
+rule
+ on e
+ raise case1 + case2
+ { if (_event.data == 1)
+     SCXML.raise ({name : "case1"});
+   else
+     SCXML.raise ({name : "case2"});
+ }
+
+ on case1 do { console.log ("case1"); }
+ on case2 do { console.log ("case2"); }

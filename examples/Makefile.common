@@ -1,26 +1,84 @@
 # -*-makefile-*-
+# $Id: Makefile.common,v 1.1 2017/11/14 07:10:57 sato Exp $
 
-TOP_DIR	?= $(shell readlink -f ..)
+TOP_DIR		?= $(shell readlink -f ..)
+PREFIX		?= $(TOP_DIR)/_build/install
 
-include $(TOP_DIR)/tests/Makefile.common
+RULESPP		?= rulespp
+RULES2LDL	?= rules2ldl
+RULES2SCXML	?= rules2scxml
+LDL2SCXML	?= ldl2scxml
 
-# RULES -> LDL
-out/%.ldl out/%.map:	%.rules
-	@mkdir -p out
-	$(RULES2LDL) $< -o out/$*.ldl -t json --map out/$*.map
+SCXMLRUN	?= scxmlrun
 
-# RULES -> SCXML
-out/%.scxml:	%.rules
-	@mkdir -p out
+SHELL		:= /bin/bash
+MONA		?= mona
+AWK		?= awk
+SED		?= sed
+XMLLINT		?= xmllint
+
+all::
+
+# ================================================================================
+# RULES
+# ================================================================================
+
+# RULES
+%.scxml:	%.rules
 	$(RULES2SCXML) $< -o $@
 
-# RULES -> RULES (in xml)
-out/%.rules.xml:	%.rules
-	$(RULESPP) $< -t xml -o $@
+%.ldl %.map:	%.rules
+	$(RULES2LDL) $< -o $*.ldl --map $*.map || { rm -f $*.ldl $*.map; exit 1; }
+%.rules.xml:	%.rules
+	$(RULESPP) $< -o $@.tmp -t xml || { rm -f $@; exit 1; }
+	$(XMLLINT) --format $@.tmp > $@ && rm -f $@.tmp
 
-.PRECIOUS:	out/%.rules.xml out/%.ldl out/%.map
-.PRECIOUS:	%.dfa.dot %.dfa.xml
+.PRECIOUS:	%.rules %.ldl %.map
 
-install::
-clean::;	rm -f *~ *.png
-veryclean::;	rm -f out/*
+# ================================================================================
+# LDL
+# ================================================================================
+
+%.mso:	%.ldl
+	$(LDL2SCXML) $< -o $@ -u mso || { rm -f $@; exit 1; }
+%.mso.dot:	%.mso
+	$(MONA) -gw $< > $@
+
+%.dfa.xml:	%.ldl
+	$(LDL2SCXML) $< -o $@ -u dfa || { rm -f $@; exit 1; }
+%.dfa.dot:	%.ldl
+	$(LDL2SCXML) $< -o $@ -u dfadot || { rm -f $@; exit 1; }
+
+# obsolete -- use "rules2scxml" instead
+# <transition label=..> -> <transition event="..">
+# <transition event="e"> carry <rule><event name="e"/></rule> elements
+#%.dfa2.xml:	%.ldl %.map %.rules
+#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ --u dfa2 || { rm -f $@; exit 1; }
+#
+#%.scxml:	%.ldl %.map %.rules
+#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ || { rm -f $@; exit 1; }
+
+# DOT -- optional
+%.png:	%.dot
+	dot -Tpng $< > $@
+%.svg:	%.dot
+	dot -Tsvg $< > $@
+
+# UML -- optional
+LANDSCAPE	?= 0
+%.puml:	%.scxml
+#	scxml2uml.sh $< -o $@ -nocond
+	landscape=`test $(LANDSCAPE) -ne 0 && echo -e "\x2dlandscape"`; \
+	scxml2uml.sh $< -o $@ $$landscape
+%.svg:	%.puml
+	plantuml.sh $< -tsvg
+%.png:	%.svg
+	convert $< $@
+
+.PRECIOUS:	%.ldl %.mso
+.PRECIOUS:	%.dfa.xml %.dfa2.xml
+.PRECIOUS:	%.scxml
+.PRECIOUS:	%.dfa.dot %.mso.dot
+.PRECIOUS:	%.puml %.svg
+
+

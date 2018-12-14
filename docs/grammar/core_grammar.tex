@@ -31,8 +31,7 @@
   % protocol_decl/spec
   \textit{protocol\_decl} &::=
     \token{event}\;
-      \textit{event\_name}\;
-      \left(\texttt{,}\; \textit{event\_name}\right)^\ast\; \texttt{;}
+      \left( \textit{event\_name}\; \texttt{;} \right)^+
   \\&\hspace{1.9em}
   \token{protocol}\;
 % \left(\textit{protocol}\;;;\right)^+
@@ -65,6 +64,8 @@
   \textit{protocol}\; \texttt{*}\;
 %  \mid\;
 %  \textit{protocol}\; \texttt{?}\;
+  \mid\;
+  \texttt{(}\; \textit{protocol}\;\; \texttt{)}\;
   \\
   % ================================================================================
 %  % proposition_decl
@@ -76,8 +77,7 @@
   % property_decl/spec
   \textit{property\_decl} &::=
   \token{variable}\;
-    \textit{var\_name}\;
-    \left(\texttt{,}\; \textit{var\_name}\right)^\ast\; \texttt{;}
+    \left( \textit{var\_name}\; \texttt{;} \right)^+
   \\&\hspace{1.9em}
   \token{property}\;
   \left(\textit{ldl\_formula}\; \texttt{;}\right)^+
