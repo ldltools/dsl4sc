@@ -24,6 +24,7 @@ test_$(1):
 endef
 $(foreach ex,$(EXAMPLES),$(eval $(call TESTRULE,$(ex))))
 
+all::
 install::
 clean::;	rm -f *~
 veryclean::	clean

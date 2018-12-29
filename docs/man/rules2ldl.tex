@@ -2,30 +2,40 @@
 \setDate{November 2018}
 \begin{document}
 
-\begin{Name}{1}{rulessat}{author}{LDL Tools}{title}
-rulessat -- SAT solver for dsl4sc
+\begin{Name}{1}{rules2scxml}{author}{LDL Tools}{title}
+rules2ldl -- dsl4sc to ldl translator
 \end{Name}
 
 \section{Synopsis}
-rulessat <option>* <infile>
+rules2ldl <option>* <infile>
 
 \section{Description}
-rulessat reads a set of dsl4sc declarations from <infile>,
-converts them to a LDL formula φ,
-examines if φ is satisfiable or not, and then
-returns either "valid" (¬φ is unsatisfiable), "satisfiable", or "unsatisfiable"
+rules2ldl reads a set of dsl4sc declarations from <infile>,
+and translates them to a single LDL formula.
 
 \section{Options}
+
 \begin{description}
-\item[\Opt{-v}, \Opt{--verbose}]
-become verbose
+\item[\Opt{-o} \emph{file}]
+  output to \emph{file}
+\item[\Opt{-t} \emph{fmt}]
+  output in \emph{fmt} ("caml", "json")
+\item[\Opt{--map} \emph{file}]
+  output event mappings to \emph{file} in xml
+\item[\Opt{-p}]
+  parse only
 %
+\item[\Opt{-v}, \Opt{--verbose}]
+  become verbose
+\item[\Opt{-V}, \Opt{--version}]
+  show version
 \item[\Opt{-h}, \Opt{--help}]
-show usage
+  show usage
+
 \end{description}
 
 \section{See Also}
-rulesmc, ldlsat
+rulessat, rulesmc
 
 \section{Author}
 LDLTools development team at IBM Research.

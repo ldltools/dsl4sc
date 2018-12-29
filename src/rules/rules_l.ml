@@ -238,6 +238,7 @@ and property (buf : lexbuf) =
   match%sedlex _buf with
   | "//", any_string, (newline | eof)
 			-> update_lnum buf; token buf
+  | "/*"		-> comment buf; token buf
 
   (* terms *)
   | '='			-> EQUAL

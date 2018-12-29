@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Wed Dec 26 21:53:39 2018
+.\" Manual page created with latex2man on Fri Dec 28 12:34:59 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -10,34 +10,50 @@
 
 .fi
 ..
-.TH "RULESSAT" "1" "November 2018" "LDL Tools " "LDL Tools "
+.TH "RULES2SCXML" "1" "November 2018" "LDL Tools " "LDL Tools "
 .SH NAME
 
-rulessat \-\- SAT solver for dsl4sc 
+rules2ldl \-\- dsl4sc to ldl translator 
 .PP
 .SH SYNOPSIS
 
-rulessat <option>* <infile> 
+rules2ldl <option>* <infile> 
 .PP
 .SH DESCRIPTION
 
-rulessat reads a set of dsl4sc declarations from <infile>, 
-converts them to a LDL formula φ, 
-examines if φ is satisfiable or not, and then 
-returns either "valid" (¬φ is unsatisfiable), "satisfiable", or "unsatisfiable" 
+rules2ldl reads a set of dsl4sc declarations from <infile>, 
+and translates them to a single LDL formula. 
 .PP
 .SH OPTIONS
 
+.PP
+.TP
+\fB\-o\fP \fIfile\fP
+ output to \fIfile\fP
+.TP
+\fB\-t\fP fmt
+ output in \fIfmt\fP
+("caml", "json") 
+.TP
+\fB\-\-map\fP \fIfile\fP
+ output event mappings to \fIfile\fP
+in xml 
+.TP
+\fB\-p\fP
+ parse only 
 .TP
 \fB\-v\fP, \fB\-\-verbose\fP
  become verbose 
+.TP
+\fB\-V\fP, \fB\-\-version\fP
+ show version 
 .TP
 \fB\-h\fP, \fB\-\-help\fP
  show usage 
 .PP
 .SH SEE ALSO
 
-rulesmc, ldlsat 
+rulessat, rulesmc 
 .PP
 .SH AUTHOR
 

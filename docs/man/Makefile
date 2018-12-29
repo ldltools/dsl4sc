@@ -9,7 +9,7 @@ SUBDIRS		=
 %.man:	%.tex
 	latex2man $< $@
 
-MANPAGES	= rulessat.man rulesmc.man
+MANPAGES	= rulessat.man rulesmc.man rules2ldl.man
 man:	$(MANPAGES)
 
 install::	all

@@ -1,7 +1,7 @@
 # v0.12.0rc
 
 - [rules2ldl] natural numbers  
-  support all arithmetic operations (add/sub/mul/div) and comparison operators (eq/ne/gt/lt/ge/le).
+  support all arithmetic (add/sub/mul/div) and comparison (eq/ne/gt/lt/ge/le) operations.
 
 # v0.11.0 (2018-12-03)
 
