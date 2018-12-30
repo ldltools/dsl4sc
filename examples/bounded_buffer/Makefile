@@ -11,9 +11,8 @@ testcase = bounded_buffer
 TOP_DIR	= $(shell readlink -f ../..)
 -include ../Makefile.common
 
-dfa:	out/$(testcase).dfa.png
 scxml:	out/$(testcase).scxml
-uml:	out/$(testcase).uml
+puml:	out/$(testcase).puml
 svg:	out/$(testcase).svg
 
 run:

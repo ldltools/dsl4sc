@@ -13,34 +13,45 @@
  * limitations under the License.
  *)
 
-type t
-type rule = Ldlrule.rule
+type model =
+    (state, label) Fsa.t
 
-type label = string * Ldl.formula list * string list
+and state =
+    string * bool * Ldl.formula
+      (* (qid, accepting, possible_world) *)
+
+and label =
+    string * Ldl.formula list * string list
       (* (tid, next_world, event_name list) *)
 
-val read_in : in_channel -> (string * Xml.xml) list * t * rule list
-    (* (dfa elts, lts, rules) *)
+type t = model
 
-val update : t -> rule list -> t * (string * string list) list
-    (** returns (m, alist)
-	where alist is of the form [(rid, [tid; ...]); ..]
-     *)
+(** reader *)
+
+val read_in : in_channel -> (string * Xml.xml) list * t * Ldlrule.t list
+    (* (xml elements, model, rules) *)
+
+(** accessors *)
+
+val state_name : t -> int -> string
+
+val detect_final : t -> int list
 
 val collect_transitions : t -> (string * label * string) list
 
-val rule_id : rule -> string
-
-val verbose : int ref
-
-(* printing *)
+(** xml printer *)
 
 val print_states_in_xml : (string -> unit) -> t -> unit
 val print_transitions_in_xml : (string -> unit) -> t -> unit
-val print_rules_in_xml : (string -> unit) -> t -> (string * string list) list -> rule list -> unit
+
+val print_rules_in_xml : (string -> unit) -> t -> (string * string list) list -> Ldlrule.t list -> unit
     (** print_rules_in_xml out m alist rs
 	where alist is of the form [(rid, [tid; ...]); ..]
      *)
 
+(** for debugging *)
+
+val verbosity_set : int -> unit
+val verbosity_get : unit -> int
+
 val debug_print : t -> unit
-val debug_print_rule : rule -> unit

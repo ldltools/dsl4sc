@@ -15,49 +15,46 @@
  *)
 
 val preprocess :
-    (* protocol *)
-    ?any_expand: bool ->
-    ?protocol_relax: bool ->
 
-    (* property *)
-    ?case_split: bool ->
-    ?propositionalize: bool ->
-    ?extra_properties: bool ->
+    (* protocol *)
+    ?expand_any: bool ->
+    ?minimize_protocols: int ->
+    ?relax_protocols: bool ->
 
     (* rule *)
-    ?code_discard: bool ->
-    ?preserve_expand: bool ->
+    ?expand_preserve: bool ->
+    ?discard_codes: bool ->
 
     Rules.decl list -> Rules.decl list 
 	(** preprocess rules
-	    - relax protocols
-	    - align propositions w. events -- add extra properties
+	    - expand any: any -> e1 + e2 + ...
+	    - minimize protocols by means of dfa minimization
+	    - relax protocols: e -> _skip*; e; _skip*
+	    - expand preserve
 	    - discard code fragments in rules
 	 *)
 
 (** event / variable *)
 
-val add_undeclared : Rules.decl list -> Rules.decl list
-    (* add missing proposition/event/label declarations *)
+val pp_add_undeclared : Rules.decl list -> Rules.decl list
+    (* add missing proposition/event/label declarations -- mandatory *)
 
 (** protocol *)
 
-val relax_protocols : Rules.decl list -> Rules.decl list
-val relax_protocol : Protocol.t -> Protocol.t
+val pp_expand_any : Rules.decl list -> Rules.decl list
 
-(** property *)
+val pp_relax_protocols : Rules.decl list -> Rules.decl list
 
-val align_propositions : Rules.decl list -> Rules.decl list
-    (** proposition_align
-	for each proposition p, add [true*] (<p>!p & <!p>p -> <true>!_idle) as a property.
-     *)
+val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
 
 (** rule *)
 
-val expand_preserve : string list -> Rules.decl list -> Rules.decl list
-    (** preserve_expand *)
+val pp_expand_preserve : string list -> Rules.decl list -> Rules.decl list
+    (** pp_preserve_expand events decls
+	events are looked up when rules are of the form "except on e1, e2, .."
+     *)
 
-val discard_codes  : Rules.decl list -> Rules.decl list
+val pp_discard_codes  : Rules.decl list -> Rules.decl list
     (** code_discard
 	strip off code fragments (in JavaScript, etc) from rules
      *)

@@ -34,10 +34,7 @@ declare function local:attach_error_transitions_rec ($nodes as node()*)
         element {name ($n)} {
           $n/@*,
           local:attach_error_transitions_rec ($n/node ()),
-
-          <state id="_rejected" final="true">
-            <onentry><raise event="error.execution"/></onentry>
-          </state>
+          <state id="_rejected" final="true"/>
         }
 
     case element (state)

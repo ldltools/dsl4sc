@@ -18,13 +18,14 @@
 usage () {
     echo "usage: `basename $0` <option>* <rules_file>"
     echo "options:"
-    echo -e "\t-o <out_file>\toutput to <out_file>"
-    echo -e "\t--until <stage>\tterminate when <stage> gets reached"
-    echo -e "\t\t\t<stage> ::= rules | ldl | mso | dfa | dfadot | dfa[2-4] | scxml"
-    echo -e "\t--monitor\tgenerate monitor"
-    echo -e "\t--no-pp\t\tskip preprocessing (be careful)"
-    echo -e "\t-v\t\tbecome verbose"
-    echo -e "\t-h\t\tdisplay this message<outfile>"
+    echo -e "  -o <out_file>\t\toutput to <out_file>"
+    echo -e "  -p, --parse-only\tparse-only"
+    echo -e "  -E, --rulespp-only\tpreprocess-only"
+    echo -e "  --until <stage>\tterminate when <stage> gets reached"
+    echo -e "  \t\t\t<stage> ::= spec | ldl | mso | dfa | dfadot | dfa[2-4] | scxml"
+    echo -e "  --monitor\t\tgenerate monitor"
+    echo -e "  -v\t\t\tbecome verbose"
+    echo -e "  -h\t\t\tdisplay this message<outfile>"
 }
 
 RULESPP=rulespp
@@ -34,13 +35,35 @@ LDL2SCXML=ldl2scxml
 
 infile=/dev/stdin
 outfile=/dev/stdout
-until=scxml
-nopp=
 verbose=0
+
+until=scxml
+opt_parse_only=0
+opt_rulespp_only=0
 
 while test $# -gt 0
 do
     case $1 in
+	-o | --output)
+	    outfile=$2
+	    shift
+	    ;;
+
+	-p | --parse-only)
+	    opt_parse_only=1
+	    ;;
+	-E | --rulespp-only)
+	    opt_rulespp_only=1
+	    ;;
+	-u | --until)
+	    until=$2
+	    shift
+	    ;;
+	--monitor)
+	    # pass down to dfa2scxml.sh
+	    export generate_monitor=1
+	    ;;
+
 	-h | --help)
 	    usage
 	    exit 0
@@ -48,22 +71,7 @@ do
 	-v | --verbose)
 	    verbose=1
 	    ;;
-	--no-pp)
-	    nopp="--no-pp"
-	    shift
-	    ;;
-	-u | --until)
-	    until=$2
-	    shift
-	    ;;
-	-o | --output)
-	    outfile=$2
-	    shift
-	    ;;
-	--monitor)
-	    # pass down to dfa2scxml.sh
-	    export generate_monitor=1
-	    ;;
+
 	-*)
 	    echo "** unknow option: $1"
 	    exit 1
@@ -75,10 +83,22 @@ done
 
 test -e ${infile} || { echo \"${infile}\" not found; exit 1; }
 
-if test $until = "rules"
+if test ${opt_parse_only} -eq 1
 then
-    test $nopp = "--no-pp" && { cat $infile > $outfile; exit 0; }
+    $RULESPP --parse-only $infile -o $outfile
+    exit 0
+fi
+
+if test ${opt_rulespp_only} -eq 1
+then
+    test ${opt_skip_rulespp} -eq 1 && { cat $infile > $outfile; exit 0; }
     $RULESPP $infile -o $outfile
+    exit 0
+fi
+
+if test $until = spec
+then
+    ${RULES2LDL} --until spec $infile -o $outfile
     exit 0
 fi
 
@@ -92,7 +112,7 @@ cat $infile > $rulesfile
 ldlfile=$(tempfile -d /tmp/.dsl4sc -s .ldl)
 mapfile=$(tempfile -d /tmp/.dsl4sc -s .map)
 test $verbose -eq 1 && echo "** ${RULES2LDL} : $rulesfile -> (${ldlfile}, ${mapfile})" > /dev/stderr
-${RULES2LDL} $nopp $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $rulesfile $ldlfile $mapfile; exit 1; }
+${RULES2LDL} $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $rulesfile $ldlfile $mapfile; exit 1; }
 
 test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm -f $rulesfile $ldlfile $mapfile; exit 0; }
 

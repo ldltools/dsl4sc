@@ -22,9 +22,6 @@ type rule =
     { event : event * string option;
       condition : Property.labelled_property * string option;
       action : action;
-
-      (* deprecated *)
-      path : Property.labelled_path option;
     }
 
 (** event *)
@@ -41,7 +38,7 @@ and action_unit =
   | Act_ensure of Property.property
   | Act_raise of string list (* nondeterministic choice *)
   | Act_do
-  | Act_preserve of string list
+  | Act_preserve of Property.property list
 
 [@@deriving show, yojson, eq]
 
@@ -70,7 +67,25 @@ let propositionalize r =
 	a_opt)
       acts
   in
-  { event = r.event; condition = (p', p_opt), c_opt; action = acts'; path = r.path; }
+  { event = r.event; condition = (p', p_opt), c_opt; action = acts'; }
+
+let rec include_term_variable_p r =
+  let (p, _), _ = r.condition
+  in
+  if Property.include_term_variable_p p then true else
+  let acts = r.action 
+  in let found_opt =
+    List.find_opt
+      (fun (act, _) ->
+	match act with
+	| Act_ensure p -> Property.include_term_variable_p p
+	| Act_preserve ps ->
+	    (match List.find_opt Property.include_term_variable_p ps with
+	     Some _ -> true | None -> false)
+	| _ -> false)
+      acts
+  in
+  match found_opt with Some _ -> true | None -> false
 
 (** pretty-printing *)
 
@@ -127,11 +142,10 @@ and print_action1 out = function
       List.iter (fun e' -> out @@ " + " ^ e') es
   | Act_do ->
       out "do"
-  | Act_preserve ps ->
+  | Act_preserve (p :: ps) ->
       out "preserve ";
-      assert (List.length ps > 0);
-      out (List.hd ps);
-      List.iter (fun p -> out (", " ^ p)) (List.tl ps)
+      print_property out p;
+      List.iter (fun p -> out ", "; print_property out p) ps
   | _ ->
       failwith "[print_action1]"
 

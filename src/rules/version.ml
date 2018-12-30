@@ -1,4 +1,3 @@
-(* $Id: $ *)
 (*
  * (C) Copyright IBM Corp. 2018.
  *
@@ -14,21 +13,8 @@
  * limitations under the License.
  *)
 
-type t =
-    { events : string list;
-      protocols : Protocol.t list;
+let get () = "0.12rc"
 
-      variables : (string * Rules.variable_type) list;
-      properties : Property.t list;
-
-      rules : Rule.t list;
-    }
-
-(** ctor *)
-
-val spec_of_rules : Rules.t -> t
-
-(** pretty-printing *)
-
-val print_spec : (string -> unit) -> t -> unit
-val string_of_spec : t -> string
+let get_major () = 0
+let get_minor () = 12
+let get_micro () = 0

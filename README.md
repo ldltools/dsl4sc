@@ -1,70 +1,71 @@
 # Summary
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
-for defining, verifying, and running state transition models for event processing.
+for defining and verifying state transition models for event processing.
 
-Each model defined in dsl4sc has the following unique characteristics:
+Each model in dsl4sc has the following unique characteristics:
 
-- Its building blocks -- _protocols_, _properties_, and
-  [_ECA rules_](https://en.wikipedia.org/wiki/Event_condition_action) --
-  are independent of each other.  
-  You can regard each protocol, property, or rule as a separate model,
-  while the whole model as a conjunctive composition of these building-block models.
-- It has a clear semantics in LDL<sub>f</sub>.
+- It can be defined in terms of event _protocol_, _properties_, and ECA _rules_
+  - event protocol: _regular_ pattern of acceptable event sequences
+  - propery: LDL<sub>f</sub> formula that globally holds as an invariant condition.
+  - [_ECA rule_](https://en.wikipedia.org/wiki/Event_condition_action):
+    relation between an event and its impact on internal states
+- It has a clear semantics in terms of LDL<sub>f</sub>.
 - it can be verified statically and formally against arbitrary requirements
   that are also defined in dsl4sc
 - It can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/)
 
 # Example: [ping\_pong](examples/ping\_pong/README.md) -- You say "ping" and I say "pong"
 
-Let us consider 2 sorts of events, _ping_ and _pong_, which are emitted in an
-alternating manner.  
-We can define the following dsl4sc models that capture this behavior and
-perform their verification and translation to executable forms.
+Consider 2 sorts of events, _ping_ and _pong_:
+The following two dsl4sc models both track ping and pong events
+emitted in an alternating manner.  
 
-(1) _model1_ includes a single _protocol_ definition in dsl4sc as follows.
-
-&ensp; **protocol**
-&ensp; (ping; pong); (ping; pong)*;; // ping followed by pong (1 or more times)
-
-(2) _model2_ introduces _waiting_ to keep track of whether a _pong_ is awaited
-
-&ensp; **property**  
-&ensp; &ensp; !waiting; // initially waiting is set to false (pong is not awaited)  
-&ensp; **rule**  
-&ensp; &ensp; **on** ping **when** !waiting **do** { console.log ("You say ping"); } **ensure** waiting;  
-&ensp; &ensp; &ensp; // ping turns waiting from false into true  
-&ensp; &ensp; **on** pong **when** waiting **do** { console.log ("I say pong"); } **ensure** !waiting;  
-&ensp; &ensp; &ensp; // pong turns waiting from true into false
-
-Note that, since no protocol is defined,
-_model2_ assumes that `ping` and `pong` events may arrive in any order.
-
-(3) _model3_ by merging (1) and (2) into one.
-
-(4) Requirements for the models.
-
-1. **protocol** (ping + pong)*; pong;;  
-   either ping or pong may repeat any times, though the last event is always pong
-1. **property** [{true}\*][{waiting}] !waiting;  
-   at any point, waiting always changes from true to false
-
-The first requirement is met by _model1_ and _model3_, while
-the second one is met by _model2_ and _model3_.
-
-(5) SCXML generation and execution
-
-Models can be translated into SCXML.
-When `ping` and `pong` are emitted to the SCXML statechart generated from _model3_,
-the following messages appear on the console.
+(1) ping\_pong1.rules -- _protocol-only_ model
 
 ```
-You say ping  
-I say pong
+protocol (ping; pong)* ;; // ping followed by pong (repeats 0 or more times)
 ```
 
-For more detail,
-please take a look at [these examples](examples/README.md).
+(2) ping\_pong2.rules -- model that includes _protocol_, _property_, and _rule_ parts
+
+```
+protocol  
+  (ping + pong)*;; // ping or pong (repeats 0 or more times)  
+property  
+  !pinged; // not "pinged", initially  
+rule  
+  on ping when !pinged ensure pinged; // pinged after processing ping  
+  on pong when pinged ensure !pinged;  
+```
+
+(3) model checking
+
+ping\_pong1 accepts only ping or pong -- (ping; pong)* |= (ping + pong)*
+
+```
+$ echo 'protocol (ping + pong)*;;' | rulesmc -m ping_pong1.rules /dev/stdin  
+claim holds
+```
+
+ping\_pong2 includes ping\_pong1
+
+```
+$ rulesmc -m ping_pong2.rules ping_pong1.rules --reachability  
+reachable
+```
+
+ping\_pong3, defined as the _conjunction_ of ping\_pong1 and ping\_pong2,
+entails that _!pinged_ and _pinged_ hold in an alternating manner.
+-- ping\_pong3 |= <({!pinged}; {pinged})*> !pinged
+
+```
+$ cat ping_pong1.rules ping_pong2.rules > ping_pong3.rules  
+$ echo 'property <({!pinged}; {pinged})*> !pinged;' | rulesmc -m ping_pong3.rules /dev/stdin  
+claim holds
+```
+
+Check out [more examples](examples/README.md) if you are interested.  
 
 # Installation on Docker
 

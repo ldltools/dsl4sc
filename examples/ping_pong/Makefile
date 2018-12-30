@@ -12,9 +12,8 @@ include ../Makefile.common
 
 testcase = ping_pong2
 
-dfa:	out/$(testcase).dfa.png
 scxml:	out/$(testcase).scxml
-uml:	out/$(testcase).uml
+puml:	out/$(testcase).puml
 svg:	out/$(testcase).svg
 
 run:

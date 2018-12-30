@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Wed Nov 14 15:14:29 JST 2018
+.\" Manual page created with latex2man on Wed Dec 26 17:58:59 2018
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -46,12 +46,22 @@ rulessat, ldlmc
 .PP
 .SH AUTHOR
 
-\fBhttps://ldltools.github.io\fP
-.br
-\fBldltools@outlook.com\fP
+LDLTools development team at IBM Research. 
+.PP
+.TP
+.B *
+URL: \fBhttps://ldltools.github.io\fP
+.TP
+.B *
+Email: \fBldltools@outlook.com\fP
 .PP
 .SH COPYRIGHT
 
 (C) Copyright IBM Corp. 2018. 
+License Apache 2.0.
+.br
+.PP
+This is free software: you are free to change and redistribute it. 
+There is NO WARRANTY, to the extent permitted by law. 
 .PP
 .\" NOTE: This file is generated, DO NOT EDIT.

@@ -16,23 +16,29 @@
 
 open Ldl
 open Ldlsimp
-open Ldlrule
 open Printf
 
-type t =
+type model =
     (state, label) Fsa.t
 
 and state =
-    string * bool * formula
+    string * bool * Ldl.formula
       (* (qid, accepting, possible_world) *)
 
 and label =
     string * formula list * string list
       (* (tid, next_world, event_name list) *)
 
+type t = model
+type rule = Ldlrule.t
+
 let verbose = ref 0
 
-type rule = Ldlrule.rule
+let verbosity_set n =
+  verbose := n
+      
+let verbosity_get () =
+  !verbose
 
 let rule_id (rid, _, _, _) = rid
 
@@ -64,15 +70,25 @@ let _id = ref 0
 let gen_id (prefix : string) =
   incr _id; prefix ^ (string_of_int !_id)
 
+(** reader *)
+
 (* in_channel -> t * rule list *)
 let read_in (ic : in_channel) =
-  let xml = Xml.parse_in ic in
-  let alist : (string * Xml.xml) list =
-    (* elts = [propositions; states; transitions; variables; rules] *)
+  let xml = Xml.parse_in ic
+  in let legal_names = 
+    ["variables"; "states"; "transitions"; "rules"; "scripts"]
+  in let alist : (string * Xml.xml) list =
     let rec trav (rslt : (string * Xml.xml) list) = function
       | Xml.Element ("dfa", _, children) ->
 	  List.map
-	    (fun child -> match child with Xml.Element (name, _, _) -> name, child)
+	    (fun child ->
+	      match child with
+	      | Xml.Element (name, _, _) when List.mem name legal_names ->
+		  name, child
+	      | Xml.Element (name, _, _) ->
+		  failwith ("[Ldlmodel.read_in] unknown element: " ^ name)
+	      | _ ->
+		  failwith "[Ldlmodel.read_in] non-element encountered")
 	    children
       | Xml.Element (_, _, children) ->
 	  List.fold_left (Xml.fold trav) rslt children
@@ -91,7 +107,7 @@ let read_in (ic : in_channel) =
       assert (List.mem_assoc "id" attrs);
       let qid : string = List.assoc "id" attrs in
       let i = Fsa.state_add m (qid, List.mem_assoc "accepting" attrs, Ldl_atomic "false") in
-      if !verbose > 0 then eprintf "  state: %d, %s\n" i qid;
+      if !verbose > 1 then eprintf "  state: %d, %s\n" i qid;
       ())
     (Xml.children nodes);
   if !verbose > 0 then
@@ -101,7 +117,7 @@ let read_in (ic : in_channel) =
 
   (* transitions *)
   let edges = List.assoc "transitions" alist in
-  if !verbose > 0 then eprintf "** edges: %d\n" (List.length (Xml.children edges));
+  if !verbose > 1 then eprintf "** transitions: %d\n" (List.length (Xml.children edges));
   List.iter
     (function Xml.Element ("transition", attrs, _) ->
       assert (List.mem_assoc "id" attrs);
@@ -126,10 +142,10 @@ let read_in (ic : in_channel) =
 	  [] (tokenize lab)
       in
       Fsa.transition_add m n1 (Some (Fsa.sigma_add m (tid, props, events)), n2);
-      if !verbose > 0 then
+      if !verbose > 1 then
 	begin
 	  eprintf "  transition: %s (%s->%s) " tid q1 q2;
-	  eprintf "events: "; List.iter (eprintf " %s") events;
+	  eprintf "events:"; List.iter (eprintf " %s") events;
 	  eprintf "\n"
 	end;
       ())
@@ -166,11 +182,11 @@ let read_in (ic : in_channel) =
 	let e : string =
 	  match e_elt with
 	  | Xml.Element ("event", attrs, _) -> List.assoc "name" attrs
-	and c : condition =
+	and c : Ldlrule.condition =
 	  match c_elt with
 	  | Xml.Element ("condition", _, elts) ->
 	      List.fold_left
-		(fun (rslt : condition) -> function
+		(fun (rslt : Ldlrule.condition) -> function
 		  (* rslt : condition = (c, script) *)
 		  | Xml.Element ("formula", _, [Xml.PCData f]) ->
 		      (*eprintf "** formula %S\n" f;*)
@@ -183,11 +199,11 @@ let read_in (ic : in_channel) =
 		      failwith (sprintf "read_in: (condition) %s" tag)
 		  | _ -> failwith "read_in")
 		(Ldl_atomic "false", None) elts
-	and a : action =
+	and a : Ldlrule.action =
 	  match a_elt with
 	  | Xml.Element ("action", _, elts) ->
 	      List.fold_left
-		(fun (rslt : action) -> function
+		(fun (rslt : Ldlrule.action) -> function
 		  | Xml.Element ("ensure", _, [Xml.PCData f]) ->
 		      (*eprintf "** ensure %S\n" f;*)
 		      (fst rslt @ [Act_ensure (formula_of_string f)], snd rslt)
@@ -215,9 +231,11 @@ let read_in (ic : in_channel) =
   in      
   alist, m, rs
 
+(** helpers *)
+
 (* collect_transitions m returns [(qid1, l, qid2); ..] *)
 
-let collect_transitions m =
+let collect_transitions (m : t) =
   let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
   List.fold_left
     (fun (rslt : (string * label * string) list) (i, nexts) ->
@@ -264,176 +282,7 @@ and last_p m i =
   with Not_found ->
     true
 
-(* split_transitions *)
-
-let rec split_transitions (m : t) =
-  if !verbose > 0 then (eprintf ";; split_transitions\n"; flush_all ());
-  let final : int list = detect_final m in
-  (*eprintf "** final:"; List.iter (eprintf " %d") final; eprintf "\n";*)
-  let edges = Fsa.alist_of_delta m in
-  List.iter (split_transition m final) edges;
-  m
-
-and split_transition (m : t) final (i, nexts) =
-  List.iter
-    (function (lab_opt, j) ->
-      match lab_opt with
-      | None -> ()
-      | Some k ->
-	  (* transition (i -tid-> j) that accompanies events es *)
-	  let (tid, props, es) : label = Fsa.sigma_get m k in
-	  if !verbose > 1 then
-	    eprintf "** del_transition: %s (%d -> %d)\n" tid i j;
-
-	  (* remove (i -tid-> j) *)
-	  Fsa.transition_del m i (Some k, j);
-
-	  let (labs : label list), _ =
-	    List.fold_left
-	      (fun (labs, l) e ->
-		labs @ [(tid ^ "_" ^ (string_of_int l)), props, [e]], l + 1)
-	      ([], 1) es
-	  in
-	  List.iter
-	    (fun (tid', props, es) ->
-	      assert (List.length es = 1);
-	      let e' = List.hd es in
-	      if !verbose > 0 then
-		(eprintf "** add_transition: %s (%d -> %d)\n" tid' i j; flush_all ());
-	      Fsa.transition_add m i (Some (Fsa.sigma_add m (tid', props, [e'])), j); ())
-	    labs)
-    nexts
-
-(* update_states *)
-
-let rec update_states (m : t) =
-  let qs : (int * state) list = Fsa.alist_of_states m
-  and edges = Fsa.alist_of_delta m in
-  List.iter (update_state m edges) qs;
-  m
-
-and update_state m es (i, (id, accepting, f)) =
-  let fs : formula list =
-    List.fold_left
-      (* for all edge (_, i) *)
-      (fun rslt (_, nexts) ->
-	List.fold_left
-	  (fun rslt (l_opt, i') ->
-	    if i' <> i then rslt else
-	    match l_opt with
-	    | None -> failwith "update_state"
-	    | Some l ->
-		let (_, props, _) = Fsa.sigma_get m l in rslt @ [Ldl_conj props])
-	  rslt nexts)
-      [] es
-  in
-
-  (* f -> f' -> f'' *)
-  let f' = Ldl_disj (f :: fs) in
-  if !verbose > 0 then
-    (eprintf ";; updadate_state (qid=%s): %s =(simp)=> " id (string_of_formula f'); flush_all ());
-
-  let simp f =
-    (*Printf.eprintf "** simp (%s)\n" (string_of_formula f); flush_all ();*)
-    Ldlsimp.simp f
-    (*Ldlsimp.resolve f*)
-    (*let g = Ldlsimp.simp f in try Ldlsimp.resolve g |> Ldlsimp.simp_sort |> Ldlsimp.simp_uniq with Not_found -> g*)
-    (*try Ldl.resolve f with _ -> try Ldl.simp f with _ -> f*)
-  in
-  let f'' = simp f' in
-  if !verbose > 0 then (eprintf "%s\n" (string_of_formula f''); flush_all ());
-
-  Fsa.state_set m i (id, accepting, f'')
-
-(* find_applicable_rules *)
-
-let rec find_applicable_rules (m : t) (rs : rule list) =
-  if !verbose > 0 then (eprintf ";; find_applicable_rules\n"; flush_all ());
-  let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
-  List.fold_left
-    (fun rslt (i, nexts) ->
-      if !verbose > 0 then
-	eprintf ";; %d transitions from %s (%d)\n"
-	  (List.length nexts) (let qid, _, _ = Fsa.state_get m i in qid) i;
-      List.fold_left
-	(fun rslt (l_opt, j) ->
-	  let l : label =
-	    match l_opt with
-	    | None -> failwith "find_applicable_rules"
-	    | Some k ->  Fsa.sigma_get m k
-	  in rslt @ find_applicable_rules_rec m (i, l, j) rs)
-	rslt nexts)
-    [] edges
-
-and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.rule list) =
-  let tid, props, es = l in
-  match es with
-  | [] -> []
-  | [e] ->
-      List.fold_left
-	(fun rslt (r : Ldlrule.rule) ->
-	  let rid, e', (c, _), (acts, _) = r in
-	  let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j in
-
-	  if !verbose > 0 then
-	    (eprintf ";; applicable? (rid=%s, event=%s) to (tid=%s, %d->%d, %s->%s): "
-	       rid e' tid i j q1 q2;
-	     flush_all ());
-	  let certainty = rule_applicable m (i, j) r in
-	  if !verbose > 0 then
-	    (eprintf "certainty=0x%02x\n" certainty; flush_all ());
-
-	  if e' = e
-	  then rslt @ [rid, tid]
-	  else rslt)
-	[] rs
-  | _ ->
-      (*failwith "find_applicable_rules_rec";*)
-      []
-
-(* returns: 0 = inapplicable, 0b0001-0b1111 = (conditionally) applicable *)
-and rule_applicable m (i, j) (r : Ldlrule.rule) =
-  let _, _, (w1 : formula) = Fsa.state_get m i
-  and _, _, (w2 : formula) = Fsa.state_get m j in
-  let b, certainty = Ldlrule.applicable r (w1, w2) in
-  assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);
-  certainty
-
-(* update *)
-
-let rec update m rs =
-  let m' : t = m |> update_states |> split_transitions in
-  let alist1 : (string * string) list = find_applicable_rules m' rs in
-    (* alist1 = [(rid, tid); ..] *)
-  let alist2 : (string * string list) list = aggregate_transitions alist1 in
-    (* alist2 = [(rid, [tid; ..]); ..] *)
-  m', alist2
-
-and aggregate_transitions (alist : (string * string) list) =
-  if !verbose > 0 then (eprintf ";; aggregate_transitions\n"; flush_all ());
-  let alist2 : (string * string) list =
-    List.sort
-      (fun (rid1, _) (rid2, _) ->
-	let i1 = int_of_string (String.sub rid1 1 (String.length rid1 - 1))
-	and i2 = int_of_string (String.sub rid2 1 (String.length rid2 - 1))
-	in if i1 = i2 then 0 else if i1 < i2 then -1 else 1)
-      alist in
-  let alist3 : (string * string list) list =
-    match alist2 with
-    | [] -> []
-    | (rid, tid) :: rest ->
-	let (rid', tid_seq'), rslt =
-	  List.fold_left
-	    (fun ((rid1, tid_seq1), rslt) (rid2, tid2) ->
-	      if rid1 = rid2 then
-		(rid1, tid_seq1 @ [tid2]), rslt
-	      else
-		(rid2, [tid2]), rslt @ [rid1, tid_seq1])
-	    ((rid, [tid]), []) rest
-	in rslt @ [rid', tid_seq']
-  in alist3
-
-(* printers *)
+(** printers *)
 
 (* <,>,& -> &lt;,&gt;,&amp; *)
 let rec escape out (str : string) =
@@ -516,16 +365,21 @@ let rec print_rules_in_xml out (m : t) alist (rs : rule list) =
     (* [(qid1, (tid, _, _), qid2); ..] *)
     List.map
       (fun (qid1, (tid, _, _), qid2) ->
+	assert (List.mem_assoc qid1 alist2);
+	assert (List.mem_assoc qid2 alist2);
 	(tid, (List.assoc qid1 alist2, List.assoc qid2 alist2)))
       edges in
   List.iter
-    (fun r -> print_rule_in_xml out (List.assoc (rule_id r) alist) alist3 r)
+    (fun r ->
+      if List.mem_assoc (rule_id r) alist then
+	Ldlrule.print_rule_in_xml out (List.assoc (rule_id r) alist) alist3 r)
     rs;
   out "</rules>\n";
   ()
 
 (* tid = id of transition to which r is applicable.
    alist = [(tid, (w1, w2)); ..] *)
+(*
 and print_rule_in_xml out tid_seq alist (r : rule) =
   let rid, e, (c, c_opt), (a, a_opt) = r in
   out (sprintf "<rule id=%S>\n" rid);
@@ -568,9 +422,10 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
     (fun tid ->
       assert (List.mem_assoc tid alist);
       let w1, w2 = List.assoc tid alist in
-      let b, certainty = Ldlrule.applicable r (w1, w2) in
-      assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);
+      let b, certainty_opt = Ldlrule.applicable r (w1, w2) in
+      let certainty = match certainty_opt with None -> 0 | Some v -> v in
       (*
+      assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);
       if deg = 0 then
 	eprintf "** inapplicable: rid=%s tid=%s w1=%S c=%S w2=%S\n"
 	  rid tid
@@ -584,19 +439,21 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
 
   out "</rule>\n";
   ()
+*)
 
 let debug_print m =
+  output_string stderr ";; debug_print\n";
   (*output_string stderr (show_nfa m);*)
   (* states *)
-  output_string stderr "[states]\n";
   (*
+  output_string stderr "states\n";
   List.iter
     (fun (i, q) -> eprintf "%d: %s\n" i (show_state q))
     (Fsa.alist_of_states m);
    *)
   (* transitions *)
-  output_string stderr "[transitions]\n";
   (*
+  output_string stderr "transitions\n";
   List.iter
     (fun (i, delta) ->
       output_string stderr ((state_name m i) ^ ":");
@@ -608,28 +465,5 @@ let debug_print m =
       output_string stderr "\n")
     (Fsa.alist_of_delta m);
    *)
-  flush_all ();
-  ()
-
-let debug_print_rule (id, e, (c, c_scr), (a, a_scr)) =
-  eprintf "%s: on %s " id e;
-  eprintf "when %s %s" (string_of_formula c)
-    (match c_scr with None -> "" | Some str -> "{" ^ str ^ "} ");
-  eprintf "do ";
-  let print1 = function
-    | Act_ensure f -> eprintf "%s" (string_of_formula f)
-    | Act_raise e  -> eprintf "raise %s" e in
-  let _ =
-    match a with
-    | [] -> ()
-    | [act] -> print1 act
-    | act :: rest -> print1 act; List.iter (fun act -> eprintf ", "; print1 act) rest
-  in
-  let _ =
-    match a_scr with
-    | None -> ()
-    | Some str -> eprintf " {%s}" str
-  in
-  output_string stderr "\n";
   flush_all ();
   ()

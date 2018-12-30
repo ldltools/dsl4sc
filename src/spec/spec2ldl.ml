@@ -17,247 +17,196 @@
 open Protocol
 open Property
 open Rule
-open Rules
 
-open Ldl
-open Ldlsimp
+(** event *)
 
-open Printf
+type event_map = (string * Property.t) list
 
-(* ================================================================================
-   translation of protocol
-   translate : protocol -> Ldl.formula
-   translate p = <_idle; (protocol_to_path p)> (last & _idle)
-   ================================================================================
+(* gen_bits nbit n returns [b(0); b(1); ...; b(nbit - 1)] = bit-representation of n
  *)
+let rec gen_bits nbit (n : int) =
+  gen_bits_rec nbit n [] 0
 
-type event_map = (string * Ldl.formula) list
-
-(* Rule.protocol -> Ldl.formula *)
-let rec translate_protocol nbit (es : string list) (p : Protocol.protocol) =
-  let _idle : formula = event_to_formula_aux nbit es "_skip" in
-  let r = protocol_to_path nbit es p
-  in
-  Ldl_modal (Mod_ex, Path_seq [Path_prop _idle; r], Ldl_conj [Ldl_atomic "last"; _idle])
-
-(*
-(* Rule.protocol -> Rule.protocol *)
-and relax_protocol (p : Rule.protocol) =
-  relax_protocol_rec p |> flatten_protocol |> elim_dup
-
-and relax_protocol_rec (p : Rule.protocol) =
-  let filler = Proto_star (Proto_prop (PProp_event "none")) in
-  match p with
-  | Proto_prop _ -> Proto_seq [filler; p; filler]
-  | Proto_seq ps -> Proto_seq (List.map relax_protocol_rec ps)
-  | Proto_sum ps -> Proto_sum (List.map relax_protocol_rec ps)
-  | Proto_test p -> Proto_test (relax_protocol_rec p)
-  | Proto_star p -> Proto_star (relax_protocol_rec p)
-  | _ -> failwith "relax_protocol_rec"
-
-and flatten_protocol p =
-  match p with
-  | Proto_seq ps ->
-      let ps' =
-	List.fold_left
-	  (fun rslt p1 -> match p1 with Proto_seq ps1 -> rslt @ ps1 | _ -> rslt @ [p1])
-	  [] (List.map flatten_protocol ps) in
-      if List.length ps' = 1 then List.hd ps' else Proto_seq ps'
-  | _ -> p
-
-and elim_dup p =
-  match p with
-  | Proto_seq ps -> Proto_seq (elim_dup1 ps)
-  | _ -> p
-
-and elim_dup1 ps =
-  match ps with
-  | [] | [_] -> ps
-  | Proto_star (Proto_prop (PProp_event "none")) :: Proto_star (Proto_prop (PProp_event "none")) :: rest ->
-      elim_dup1 (Proto_star (Proto_prop (PProp_event "none")) :: rest)
-  | Proto_star (Proto_prop (PProp_event "none")) :: p2 :: rest ->
-      Proto_star (Proto_prop (PProp_event "none")) :: p2 :: elim_dup1 rest
-  | p1 :: Proto_star (Proto_prop (PProp_event "none")) :: rest ->
-      p1 :: elim_dup1 (Proto_star (Proto_prop (PProp_event "none")) :: rest)
-  | p1 :: p2 :: rest ->
-      p1 :: p2 :: elim_dup1 rest
-*)
-
-(* genmap : int -> string list -> (evmap : (string * Ldl.formula) list) *)
-and genmap nbit (es : string list) =
-  ("_skip", event_to_formula_aux nbit es "_skip") ::
-  List.map (fun e -> e, event_to_formula_aux nbit es e) es
-
-(* Rule.protocol -> Ldl.path *)
-and protocol_to_path nbit (es : string list) (p : Protocol.protocol) =
-  match p with
-  | Proto_event "_epsilon" ->
-      failwith "[implementation restriction] protocol cannot end with epsilon"
-  | Proto_event e when List.mem e ["_any"; "_empty"] ->
-      invalid_arg ("protocol_to_path: " ^ e)
-  | Proto_event e -> Ldl.Path_prop (event_to_formula_aux nbit es e)
-
-  | Proto_seq ps  -> Ldl.Path_seq (List.map (protocol_to_path nbit es) ps)
-  | Proto_sum ps  -> Ldl.Path_sum (List.map (protocol_to_path nbit es) ps)
-  | Proto_star p' -> Ldl.Path_star (protocol_to_path nbit es p')
-  | _ -> failwith "protocol_to_path"
-
-(* event list (disjunctive) -> formula *)
-and event_to_formula (es : string list) (e : string) =
-  let nbit = int_of_float (ceil (log (float_of_int (List.length es + 1)) /. log 2.0))
-  in event_to_formula_aux nbit es e
-
-and event_to_formula_aux nbit (es : string list) (e : string) =
-  match e with
-  | "_skip" -> event_to_formula_rec nbit 0 [] 0
-  | e when List.mem e es -> event_to_formula_rec nbit (index e es + 1) [] 0
-  | e -> failwith ("event_to_formula: undefined event (" ^ e ^ ") encountered")
-
-and index elt seq =
-  let i = ref 0 in
-  try  List.iteri (fun j elt' -> i := j; if elt' = elt then raise Exit) seq; -1
-  with Exit -> !i
-
-and event_to_formula_rec nbit (bits : int) fs (i : int) =
+and gen_bits_rec nbit (n : int) rslt i =
   if i = nbit then
-    Ldl_conj fs
+    rslt
   else
-    let f = Ldl_atomic ("_b" ^ string_of_int i) in
-    let f = if bits land (1 lsl i) <> 0 then f else Ldl_neg f in
-    event_to_formula_rec nbit (bits : int) (fs @ [f]) (i + 1)
+    gen_bits_rec nbit n (rslt @ [n land (1 lsl i) <> 0]) (i + 1)
 
-(* ================================================================================
-   translation of property
-   ================================================================================
+(* [e1; e2; ..] -> [done(e1); done(e2); ..]
+   where done(e) = proposition that indicates processing of e has just been finished
+ *)
+let events_to_map (events : string list) =
+  assert (not @@ List.mem "_skip" events);
+  assert (List.length (List.sort_uniq compare events) = List.length events);
+  if events = [] then [] else
+  let es = "_skip" :: List.sort_uniq compare events
+  in let n = List.length es
+  in let nbit = int_of_float @@ ceil @@ log (float_of_int n) /. log 2.0
+  in let props, _ =
+    List.fold_left
+      (fun (rslt, i) e ->
+	(* gen property for e (= the i-th event) *)
+	let bits : bool list = gen_bits nbit i
+	in let conj, _ =
+	  List.fold_left
+	    (fun (rslt, j) b ->
+	      let p = Prop_atomic ("_b" ^ string_of_int j)
+	      in rslt @ [if b then p else Prop_neg p], j + 1)
+	    ([], 0) bits
+	in rslt @ [e, Prop_conj conj], i + 1)
+      ([], 0) es
+  in props
+
+(** protocol
+    ⟦ p ⟧ = <_idle; (protocol_to_path p)> (last & _idle)
  *)
 
-let rec translate_property nbit es (lp : Property.labelled_property) =
-  lp |> lprop_to_formula nbit es
+let rec property_of_protocol (map : event_map) (p : Protocol.t) =
+  let _idle = List.assoc "_skip" map
+  in let r : Property.labelled_path = protocol_to_path map p
+  in
+  Prop_modal
+    (Mod_ex,
+     (Path_seq [Path_prop _idle, None; r], None),
+     (Prop_conj [Prop_atomic "last"; _idle], None))
 
-(* labelled_property -> formula *)
-and lprop_to_formula nbit (es : string list) (p, p_opt) =
-  prop_to_formula nbit es p
+(* Protocol.t -> Property.labelled_path *)
+and protocol_to_path map (p : Protocol.t) =
+  let r : Property.path =
+    match p with
+    | Proto_event "_epsilon" ->
+	failwith "[protocol_to_path] protocol include _epsilon"
+    | Proto_event e when List.mem e ["_any"; "_empty"] ->
+	invalid_arg ("[protocol_to_path] invalid event: " ^ e)
+    | Proto_event e -> Path_prop (List.assoc e map)
 
-and prop_to_formula nbit es (p : Property.property) =
+    | Proto_seq ps  -> Path_seq (List.map (protocol_to_path map) ps)
+    | Proto_sum ps  -> Path_sum (List.map (protocol_to_path map) ps)
+    | Proto_star p' -> Path_star (protocol_to_path map p')
+
+    | _ -> failwith "[protocol_to_path]"
+  in r, None
+
+(** property
+    expand built-in properties like _idle
+ *)
+
+let rec expand_property (map : event_map) p =
   match p with
-  | Prop_atomic "_idle" -> event_to_formula_aux nbit es "_skip"
-  | Prop_atomic a -> Ldl_atomic a
-  | Prop_neg p'  -> Ldl_neg (prop_to_formula nbit es p')
-  | Prop_conj ps -> Ldl_conj (List.map (prop_to_formula nbit es) ps)
-  | Prop_disj ps -> Ldl_disj (List.map (prop_to_formula nbit es) ps)
-  | Prop_modal (m, lr, lp) ->
-      let m' = match m with Mod_ex -> Ldl.Mod_ex | Mod_all -> Ldl.Mod_all in
-      Ldl_modal (m', lpath_to_path nbit es lr, lprop_to_formula nbit es lp)
-  | Prop_label l ->
-      failwith ("prop_to_formula:label(" ^ l ^ ")")
+  | Prop_atomic "_idle" -> List.assoc "_skip" map
+  | Prop_atomic a -> Prop_atomic a
+  | Prop_equal (e1, e2) -> p
+  | Prop_neg p'  -> Prop_neg (expand_property map p')
+  | Prop_conj ps -> Prop_conj (List.map (expand_property map) ps)
+  | Prop_disj ps -> Prop_disj (List.map (expand_property map) ps)
+  | Prop_modal (m, (r, r_opt), (q, q_opt)) ->
+      Prop_modal (m, (expand_path map r, r_opt), (expand_property map q, q_opt))      
 
-and lpath_to_path nbit es (r, r_opt) =
-  match (r : Property.path) with
-  | Path_prop p -> Ldl.Path_prop (prop_to_formula nbit es p)
-  | Path_seq rs -> Ldl.Path_seq (List.map (lpath_to_path nbit es) rs)
-  | Path_sum rs -> Ldl.Path_sum (List.map (lpath_to_path nbit es) rs)
-  | Path_test p -> Ldl.Path_test (prop_to_formula nbit es p)
-  | Path_star r -> Ldl.Path_star (lpath_to_path nbit es r)
-  | Path_label l ->
-      failwith ("lpath_to_path:label(" ^ l ^ ")")
-
-(* ================================================================================
-   translation of rule
-   ⟦ on e when c do a ⟧ = [true*]>(<true>φ(e) -> <c>a)
-                          where φ(ev) = bit-encoded proposition of e
-   ================================================================================
- *)
-
-let rec translate_rule nbit es (s : Spec.t) (r : Rule.rule) =
-  let (e, _), (c, _), acts = r.event, r.condition, r.action in
-  let c' : formula = lprop_to_formula nbit es c in
-  match c' with
-  | _ when propositional c' ->
-      translate_rule1 nbit es (s : Spec.t) (e, c', acts)
-  | Ldl_modal (Mod_ex, r, f) when propositional f ->
-      translate_rule2 nbit es (s : Spec.t) (e, c', acts)
-  |_ ->
-      failwith ("translate_rule: invalid condition " ^ string_of_formula c')
-
-and translate_rule1 nbit es (s : Spec.t) (e, c, acts) =
-  assert (propositional c);
-  let c' : path = Path_prop c
-  and e' : formula =
-    event_to_formula s.event_seq (match e with Ev_name e' -> e' | _ -> failwith "translate_rule1")
-  and a' : formula = action_to_formula nbit s.event_seq acts
-  in
-  (* [true*](<c>e -> <c>(e ^ a)) *)
-  Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
-	     Ldl_impl (Ldl_modal (Mod_ex, c', e'), Ldl_modal (Mod_ex, c', Ldl_conj [e'; a'])))
-
-and translate_rule2 nbit es (s : Spec.t) (e, c, acts) =
-  let c' : path =
-    match c with
-    | Ldl_modal (Mod_ex, r, f) when propositional f -> Path_seq [r; Path_prop f]
-    | _ -> failwith "translate_rule2"
-  and e' : formula = event_to_formula s.event_seq (event_name e)
-  and a' : formula = action_to_formula nbit s.event_seq acts
-  in
-  (* [true*](<c>e -> <c>(e ^ a)) *)
-  Ldl_modal (Mod_all, Path_star (Path_prop (Ldl_atomic "true")),
-	     Ldl_impl (Ldl_modal (Mod_ex, c', e'), Ldl_modal (Mod_ex, c', Ldl_conj [e'; a'])))
-
-and action_to_formula nbit es (acts : action) =
-  Ldl_conj (List.map (fun (act, _) -> action_unit_to_formula nbit es act) acts)
-
-and action_unit_to_formula nbit es (a : action_unit) =
-  match a with
-  | Act_ensure p -> prop_to_formula nbit es p
-  | Act_raise es' ->
-      assert (es' <> []);
-      (* <true> \/es' *)
-      Ldl_modal (Mod_ex, Path_prop (Ldl_atomic "true"),
-		 Ldl_disj (List.map (event_to_formula es) es'))
-  | Act_do ->
-      failwith "[Spec2ldl.action_to_formula] action \"do\" should not appear"
-  | Act_preserve _ ->
-      failwith "[Spec2ldl.action_to_formula] action \"preserve\" should not appear"
-
-(* ================================================================================
-   translation of rule set
-   ================================================================================
- *)
-
-(* translate : Spec.t -> Ldl.formula list *)
-let rec translate (s : Spec.t) =
-  (* protocols -> formulas *)
-  let es : string list = s.event_seq in
-  assert (List.length (List.sort_uniq compare es) = List.length es);
-  assert (not @@ List.mem "_skip" es);
-  let nev = List.length es + 1 (* es + 1 extra event for "_skip" *) in
-  let nbit = int_of_float @@ ceil @@ log (float_of_int nev) /. log 2.0 in
-  let map : event_map = genmap nbit es in
+  | _ ->
+      failwith ("[expand_property] invalid property: " ^ Property.string_of_property p)
 
 (*
-  output_string stderr "** events: (_skip)";
-  List.iter (fun e -> output_string stderr (" " ^ e)) es;
-  Printf.fprintf stderr "\n** %d (+1) events -> %d bits\n" (List.length es) nbit;
-  output_string stderr "** map:";
-  List.iter (fun (e, f) -> output_string stderr (" " ^ e ^ "=" ^ Ldl.show_formula f)) map;
+and expand_lpath map ((r, r_opt) : Property.labelled_path) =
+  expand_path map r
  *)
-  let fs1 : formula list = List.map (translate_protocol nbit s.event_seq) s.proto_seq in
-  let fs1 = fs1 @
-    (* extra formula to exclude non-existent events *)
-    let max = 1 lsl nbit in
-    if nev = max then [] else
-    let rec ev_formulas i rslt =
-      if i = max
-      then rslt
-      else ev_formulas (i + 1) (rslt @ [event_to_formula_rec nbit i [] 0])
-    in [Ldl_modal (Mod_all,
-		   Path_star (Path_prop (Ldl_atomic "true")),
-		   Ldl_neg (Ldl_disj (ev_formulas nev [])))]
+
+and expand_path map (r : Property.path) =
+  match r with
+  | Path_prop p -> Path_prop (expand_property map p)
+  | Path_seq rs ->
+      Path_seq (List.map (fun (r, _) -> (expand_path map r, None)) rs)
+  | Path_sum rs ->
+      Path_sum (List.map (fun (r, _) -> expand_path map r, None) rs)
+  | Path_test p -> Path_test (expand_property map p)
+  | Path_star (r, _) -> Path_star (expand_path map r, None)
+  | _ -> failwith "[expand_path]"
+
+(** rule
+    ⟦ on e when c do a ⟧ = [true*]>(<c>done(e) -> <c>(done(e) ∧ a))
+    ⟦ on e when <ρ>c do a ⟧ = [true*](<ρ;c>done(e) -> <ρ;c>(done(e) ^ a))
+ *)
+
+let rec property_of_rule (map : event_map) (r : Rule.t) =
+  let (e, _), ((c, _), _), acts = r.event, r.condition, r.action
+  in let e_done : Property.t = List.assoc (Rule.event_name e) map
+  and c_path : Property.path = property_to_path map c
+  and a' = action_to_property map acts
   in
+  Prop_modal (Mod_all,
+	      (Path_star (Path_prop (Prop_atomic "true"), None), None),
+	      (Prop_disj
+		 [Prop_neg (Prop_modal (Mod_ex, (c_path, None), (e_done, None)));
+		  Prop_modal (Mod_ex, (c_path, None), (Prop_conj [e_done; a'], None))],
+	       None))
 
-  (* properties -> formulas *)
-  let fs2 = List.map (translate_property nbit es) s.prop_seq in
+(* <ρ1><ρ2>ψ -> ρ1; ρ2; ..; ψ *)
+and property_to_path map (p : Property.t) =
+  match p with
+  | _ when not (Property.modal_p p) -> Path_prop (expand_property map p)
+  | Prop_modal (Mod_ex, r, (p', _)) ->
+      Path_seq [r; property_to_path map @@ expand_property map p', None]
+  | _ ->
+      failwith ("[property_to_path] invalid property: " ^ Property.string_of_property p)
 
-  (* rules -> formulas *)
-  let fs3 = List.map (translate_rule nbit es s) s.rule_seq in
+and action_to_property map (acts : Rule.action) =
+  let conj = 
+    List.fold_left
+      (fun rslt (act, _) ->
+	rslt @
+	match act with
+	| Act_ensure p -> [expand_property map p]
+	| Act_raise es -> 
+	    (* raise e1 + e2 + .. -> <true>(done(e1) ∨ done(e2) ∨ ..) *)
+	    [Prop_modal (Mod_ex,
+			 (Path_prop (Prop_atomic "true"), None),
+			 (Prop_disj (List.map (fun e -> List.assoc e map) es), None))]
+	| _ -> [])
+      [] acts
+  in Prop_conj conj
 
-  (fs1 @ fs2 @ fs3), map
+(** translatelation
+    Spec.t -> Property.t list * event_map
+ *)
+
+let rec translate
+    ?(propositionalize = true)
+    ?(keep_terms = false)
+    (s : Spec.t) =
+
+  let map = events_to_map s.events in
+  let ps1 = List.map (property_of_protocol map) s.protocols
+  and ps2 = List.map (expand_property map) s.properties
+  and ps3 = List.map (property_of_rule map) s.rules
+  in
+  if not propositionalize then ps1 @ ps2 @ ps3, map else
+  (* propositionalize *)
+  ps1 @ List.map (Property.propositionalize ~keep_terms) (ps2 @ ps3), map
+
+(** formula *)
+
+let rec formula_of_property (p : Property.t) =
+  match p with
+  | Prop_atomic a when List.mem a ["_idle"] ->
+      failwith ("[formula_of_property] unrecognized property: " ^ a)
+  | Prop_atomic a -> Ldl.Ldl_atomic a
+  | Prop_neg p' -> Ldl.Ldl_neg (formula_of_property p')
+  | Prop_conj ps -> Ldl.Ldl_conj (List.map formula_of_property ps)
+  | Prop_disj ps -> Ldl.Ldl_disj (List.map formula_of_property ps)
+  | Prop_modal (m, (r, _), (p', _)) ->
+      let m' = match m with Mod_ex -> Ldl.Mod_ex | Mod_all -> Ldl.Mod_all in
+      Ldl.Ldl_modal (m', path_to_path r, formula_of_property p')
+  | _ ->
+      failwith ("[formula_of_property] invalid property: " ^ Property.string_of_property p)
+
+and path_to_path (r : Property.path) =
+  match r with
+  | Path_prop p -> Ldl.Path_prop (formula_of_property p)
+  | Path_seq rs ->
+      Ldl.Path_seq (List.map (fun (r, _) -> path_to_path r) rs)
+  | Path_sum rs ->
+      Ldl.Path_sum (List.map (fun (r, _) -> path_to_path r) rs)
+  | Path_test p -> Ldl.Path_test (formula_of_property p)
+  | Path_star (r, _) -> Ldl.Path_star (path_to_path r)
+  | _ -> failwith "[path_to_path]"
+    

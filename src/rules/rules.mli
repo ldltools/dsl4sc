@@ -16,58 +16,31 @@
 
 (** rules *)
 type rules =
-    { event_decls : event_spec list;
-      proto_decls : protocol_spec list;
+    { events : event_spec list;
+      protocols : Protocol.t list;
 
-      var_decls : variable_spec list;
-      prop_decls : property_spec list;
+      variables : variable_spec list;
+      properties : Property.t list;
 
-      rule_decls : rule_spec list;
-      impl_decls : string list;
-
-      (* deprecated *)
-      pvar_decls : proposition_spec list;	(* propositional variable *)
-      path_decls : path_spec list;	
-      label_decls : string list;
+      rules : rule_spec list;
+      extras : string list;
     }
 
-(** event *)
 and event_spec =
-    (* name, code *)
     string * string option
+      (** event_name with optional expression *)
 
-(** protocol *)
-and protocol_spec =
-    (string * string list) option * Protocol.t
-    (* (name, args), protocol *)
-
-(** variable *)
 and variable_spec =
-    (* (name, type), code *)
     (string * variable_type) * string option
+      (** (var_name, var_type) with optional expression *)
 
 and variable_type =
-  | VT_prop
-  | VT_nat of int
+  | VT_prop			(* proposition type *)
+  | VT_term of Property.base_t	(* term type *)
 
-(** proposition -- deprecated *)
-and proposition_spec =
-    (* name, code *)
-    string * string option
-
-(** property *)
-and property_spec =
-    (string * string list) option * Property.labelled_property
-    (* (name, args), property *)
-
-(** rule *)
 and rule_spec =
-    (string * string list) option * Rule.rule
-    (* (name, args), rule *)
-
-(** path -- deprecated *)
-and path_spec =
-    string option * Property.labelled_path
+    Rule.t * string option
+      (** rule with optional annotation *)
 
 type t = rules
 
@@ -76,22 +49,17 @@ type t = rules
 type decl =
   (* protocol *)
   | Decl_event of event_spec
-  | Decl_protocol of protocol_spec
+  | Decl_protocol of Protocol.t
 
   (* property *)
   | Decl_variable of variable_spec
-  | Decl_property of property_spec
+  | Decl_property of Property.t
 
   (* eca rule *)
   | Decl_rule of rule_spec
 
-  (* extras *)
-  | Decl_impl of string
-
-  (* deprecated *)
-  | Decl_proposition of proposition_spec
-  | Decl_path of path_spec
-  | Decl_label of string
+  (* extra *)
+  | Decl_extra of string
 
 val decls_to_rules : ?event_sort:bool -> decl list -> t
 

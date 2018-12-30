@@ -18,7 +18,7 @@ on get when n = 1 do { console.log (n, buff[--n]); buff[n] = null; } ensure n = 
 on get when n = 2 do { console.log (n, buff[--n]); buff[n] = null; } ensure n = 1;
 on get when n = 3 do { console.log (n, buff[--n]); buff[n] = null; } ensure n = 2;
 
-implementation
+script
 {
   <datamodel>
     <data id="n" expr="0"/>

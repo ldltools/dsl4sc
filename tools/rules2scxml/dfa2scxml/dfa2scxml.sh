@@ -118,7 +118,7 @@ declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
 `cat ${decode_events}`
 declare variable \$rules := doc("`readlink -f $xmlrulesfile`")//rules/rule;
 declare variable \$vars := doc("`readlink -f $xmlrulesfile`")//variables/variable;
-declare variable \$impl := doc("`readlink -f $xmlrulesfile`")//implementation;
+declare variable \$scripts := doc("`readlink -f $xmlrulesfile`")//scripts/script;
 `cat ${include_rules}`
 $main
 EOF
@@ -214,7 +214,7 @@ esac
 #
 # - <dfa> -> <scxml>
 # - adjust "initial" states (skip mona-generated initial states)
-# - copy implementation/datamodel/* in dfa4 to scxml/datamodel
+# - copy script/datamodel/* in dfa4 to scxml/datamodel
 # --------------------------------------------------------------------------------
 print_in_scxml=$LIBDIR/print_in_scxml.xq
 test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
@@ -222,27 +222,29 @@ test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr;
 scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
 
 # -----
-# unescape the <implementation> element of ${dfa4file} -- quick dirty work-around
+# unescape each scripts/script element of ${dfa4file} -- quick dirty work-around
 unescape () {
 local file=$1
 local escape="${LIBDIR}/escape.opt"
 test -x "$escape" || { echo "$escape not found" > /dev/stderr; exit 1; }
-local unescaped="$(echo "declare default element namespace \"https://github.com/ldltools/dsl4sc\"; .//dfa/implementation/text()" | xqilla /dev/stdin -i $file |$escape -u)"
+#
+local unescaped="$(echo "declare default element namespace \"https://github.com/ldltools/dsl4sc\"; .//dfa/scripts" | xqilla /dev/stdin -i $file | $escape -u)"
 #echo $unescaped > /dev/stderr
+#
 local tempfile=${file}.unescaped
 cat <<EOF | xqilla /dev/stdin -i $file |\
     gawk -v unescaped="$unescaped" '/^__implementation__$/{print(unescaped);next}{print($0)}' > $tempfile
 declare default element namespace "https://github.com/ldltools/dsl4sc";
 element dfa {
   .//dfa/@*,
-  (for \$n in .//dfa/node() where name (\$n) != "implementation" return \$n),
+  (for \$n in .//dfa/node() where name (\$n) != "scripts" return \$n),
   element implementation { text { "&#x0a;__implementation__&#x0a;" } }
 }
 EOF
 #cat $tempfile; exit 0
 test -f $tempfile && mv -f $tempfile $file
 }
-fgrep -q '<implementation>' ${dfa4file} && unescape ${dfa4file}
+fgrep -q '<scripts>' ${dfa4file} && unescape ${dfa4file}
 # -----
 
 #

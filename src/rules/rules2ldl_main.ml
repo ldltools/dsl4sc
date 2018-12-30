@@ -23,26 +23,38 @@ let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 
-(* rules_p *)
-let opt_parse_only = ref false
-(* rulespp *)
-let opt_preprocessing = ref true
-let opt_extra_properties = ref true
-(* spec2ldl *)
 let opt_map_out = ref "/dev/null"
+let opt_until = ref "ldl"
+let opt_parse_only = ref false
+let opt_skip_rulespp = ref false
+let opt_skip_specpp = ref false
+let opt_skip_p18n = ref false
+let opt_keep_terms = ref false
+let opt_skip_ldlgen = ref false
 
 let synopsis prog =
+  printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
-  let msg =
-    "options:\n"
-    ^ "  -o <file>\t\toutput to <file>\n"
-    ^ "  -t <fmt>\t\toutput in <fmt> (ldl, caml, json)\n"
-    ^ "  --map <file>\t\toutput event mappings to <file> (in xml)\n"
-    ^ "  -p\t\t\tparse-only\n"
-    ^ "  --no-pp\t\tsuppress preprocessing\n"
-    ^ "  --no-ex\t\tsuppress generation of extra properties\n"
-    ^ "  -h\t\t\tdisplay this message\n"
-  in output_string stdout msg
+  List.iter (output_string stdout)
+    ["options:\n";
+     "  -o <file>\t\toutput to <file>\n";
+     "  -t <fmt>\t\toutput in <fmt> (\"caml\", \"json\")\n";
+     "  --map <file>\t\toutput event mappings to <file> in xml\n";
+     "  -p\t\t\tparse-only\n";
+     "  -V, --version\t\tdisplay version\n";
+     "  -h, --help\t\tdisplay this message\n"]
+
+let extra_synopsis () =
+  List.iter (output_string stdout)
+    ["\n";
+     "  [advanced/experimental options]\n";
+     "  --until <stage>\tterminate at <stage> (\"rules\", \"spec\", \"ldl\")\n";
+     "  --skip-rulespp\tskip rules-preprocessing\n";
+     "  --skip-specpp\t\tskip spec-preprocessing\n";
+     "  --skip-p18n\t\tskip propositionalization\n";
+     "  --keep-terms\t\tkeep terms in p18n\n";
+     "  --skip-ldlgen\t\tskip ldl-generation\n";
+     "\n"]
 
 (* rules in/out *)
 let input_rules ic = function
@@ -111,6 +123,7 @@ and spec_from_string str = function
       failwith ("spec_from_string: unknown format (" ^ fmt ^ ")")
 
 (* spec out *)
+(*
 let output_spec oc (s : Rules.t) = function
   | "spec" | "rules" ->
       Rules.print_rules (fun s -> output_string oc s; flush_all ()) s
@@ -121,6 +134,21 @@ let output_spec oc (s : Rules.t) = function
       let json = Rules.rules_to_yojson s in
       Yojson.Safe.to_channel oc json;
       output_string oc "\n"
+  | fmt ->
+      failwith ("output_spec: unknown format (" ^ fmt ^ ")")
+ *)
+let output_spec oc (s : Spec.t) = function
+  | "spec" | "rules" | "unspecified" ->
+      Spec.print_spec (output_string oc) s
+(*
+  | "caml" ->
+      output_string oc (Spec.show_spec s);
+      output_string oc "\n";
+  | "json" ->
+      let json = Rules.rules_to_yojson s in
+      Yojson.Safe.to_channel oc json;
+      output_string oc "\n"
+ *)
   | fmt ->
       failwith ("output_spec: unknown format (" ^ fmt ^ ")")
 
@@ -144,9 +172,11 @@ let output_map oc (m : Spec2ldl.event_map) = function
   | "xml" | "unspecified" ->
       output_string oc "<mappings xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
       List.iter
-	(function e, Ldl.Ldl_conj fs ->
+	(function e, Property.Prop_conj fs ->
 	  fprintf oc "<bits type=\"event\" name=%S>" e;
-	  List.iter (fun f -> fprintf oc "<bit>%s</bit>" (Ldl.string_of_formula f)) fs;
+	  List.iter
+	    (fun f -> fprintf oc "<bit>%s</bit>" (Property.string_of_property f))
+	    fs;
 	  fprintf oc "</bits>\n")
 	m;
       output_string oc "</mappings>\n"
@@ -157,7 +187,8 @@ let output_map oc (m : Spec2ldl.event_map) = function
 let main argc argv =
   let i = ref 1
   and infile = ref "/dev/stdin"
-  and outfile = ref "/dev/stdout" in
+  and outfile = ref "/dev/stdout"
+  in
   while !i < argc do
     let _ =
       match argv.(!i) with
@@ -165,32 +196,50 @@ let main argc argv =
 	  infile := "/dev/stdin";
       | "-o" | "--output" ->
 	  outfile := argv.(!i+1); incr i;
-      | "-f" ->
-	  opt_fmt_in := argv.(!i+1); incr i;
       | "-t" ->
 	  opt_fmt_out := argv.(!i+1); incr i;
-      | "--json" ->
-	  opt_fmt_in := "json"
-
-      (* rules_p *)
-      | "-p" | "--parse-only" ->
-	  opt_parse_only := true
-      (* rulespp *)
-      | "--no-pp" ->
-	  opt_preprocessing := false
-      | "--no-ex" | "--no-extra-properties" ->
-	  opt_extra_properties := false
-      (* spec2ldl *)
-      | "--map"  ->
-	  opt_map_out := argv.(!i+1); incr i;
-
+      | "-V" | "--version" ->
+	  printf "%s\n" (Version.get ());
+	  raise Exit
       | "-v" | "--verbose" ->
 	  opt_verbose := true
       | "-q" | "--silent" ->
 	  opt_verbose := false
       | "-h" | "--help"  ->
 	  synopsis argv.(0); exit 0
+      | "-hh" ->
+	  synopsis argv.(0); extra_synopsis (); exit 0
 
+      | "-f" ->
+	  opt_fmt_in := argv.(!i+1); incr i;
+      | "--json" ->
+	  opt_fmt_in := "json"
+      | "--map"  ->
+	  opt_map_out := argv.(!i+1); incr i;
+
+      | "-u" | "--until"  ->
+	  let stage = argv.(!i+1) in
+	  opt_until := stage; incr i;
+
+      (* rules_p *)
+      | "-p" | "--parse-only" ->
+	  opt_parse_only := true
+      (* rulespp *)
+      | "--skip-rulespp" | "--no-rulespp" ->
+	  opt_skip_rulespp := true
+      (* specpp *)
+      | "--skip-specpp" | "--no-specpp" ->
+	  opt_skip_specpp := true
+      (* spec2ldl *)
+      | "--skip-p18n" | "--no-p18n" ->
+	  opt_skip_p18n := true
+      | "--keep-terms" ->
+	  opt_keep_terms := true
+      | "--skip-ldlgen" | "--no-ldlgen" ->
+	  opt_skip_ldlgen := true
+
+      | _  when argv.(!i).[0] = '-' ->
+	  failwith ("unknown option: " ^ argv.(!i))
       | _    ->
 	  infile :=argv.(!i)
     in incr i
@@ -201,48 +250,73 @@ let main argc argv =
     (synopsis argv.(0); invalid_arg ("file does not exist: '" ^ !infile ^ "'"));
 
   (* output *)
-  let oc = open_out !outfile in
+  let oc = open_out !outfile
 
   (* parse a set of declarations *)
-  let ic = open_in !infile in
-  let decls : Rules.decl list = input_rules ic !opt_fmt_in in
+  in let ic = open_in !infile
+  in let decls : Rules.decl list = input_rules ic !opt_fmt_in in
   if !opt_parse_only then
-    (output_spec oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
+    (output_rules oc (Rules.decls_to_rules decls) !opt_fmt_out; raise Exit);
 
-  (* rulespp: decls -> decls' *)
-  let decls' =
-    if !opt_preprocessing
-    then Rulespp.preprocess ~extra_properties: !opt_extra_properties ~code_discard: true decls
-    else decls in
+  (* rulespp: decls -> decls *)
+  let decls =
+    if !opt_skip_rulespp
+    then decls
+    else Rulespp.preprocess ~discard_codes: true decls
+  in
 
-  (* decls' -> rules *)
-  let rules : Rules.t = Rules.decls_to_rules decls' in
+  (* decls -> rules *)
+  let rules : Rules.t = Rules.decls_to_rules decls
+  in
+  if !opt_until = "rules" then (output_rules oc rules !opt_fmt_out; raise Exit);
 
   (* ensure rules include no code *)
   List.iter
     (function
-      | None, (r : Rule.t) ->
+      | (r : Rule.t), None
+      | r, Some "_r_preserve" ->
 	  let (e, e_opt), (_, c_opt), a = r.event, r.condition, r.action in
 	  (match e_opt, c_opt with
 	  | Some _, _ | _, Some _ ->
 	      failwith ("[rules2ldl] rule for event (" ^ (Rule.event_name e) ^ ") carries code")
 	  | _ -> ())
-      | Some (name, _), _ ->
-	  failwith ("[rules2ldl] named rule (" ^ name ^ ") not allowed")
+      | _, Some annot ->
+	  failwith ("[rules2ldl] annotated rule (" ^ annot ^ ") not allowed")
       | _ -> ())
-    rules.rule_decls;
+    rules.rules;
 
   (* rules -> spec *)
-  let spec : Spec.t = Spec.rules_to_spec rules in
+  let spec : Spec.t = Spec.spec_of_rules rules in
 
-  (* spec -> ldl *)
-  let formulas, map = Spec2ldl.translate spec in
+  (* specpp: spec -> spec *)
+  let spec =
+    if !opt_skip_specpp
+    then spec
+    else Specpp.preprocess spec
+  in
+  if !opt_until = "spec" then (output_spec oc spec !opt_fmt_out; raise Exit);
+
+  (* spec -> property list *)
+  let props, map =
+    Spec2ldl.translate
+      ~propositionalize: (not !opt_skip_p18n)
+      ~keep_terms: !opt_keep_terms
+      spec
+  in
   if !opt_map_out != "/dev/null" then
     (let oc_map = open_out !opt_map_out in
      output_map oc_map map "unspecified"; close_out oc_map);
+  if !opt_skip_ldlgen || !opt_until <> "ldl" then
+    (output_string oc "property\n";
+     List.iter
+       (fun p -> Property.print_property (output_string oc) p; output_string oc ";\n")
+       props;
+     raise Exit);
 
   (* print out *)
-  output_formula oc (Ldl.Ldl_conj formulas) !opt_fmt_out;
+  assert (!opt_until = "ldl");
+  let f : Ldl.formula = Spec2ldl.formula_of_property (Property.Prop_conj props) in
+  output_formula oc f !opt_fmt_out;
 
   (* clean-up *)
   ()

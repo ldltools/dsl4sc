@@ -15,6 +15,11 @@
  *)
 
 (** term *)
+type base_t =
+  | Ty_nat of int
+      (** [Ty_nat n] denotes {0, 1, ..., n - 1} *)
+  | Ty_bool
+
 type _ term =
   | Tm_const : 'a * base_t -> 'a term
   | Tm_var : string * base_t -> 'a term
@@ -28,24 +33,14 @@ type _ term =
   | Tm_eq : 'a term * 'a term -> bool term
 	(** equality *)
 
-and base_t =
-  | Ty_prop
-  | Ty_nat of int
-      (** [Ty_nat n] denotes {0, 1, ..., n - 1} *)
-
 (** property *)
 type property =
   | Prop_atomic of string
   | Prop_equal of int term * int term
-
   | Prop_neg of property
   | Prop_conj of property list
   | Prop_disj of property list
   | Prop_modal of modality * labelled_path * labelled_property
-
-  (* deprecated *)
-  | Prop_atomic_elt of string * int term list	(* indexed *)
-  | Prop_label of string
 
 and modality =
   | Mod_all | Mod_ex
@@ -61,9 +56,6 @@ and path =
   | Path_sum of labelled_path list
   | Path_test of property
   | Path_star of labelled_path
-
-  (* deprecated *)
-  | Path_label of string
 
 and labelled_path =
     path * label option
@@ -84,12 +76,19 @@ val modal_p : t -> bool
     (** includes modality or not *)
 
 val simp : t -> t
-    (** property simplifier similar to Ldlsimp.simp, albeit limited *)
+    (** property simplifier similar to Ldlsimp.simp, albeit more limited *)
+
+val propositionalize : ?keep_terms: bool -> t -> t
+    (** expand prop w. terms to prop w/o terms *)
 
 val split : t -> ((string * (base_t * int)) list * t) list
-
-val propositionalize : t -> t
-    (** expand prop w. terms to prop w/o terms *)
+    (** split a property p that includes term variables x1, .., xn into a set of pairs,
+	each of which is of the form:
+	([x1, (t1, v1); x2, (t2, v2); ..], q)
+	where
+	- v1, v2, ... : values for the variables
+	- q : p[v1/x1, v2/x2, ...]
+     *)
 
 val find_term_variables : t -> (string * base_t) list
 
@@ -108,12 +107,22 @@ val print_property : (string -> unit) -> ?fancy:bool -> property -> unit
 val print_labelled_property : (string -> unit) -> labelled_property -> unit
 val print_labelled_path : (string -> unit) -> labelled_path -> unit
 
+val string_of_property : property -> string
 val string_of_labelled_property : labelled_property -> string
 val string_of_labelled_path : labelled_path -> string
 
 (** pretty-printing -- ppx-generated *)
 
+(* term *)
+val pp_base_t : Format.formatter -> base_t -> Ppx_deriving_runtime.unit
 val pp_term : (Format.formatter -> int -> unit) -> Format.formatter -> int term -> unit
+
+val base_t_of_yojson : Yojson.Safe.json -> (base_t, string) Result.result
+val base_t_to_yojson : base_t ->  Yojson.Safe.json
+val term_of_yojson : Yojson.Safe.json -> ('a term, string) Result.result
+val term_to_yojson : 'a term ->  Yojson.Safe.json
+
+(* property *)
 
 val pp_property : Format.formatter -> property -> unit
 val pp_path : Format.formatter -> path -> unit
@@ -128,5 +137,3 @@ val path_of_yojson : Yojson.Safe.json -> (path, string) Result.result
 val path_to_yojson : path ->  Yojson.Safe.json
 val labelled_path_of_yojson : Yojson.Safe.json -> (labelled_path, string) Result.result
 val labelled_path_to_yojson : labelled_path ->  Yojson.Safe.json
-val term_of_yojson : Yojson.Safe.json -> ('a term, string) Result.result
-val term_to_yojson : 'a term ->  Yojson.Safe.json
