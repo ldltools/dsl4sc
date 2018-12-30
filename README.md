@@ -9,7 +9,7 @@ Each model in dsl4sc has the following unique characteristics:
   - event protocol: _regular_ pattern of acceptable event sequences
   - propery: LDL<sub>f</sub> formula that globally holds as an invariant condition.
   - [_ECA rule_](https://en.wikipedia.org/wiki/Event_condition_action):
-    relation between an event and its impact on internal states
+    triple of event, condition, and action
 - It has a clear semantics in terms of LDL<sub>f</sub>.
 - it can be verified statically and formally against arbitrary requirements
   that are also defined in dsl4sc

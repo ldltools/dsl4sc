@@ -1,4 +1,4 @@
-# v0.12.0rc
+# v0.11.1 (2018-12-30)
 
 - [rules2ldl] natural numbers  
   support all arithmetic (add/sub/mul/div) and comparison (eq/ne/gt/lt/ge/le) operations.
