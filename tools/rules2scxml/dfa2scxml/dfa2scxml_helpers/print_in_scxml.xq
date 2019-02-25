@@ -73,6 +73,13 @@ declare function local:list_states ($states, $transitions)
 
           for $r in $tr/dsl4sc:rule
 
+	  (: special case: r/event has the script element :)
+          let $ev :=
+	    if (exists ($r/dsl4sc:event/dsl4sc:script)) then
+              attribute event { $r/dsl4sc:event/dsl4sc:script/text () }
+	    else
+              $ev
+
 	  (: cond :)
           let $certainty := data ($r/@certainty) cast as xs:integer
 	  let $c := $r/dsl4sc:condition

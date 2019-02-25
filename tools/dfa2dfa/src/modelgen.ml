@@ -211,7 +211,7 @@ and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.rule list) =
   | [e] ->
       List.fold_left
 	(fun rslt (r : Ldlrule.rule) ->
-	  let rid, e', (c, _), (acts, _) = r in
+	  let rid, (e', _), (c, _), (acts, _) = r in
 	  if e' <> e then rslt else
 	  let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j in
 

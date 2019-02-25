@@ -179,9 +179,13 @@ let read_in (ic : in_channel) =
     List.map
       (function Xml.Element ("rule", attrs, [e_elt; c_elt; a_elt]) ->
 	assert (List.mem_assoc "id" attrs);
-	let e : string =
+	let e : Ldlrule.event =
 	  match e_elt with
-	  | Xml.Element ("event", attrs, _) -> List.assoc "name" attrs
+	  | Xml.Element ("event", attrs, elts) ->
+	      List.assoc "name" attrs,
+	      match List.find_opt (function Xml.Element ("script", _, _) -> true) elts with
+	      | Some (Xml.Element ("script", _, [Xml.PCData s])) -> Some s
+	      |	_ -> None
 	and c : Ldlrule.condition =
 	  match c_elt with
 	  | Xml.Element ("condition", _, elts) ->

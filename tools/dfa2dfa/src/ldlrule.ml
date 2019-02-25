@@ -19,8 +19,11 @@ open Ldlsimp
 open Printf
 
 type rule =
-    string * string * condition * action
+    string * event * condition * action
       (* (id, e, c, a) *)
+
+and event =
+    string * string option
 
 and condition =
     Ldl.formula * string option
@@ -171,11 +174,12 @@ and escape_rec str prev curr len (rslt : string list) =
 (* tid = id of transition to which r is applicable.
    alist = [(tid, (w1, w2)); ..] *)
 let print_rule_in_xml out tid_seq alist (r : t) =
-  let rid, e, (c, c_opt), (a, a_opt) = r in
+  let rid, (e, e_opt), (c, c_opt), (a, a_opt) = r in
   out (sprintf "<rule id=%S>\n" rid);
 
   (* event *)
-  out (sprintf "<event name=%S/>\n" e);
+  out (sprintf "<event name=%S" e);
+  out (match e_opt with None -> "/>\n" | Some s -> sprintf "><script>%s</script></event>\n" s);
 
   (* condition *)
   out "<condition>";
@@ -230,7 +234,7 @@ let print_rule_in_xml out tid_seq alist (r : t) =
   out "</rule>\n";
   ()
 
-let debug_print_rule (id, e, (c, c_scr), (a, a_scr)) =
+let debug_print_rule (id, (e, e_opt), (c, c_scr), (a, a_scr)) =
   eprintf "%s: on %s " id e;
   eprintf "when %s %s" (string_of_formula c)
     (match c_scr with None -> "" | Some str -> "{" ^ str ^ "} ");

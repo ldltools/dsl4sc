@@ -1,8 +1,11 @@
 (* $Id: $ *)
 
 type rule =
-    string * string * condition * action
+    string * event * condition * action
       (* (rid, e, c, a) *)
+
+and event =
+    string * string option
 
 and condition =
     Ldl.formula * string option

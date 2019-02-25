@@ -1,0 +1,13 @@
+// e -- upon e, execution internally splits to 2 cases
+// equivalent w. test21
+
+protocol e_case1 + e_case2;;
+
+rule
+ on e_case1 { e }
+ when { _event.data == 1 }
+ do { console.log ("case1"); }
+
+ on e_case2 { e }
+ when { _event.data != 1 }
+ do { console.log ("case2"); }
