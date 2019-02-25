@@ -41,7 +41,7 @@ rule
 
 (3) model checking
 
-ping\_pong1 accepts only ping or pong -- (ping; pong)* |= (ping + pong)*
+ping\_pong1 accepts ping or pong -- (ping; pong)* |= (ping + pong)*
 
 ```
 $ echo 'protocol (ping + pong)*;;' | rulesmc -m ping_pong1.rules /dev/stdin  

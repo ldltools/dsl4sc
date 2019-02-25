@@ -15,7 +15,14 @@
 # limitations under the License.
 #
 
+RULESPP=rulespp
+RULES2LDL=rules2ldl
+LDL2MSO=ldl2mso
+LDL2SCXML=ldl2scxml
+VERSION=$($RULES2LDL --version)
+
 usage () {
+    echo "rule2scxml v$VERSION"
     echo "usage: `basename $0` <option>* <rules_file>"
     echo "options:"
     echo -e "  -o <out_file>\t\toutput to <out_file>"
@@ -27,11 +34,6 @@ usage () {
     echo -e "  -v\t\t\tbecome verbose"
     echo -e "  -h\t\t\tdisplay this message<outfile>"
 }
-
-RULESPP=rulespp
-RULES2LDL=rules2ldl
-LDL2MSO=ldl2mso
-LDL2SCXML=ldl2scxml
 
 infile=/dev/stdin
 outfile=/dev/stdout
@@ -70,6 +72,10 @@ do
 	    ;;
 	-v | --verbose)
 	    verbose=1
+	    ;;
+	-V | --version)
+	    echo $VERSION
+	    exit 0
 	    ;;
 
 	-*)

@@ -14,8 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+RULES2LDL=rules2ldl
+LDLSAT=ldlsat
+LDLSATOPTS=
+VERSION=$($RULES2LDL --version)
+
 usage ()
 {
+    echo "rulessat v$VERSION"
     echo "usage: `basename $0` [<infile>]"
     echo
     echo "`basename $0` is a SAT solver for dsl4sc"
@@ -26,10 +32,6 @@ usage ()
     exit 0
 }
 
-RULES2LDL=rules2ldl
-LDLSAT=ldlsat
-LDLSATOPTS=
-
 infile=/dev/stdin
 verbose=0
 
@@ -38,6 +40,10 @@ do
     case $1 in
 	-h | --help)
 	    usage
+	    exit 0
+	    ;;
+	-V | --version)
+	    echo $VERSION
 	    exit 0
 	    ;;
 	-*)

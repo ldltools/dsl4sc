@@ -14,8 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+RULESSAT=rulessat
+RULESPP=rulespp
+RULES2LDL=rules2ldl
+LDLMC=ldlmc
+VERSION=$($RULES2LDL --version)
+
 usage ()
 {
+    echo "rulesmc v$VERSION"
     echo "usage: `basename $0` <option>* <model_file>? <infile>"
     echo
     echo "`basename $0` is a model-checker for dsl4sc"
@@ -26,10 +33,6 @@ usage ()
     exit 0
 }
 
-RULESSAT=rulessat
-RULESPP=rulespp
-RULES2LDL=rules2ldl
-LDLMC=ldlmc
 
 modelfile=
 infile=/dev/stdin
@@ -54,6 +57,10 @@ do
 	-v | --verbose)
 	    verbose=1
 	    ldlmcopts="$ldlmcopts -v"
+	    ;;
+	-V | --version)
+	    echo $VERSION
+	    exit 0
 	    ;;
 	-*)
 	    ldlmcopts="$ldlmcopts $1"
