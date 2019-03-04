@@ -1,3 +1,10 @@
+# v0.12.0rc
+
+- [rules2scxml] SCXML event names can be overridden  
+  when a rule is of the form "on e { e' } ...", "e'" turns out to be the event name.  
+  refer to tests/test22.
+  (2dd2d3e)
+
 # v0.11.1 (2018-12-30)
 
 - [rules2ldl] natural numbers  

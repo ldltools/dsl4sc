@@ -853,6 +853,12 @@ action1	: action_ensure
 // action_ensure
 // -------------
 action_ensure
+	: ENSURE property
+	  { Act_ensure $2 }
+	;
+
+/*
+action_ensure
 	: ENSURE state
 	  { Act_ensure $2 }
 	;
@@ -889,6 +895,7 @@ state2	: NAME
 //	| label_use
 //	  { Prop_label $1 }
 	;
+*/
 
 // ------------
 // action_raise
