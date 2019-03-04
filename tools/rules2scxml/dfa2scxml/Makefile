@@ -5,7 +5,7 @@ PREFIX		?= $(TOP_DIR)/_build/install
 SUBDIRS		= dfa2scxml_helpers
 
 SCRIPTS =
-SCRIPTS +=	dfa2dot.sh dfa2scxml.sh
+SCRIPTS +=	dfa2scxml.sh
 HELPERS	:=	$(shell echo dfa2scxml_helpers/*.xq dfa2scxml_helpers/_build/escape.{byte,opt})
 
 all::

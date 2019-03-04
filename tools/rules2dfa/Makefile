@@ -2,21 +2,24 @@
 
 TOP_DIR		= $(shell readlink -f ../..)
 PREFIX		?= $(TOP_DIR)/_build/install
-SUBDIRS		= dfa2scxml docs
+LIBDIR		= $(PREFIX)/lib/dsl4sc/tools
+SUBDIRS		= ldl2dfa
 
-BINS		= rules2scxml
+SCRIPTS		= rules2dfa.sh
+HELPER_DIRS	= rules2dfa_helpers
 
 all::
-install::	all
-	@mkdir -p $(PREFIX)/bin
-	for f in $(BINS); do \
-	test -x $$f.sh || exit 1; \
-	cp -pf $$f.sh $(PREFIX)/bin/$$f; \
-	chmod +x $(PREFIX)/bin/$$f; \
-	done
-
 clean::;	find . -name '*~' | xargs rm -f
 veryclean::	clean
+
+install::
+	@mkdir -p $(LIBDIR)
+	rsync -avzop $(SCRIPTS) $(LIBDIR)
+
+install::
+	for d in $(HELPER_DIRS); do \
+	mkdir -p $(LIBDIR)/$$d && rsync -avzop $$d/ $(LIBDIR)/$$d;\
+	done
 
 #
 all::

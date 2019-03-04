@@ -17,12 +17,10 @@
 
 BINDIR=$(readlink -f `dirname $0`)
 LIBDIR=$BINDIR/dfa2scxml_helpers
-DFA2DFA=$LIBDIR/dfa2dfa.opt
-test -x ${DFA2DFA} || { echo "** ${DFA2DFA} not found" > /dev/stderr; exit 1; }
+MODELGEN=$BINDIR/modelgen.opt
+test -x ${MODELGEN} || { echo "** ${MODELGEN} not found" > /dev/stderr; exit 1; }
 
 infile=/dev/stdin
-mapfile=/dev/null
-xmlrulesfile=/dev/null
 outfile=/dev/stdout
 verbose=0
 until="scxml"
@@ -35,14 +33,6 @@ accept_transition=${accept_transition:-_accept}
 while test $# -gt 0
 do
     case $1 in
-	--map)
-	    mapfile=$2
-	    shift
-	    ;;
-	--rules)
-	    xmlrulesfile=$2
-	    shift
-	    ;;
 	-o | --output)
 	    outfile=$2
 	    shift
@@ -89,48 +79,6 @@ mkdir -p /tmp/.dsl4sc
 test ${generate_monitor} -ne 0 && reject_invalid_events=1
 
 # --------------------------------------------------------------------------------
-# dfa -> dfa2 (preprocessing)
-#
-# dfa2 combines dfa, map (event->bits), and rules that carry code
-# --------------------------------------------------------------------------------
-decode_events=$LIBDIR/decode_events.xq
-include_rules=$LIBDIR/include_rules.xq
-test -f ${decode_events} || { echo "${decode_events} not found" > /dev/stderr; exit 1; }
-test -f ${include_rules} || { echo "${include_rules} not found" > /dev/stderr; exit 1; }
-
-main1="local:decode_events (.)"
-main2="local:include_rules (.)"
-main3="local:include_rules (local:decode_events (.))"
-
-case $until in
-    dfa2-1) main=${main1} ;;
-    dfa2-2) main=${main2} ;;
-    *) main=${main3} ;;
-esac
-
-test -f "$mapfile" || { echo "** spurious map ($mapfile)" > /dev/stderr; exit 1; }
-test -f "$xmlrulesfile" || { echo "** spurious rules ($xmlrulesfile)" > /dev/stderr; exit 1; }
-dfa2file=$(tempfile -d /tmp/.dsl4sc -s .dfa2)
-#echo "preprocess : $infile -> ${dfa2file}"
-cat <<EOF | xqilla /dev/stdin -i $infile -o ${dfa2file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa2file}; exit 1; }
-declare default element namespace "https://github.com/ldltools/dsl4sc";
-declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
-`cat ${decode_events}`
-declare variable \$rules := doc("`readlink -f $xmlrulesfile`")//rules/rule;
-declare variable \$vars := doc("`readlink -f $xmlrulesfile`")//variables/variable;
-declare variable \$scripts := doc("`readlink -f $xmlrulesfile`")//scripts/script;
-`cat ${include_rules}`
-$main
-EOF
-
-case $until in
-    dfa2*)
-	xmllint --format ${dfa2file} > $outfile; rm -f ${dfa2file}; exit 0
-	;;
-    *)
-esac	
-
-# --------------------------------------------------------------------------------
 # dfa2 -> dfa3
 #
 # information introduced to dfa3
@@ -142,8 +90,9 @@ esac
 # [rule]
 # - <applicable> includes the transitions to which each rule can be applied.
 # --------------------------------------------------------------------------------
+dfa2file=$infile
 dfa3file=$(tempfile -d /tmp/.dsl4sc -s .dfa3)
-${DFA2DFA} ${dfa2file} -o ${dfa3file} || { echo "** ${DFA2DFA} crashed"; rm -f ${dfa2file} ${dfa3file}; exit 1; }
+${MODELGEN} ${dfa2file} -o ${dfa3file} || { echo "** ${MODELGEN} crashed"; rm -f ${dfa2file} ${dfa3file}; exit 1; }
 
 rm -f ${dfa2file}
 

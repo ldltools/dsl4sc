@@ -7,7 +7,7 @@ PREFIX		?= /usr/local
 LDLSATLIBDIR	?= /usr/local/lib/ldlsat
 
 TOP_DIR		= $(shell readlink -f ../../..)
-BUILD_DIR	= $(TOP_DIR)/_build/caml/dfa2dfa
+BUILD_DIR	= $(TOP_DIR)/_build/caml/modelgen
 DSL4SCLIBDIRS	= $(foreach dir,. rules spec,$(TOP_DIR)/_build/caml/$(dir))
 SRC_DIRS	= .
 
@@ -79,38 +79,38 @@ CMXAS		= $(CMAS:%.cma=%.cmxa)
 
 include $(TOP_DIR)/src/Makefile.common
 
-BINS.byte	= dfa2dfa.byte
-BINS.opt	= dfa2dfa.opt
+BINS.byte	= modelgen.byte
+BINS.opt	= modelgen.opt
 BINS		= $(BINS.byte:%=$(BUILD_DIR)/%) $(BINS.opt:%=$(BUILD_DIR)/%)
 
-LIBS.byte	= dfa2dfa.cma
+LIBS.byte	= modelgen.cma
 LIBS.byte	:= $(LIBS.byte:%=$(BUILD_DIR)/%)
-LIBS.opt	= dfa2dfa.cmxa
+LIBS.opt	= modelgen.cmxa
 LIBS.opt	:= $(LIBS.opt:%=$(BUILD_DIR)/%)
 LIBS		= $(LIBS.byte) $(LIBS.opt) $(LIBS.opt:%.cmxa=%.a)
 
 all::	$(BINS)
 
-$(BUILD_DIR)/dfa2dfa.cma:	$(CMOS)
+$(BUILD_DIR)/modelgen.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
 	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmo
-$(BUILD_DIR)/dfa2dfa.cmxa:	$(CMXS)
+$(BUILD_DIR)/modelgen.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
 	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmx
 
 # $(BINS.byte)
-$(BUILD_DIR)/dfa2dfa.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
+$(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
 	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) $^
 
 # $(BINS.opt)
-$(BUILD_DIR)/dfa2dfa.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
+$(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 
 #
 install::	install_bins
 install_bins::	all
-	@mkdir -p $(PREFIX)/lib/dsl4sc/tools/dfa2scxml_helpers
-	rsync -avzop $(BINS) $(PREFIX)/lib/dsl4sc/tools/dfa2scxml_helpers
+	@mkdir -p $(PREFIX)/lib/dsl4sc/tools
+	rsync -avzop $(BINS) $(PREFIX)/lib/dsl4sc/tools
 
 clean::
 veryclean::

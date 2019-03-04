@@ -17,9 +17,12 @@
 
 RULESPP=rulespp
 RULES2LDL=rules2ldl
-LDL2MSO=ldl2mso
-LDL2SCXML=ldl2scxml
+BINDIR=$(readlink -f `dirname $0`/../lib/dsl4sc/tools)
+RULES2DFA=$BINDIR/rules2dfa.sh
+DFA2SCXML=$BINDIR/dfa2scxml.sh
 VERSION=$($RULES2LDL --version)
+test -x $RULES2DFA || { echo "$RULES2DFA not found"; exit 1; }
+test -x $DFA2SCXML || { echo "$DFA2SCXML not found"; exit 1; }
 
 usage () {
     echo "rule2scxml v$VERSION"
@@ -102,41 +105,41 @@ then
     exit 0
 fi
 
-if test $until = spec
-then
+case $until in
+spec)
     ${RULES2LDL} --until spec $infile -o $outfile
-    exit 0
-fi
+    exit 0 ;;
+ldl)
+    ${RULES2LDL} $infile -o $outfile
+    exit 0 ;;
+esac
 
 mkdir -p /tmp/.dsl4sc
 rulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules)
 cat $infile > $rulesfile
 
 # --------------------------------------------------------------------------------
-# rules -> ldl + map (b.w. event names and ldl propositions)
+# rules -> dfa
 # --------------------------------------------------------------------------------
-ldlfile=$(tempfile -d /tmp/.dsl4sc -s .ldl)
-mapfile=$(tempfile -d /tmp/.dsl4sc -s .map)
-test $verbose -eq 1 && echo "** ${RULES2LDL} : $rulesfile -> (${ldlfile}, ${mapfile})" > /dev/stderr
-${RULES2LDL} $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $rulesfile $ldlfile $mapfile; exit 1; }
 
-test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm -f $rulesfile $ldlfile $mapfile; exit 0; }
+dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa)
+$RULES2DFA --until $until $infile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
 
-# --------------------------------------------------------------------------------
-# rules -> rules in xml (which carries code fragments)
-# --------------------------------------------------------------------------------
-xmlrulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules.xml)
-test $verbose -eq 1 && echo "** ${RULESPP} : $rulesfile -> $xmlrulesfile" > /dev/stderr
-${RULESPP} $rulesfile -o $xmlrulesfile -t xml || { echo "** ${RULESPP} crashed" > /dev/stderr; rm -f $rulesfile $xmlrulesfile; exit 1; }
+case $until in
+dfa1 | dfa2 | dfa | dfadot)
+    cat $dfafile > $outfile
+    rm -f $rulesfile $dfafile
+    exit 0 ;;
+*)
+esac
 
 rm -f $rulesfile
 
 # --------------------------------------------------------------------------------
-# ldl + map + rules in xml -> scxml
+# dfa -> scxml
 # --------------------------------------------------------------------------------
-test $verbose -eq 1 && echo "** ${LDL2SCXML} : $ldlfile -> $mapfile -> $xmlrulesfile -> $outfile" > /dev/stderr
 
-${LDL2SCXML} $ldlfile --map $mapfile --rules $xmlrulesfile --until $until -o $outfile || { echo "** ${LDL2SCXML} crashed"; rm -f $ldlfile $mapfile $xmlrulesfile; exit 1; }
+$DFA2SCXML --until $until $dfafile -o $outfile || { echo "** $DFA2SCXML crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
 
-rm -f $ldlfile $mapfile $xmlrulesfile
+rm -f $dfafile
 true

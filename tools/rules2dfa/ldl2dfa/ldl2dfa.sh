@@ -14,15 +14,14 @@ usage () {
 LDL2MSO=ldl2mso
 # helpers
 BINDIR=$(readlink -f `dirname $0`)
-LIBDIR=$BINDIR/ldl2dfa_helpers
-MSO2DFA=$LIBDIR/mso2dfa.sh
+MSO2DFA=$BINDIR/mso2dfa.sh
 DFA2DOT=$BINDIR/dfa2dot.sh
 test -x $MSO2DFA || { echo "$MSO2DFA not found"; exit 1; }
 test -x $DFA2DOT || { echo "$DFA2DOT not found"; exit 1; }
 
 infile=/dev/stdin
 outfile=/dev/stdout
-until=dfa
+until=dfa1
 verbose=0
 
 while test $# -gt 0
