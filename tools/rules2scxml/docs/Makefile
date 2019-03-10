@@ -1,5 +1,6 @@
 all::
 clean::
+veryclean::
 install::
 
 TOP_DIR		= $(shell readlink -f ../../..)

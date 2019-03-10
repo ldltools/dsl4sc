@@ -93,10 +93,10 @@ all::	$(BINS)
 
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmo
+	$(BUILD_DIR)/{oracle,ldlrule,ldlmodel,modelgen}.cmo
 $(BUILD_DIR)/modelgen.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{ldlrule,ldlmodel,modelgen}.cmx
+	$(BUILD_DIR)/{oracle,ldlrule,ldlmodel,modelgen}.cmx
 
 # $(BINS.byte)
 $(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo

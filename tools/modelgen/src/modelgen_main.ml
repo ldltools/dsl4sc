@@ -94,7 +94,8 @@ let main argc argv =
   in
 
   (* output dfa (in xml) *)
-  let out s = output_string oc s in
+  let out s = output_string oc s; flush oc
+  in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
   out (Xml.to_string (List.assoc "variables" alist)); out "\n";
   Ldlmodel.print_states_in_xml out m;		(* states *)

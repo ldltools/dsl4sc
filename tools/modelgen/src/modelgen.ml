@@ -15,8 +15,9 @@
  *)
 
 open Ldl
-open Ldlsimp
 open Printf
+
+module Simp = Oracle.Simp
 
 type model = Ldlmodel.t
 type rule = Ldlrule.t
@@ -171,6 +172,7 @@ and update_state m es (i, (id, accepting, f)) =
   if !verbose > 1 then
     (eprintf "  state %s: %s =(simp)=> " id (string_of_formula f'); flush_all ());
 
+  (*
   let simp f =
     (*Printf.eprintf "** simp (%s)\n" (string_of_formula f); flush_all ();*)
     Ldlsimp.simp f
@@ -178,7 +180,8 @@ and update_state m es (i, (id, accepting, f)) =
     (*let g = Ldlsimp.simp f in try Ldlsimp.resolve g |> Ldlsimp.simp_sort |> Ldlsimp.simp_uniq with Not_found -> g*)
     (*try Ldl.resolve f with _ -> try Ldl.simp f with _ -> f*)
   in
-  let f'' = simp f' in
+   *)
+  let f'' = Simp.simp f' in
   if !verbose > 1 then (eprintf "%s\n" (string_of_formula f''); flush_all ());
 
   Fsa.state_set m i (id, accepting, f'')
@@ -188,13 +191,20 @@ and update_state m es (i, (id, accepting, f)) =
 let rec find_applicable_rules (m : Ldlmodel.t) (rs : Ldlrule.t list) =
   if !verbose > 0 then
     (eprintf "** find applicable rules for the transitions from each state\n"; flush_all ());
-  let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
+
+  let rs =
+    if !verbose > 1 then eprintf "  simp: %d rules\n" (List.length rs);
+    List.map Ldlrule.simp rs
+  and edges : (int * (int option * int) list) list = Fsa.alist_of_delta m
+  in
   List.fold_left
+    (* for each state <i> and its neighboring states <nexts> *)
     (fun rslt (i, nexts) ->
       if !verbose > 1 then
 	eprintf "  state %s (%d): %d transitions\n"
 	  (let qid, _, _ = Fsa.state_get m i in qid) i (List.length nexts);
       List.fold_left
+	(* for each neighboring state <j> *)
 	(fun rslt (l_opt, j) ->
 	  let l : Ldlmodel.label =
 	    match l_opt with
@@ -204,28 +214,36 @@ let rec find_applicable_rules (m : Ldlmodel.t) (rs : Ldlrule.t list) =
 	rslt nexts)
     [] edges
 
-and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.rule list) =
+and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.t list) =
   let tid, props, es = l in
   match es with
   | [] -> []
   | [e] ->
       List.fold_left
-	(fun rslt (r : Ldlrule.rule) ->
-	  let rid, (e', _), (c, _), (acts, _) = r in
-	  if e' <> e then rslt else
-	  let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j in
+	(fun rslt (r : Ldlrule.t) ->
+	  let rid, (e', _), (c, _), (acts, _), (post, _) = r in
+	  if e' <> e then rslt (* r is not applicable to e *) else
+	  let _ = () in
+
+	  (* for each rule, generate rule-transition mappings [(r, t); ...] *)
 
 	  if !verbose > 1 then
-	    (eprintf "  applicable? (rid=%s, event=%s) to (tid=%s, %d->%d, %s-%s->%s):"
-	       rid e' tid i j q1 e q2;
-	     flush_all ());
+	    begin
+	      let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j
+	      in
+	      eprintf "  applicable? (rid=%s, event=%s) to (tid=%s, %d->%d, %s-%s->%s):"
+		rid e' tid i j q1 e q2;
+	      flush_all ();
+	    end;
 
-	  let applicable, certainty_opt = rule_applicable m (i, j) r in
+	  let applicable, certainty_opt = rule_applicable m r (i, j) in
 	  if !verbose > 1 then
-	    (eprintf " %s" (string_of_bool applicable);
-	     match certainty_opt with
-	    | Some certainty -> eprintf " (certainty=0x%02x)\n" certainty
-	    | None -> eprintf "\n");
+	    begin
+	      eprintf " %s" (string_of_bool applicable);
+	      match certainty_opt with
+	      | Some certainty -> eprintf " (certainty=0x%02x)\n" certainty
+	      | None -> eprintf "\n";
+	    end;
 
 	  if applicable
 	  then rslt @ [rid, tid]
@@ -236,10 +254,10 @@ and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.rule list) =
       []
 
 (* returns: 0 = inapplicable, 0b0001-0b1111 = (conditionally) applicable *)
-and rule_applicable m (i, j) (r : Ldlrule.rule) =
+and rule_applicable m r (i, j) =
   let _, _, (w1 : formula) = Fsa.state_get m i
-  and _, _, (w2 : formula) = Fsa.state_get m j in
-  let b, certainty_opt = Ldlrule.applicable r (w1, w2) in
+  and _, _, (w2 : formula) = Fsa.state_get m j
+  in let b, certainty_opt = Ldlrule.applicable r (w1, w2) in
   (*assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);*)
   b, certainty_opt
 
@@ -247,11 +265,14 @@ and rule_applicable m (i, j) (r : Ldlrule.rule) =
 
 let rec merge (m : Ldlmodel.t) (rs : Ldlrule.t list) =
   verbose := Ldlmodel.verbosity_get ();
-  let m' : Ldlmodel.t = m |> update_states |> split_transitions in
-  let alist1 : (string * string) list = find_applicable_rules m' rs in
+  if !verbose > 0 then (eprintf "** merge\n"; flush_all ());
+  let m' : Ldlmodel.t = m |> update_states |> split_transitions
+  in let alist1 : (string * string) list = find_applicable_rules m' rs
     (* alist1 = [(rid, tid); ..] *)
-  let alist2 : (string * string list) list = aggregate_transitions alist1 in
+  in let alist2 : (string * string list) list = aggregate_transitions alist1
     (* alist2 = [(rid, [tid; ..]); ..] *)
+  in
+  if !verbose > 0 then (eprintf "** merge done\n"; flush_all ());
   m', alist2
 
 and aggregate_transitions (alist : (string * string) list) =
@@ -262,7 +283,9 @@ and aggregate_transitions (alist : (string * string) list) =
 	let i1 = int_of_string (String.sub rid1 1 (String.length rid1 - 1))
 	and i2 = int_of_string (String.sub rid2 1 (String.length rid2 - 1))
 	in if i1 = i2 then 0 else if i1 < i2 then -1 else 1)
-      alist in
+      alist
+  in
+  if !verbose > 0 then (eprintf "   alist (%d) sorted\n" (List.length alist); flush_all ());
   let alist3 : (string * string list) list =
     match alist2 with
     | [] -> []
@@ -277,6 +300,7 @@ and aggregate_transitions (alist : (string * string) list) =
 	    ((rid, [tid]), []) rest
 	in rslt @ [rid', tid_seq']
   in
+  if !verbose > 0 then (eprintf "** aggregate_transitions done\n"; flush_all ());
   if !verbose > 1 then
     List.iter
        (fun (rid, tid_seq) ->

@@ -54,7 +54,7 @@ let rec eval_term_int (env : (string * (base_t * int)) list) = function
       (* work-around: this actually should be regarded as a bool term, instead of a int term *)
       let n1, n2 = eval_term_int env e1, eval_term_int env e2
       in if n1 < n2 then 1 else 0
-  | Tm_op (op, es) -> invalid_arg op
+  | Tm_op (op, es) -> invalid_arg @@ "[eval_term_int] " ^ op
 
   | _ -> failwith "[eval_term]"
 

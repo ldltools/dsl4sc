@@ -5,6 +5,10 @@
   refer to tests/test22.
   (2dd2d3e)
 
+## fixes
+- [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.
+  (7b85a4c)
+
 # v0.11.1 (2018-12-30)
 
 - [rules2ldl] natural numbers  

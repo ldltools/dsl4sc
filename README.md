@@ -80,10 +80,10 @@ Check out [more examples](examples/README.md) if you are interested.
   run: `opam switch 4.07.0` for example
 - [opam](https://opam.ocaml.org) (ocaml package manager)  
   run: `apt-get install opam`
-- ocaml packages: ocamlfind, sedlex, menhir, yojson, ppx\_deriving, ppx\_deriving\_yojson, xml-light  
+- ocaml packages: ocamlfind, sedlex, menhir, yojson, ppx\_deriving, ppx\_deriving\_yojson, xml-light, z3  
   for each of these packages,  
   run: `opam install <package>`
-- [ldlsat](https://github.com/ldltools/ldlsat)  
+- [ldlsat](https://github.com/ldltools/ldlsat) (v1.0.4 or higher)  
   run: `git clone https://github.com/ldltools/ldlsat`  
   build & install the tool by running `make && make install` in the top directory.  
   By default, its library modules will be installed to `/usr/local/lib/ldlsat`.

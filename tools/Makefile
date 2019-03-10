@@ -15,4 +15,3 @@ clean::
 
 veryclean::	clean
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
-	rm -rf _build/*

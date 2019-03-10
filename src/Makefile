@@ -146,7 +146,7 @@ Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mly)
 	 line=`tail -1 Makefile.depend | grep '^# generated at'`;\
 	 test ."$$line" = . && exit 0;\
 	 break;\
-	done;\
+	done
 	echo "$(BUILD_DIR)/rules/rules_p.cmi: $(BUILD_DIR)/rules/rules.cmi" >> $@
 	echo "$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi" >> $@
 	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi $(BUILD_DIR)/rules/rules_l.cmi" >> $@;\

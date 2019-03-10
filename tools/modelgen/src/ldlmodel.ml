@@ -15,8 +15,9 @@
  *)
 
 open Ldl
-open Ldlsimp
 open Printf
+
+module Simp = Oracle.Simp
 
 type model =
     (state, label) Fsa.t
@@ -40,7 +41,7 @@ let verbosity_set n =
 let verbosity_get () =
   !verbose
 
-let rule_id (rid, _, _, _) = rid
+let rule_id = Ldlrule.id_get
 
 (* string -> string list *)
 let rec tokenize str =
@@ -229,8 +230,10 @@ let read_in (ic : in_channel) =
 		      failwith (sprintf "read_in: (action) %s" tag)
 		  | _ -> failwith "read_in")
 		([], None) elts
+	and post : Ldlrule.condition =
+	  Ldl_atomic "atomic", None
 	in
-	gen_id "r", e, c, a)
+	gen_id "r", e, c, a, post)
       (Xml.children (List.assoc "rules" alist))
   in      
   alist, m, rs
@@ -313,7 +316,7 @@ let print_states_in_xml out (m : t) =
 	     (if i = 0 then " initial=\"true\"" else "")
 	     (if List.mem i final then " final=\"true\"" else ""));
       out "<formula>";
-      escape out (string_of_formula (simp w));
+      escape out (string_of_formula (Simp.simp w));
       out "</formula>";
       out "</state>\n")
     (Fsa.alist_of_states m);
@@ -341,7 +344,7 @@ let rec print_transitions_in_xml out (m : t) =
 		 | None -> ""
 		 | Some e' -> sprintf " alt_event=%S" e'));
 	  out "<formula>";
-	  escape out (string_of_formula (simp (Ldl_conj props)));
+	  escape out (string_of_formula (Simp.simp (Ldl_conj props)));
 	  out "</formula>";
 	  out "</transition>\n")
 	delta)
@@ -374,7 +377,7 @@ let rec print_rules_in_xml out (m : t) alist (rs : rule list) =
 	(tid, (List.assoc qid1 alist2, List.assoc qid2 alist2)))
       edges in
   List.iter
-    (fun r ->
+    (fun (r : Ldlrule.t) ->
       if List.mem_assoc (rule_id r) alist then
 	Ldlrule.print_rule_in_xml out (List.assoc (rule_id r) alist) alist3 r)
     rs;
