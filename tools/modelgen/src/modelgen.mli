@@ -13,28 +13,42 @@
  * limitations under the License.
  *)
 
-val merge : Ldlmodel.t -> Ldlrule.t list -> Ldlmodel.t * (string * string list) list
+val restore_possible_worlds : Model.t -> Model.t
+    (** associate possible worlds to the states
 
-    (** generate a new model m' and alist
-	by merging a model m and a set of rules
-	where
-        - m' : its states carry a set of possible worlds, and
-	       each of its transitions is associated with a single event
-        - alist is of the form [(rid, [tid; ...]); ..].
-	    
-	for each rule r, the pair (rid(r), [tid1; tid2; ..]) indicates
-        that r can be accomapnied with the transitions indexed by tid1, tid2, ...
+	each state
+	  <state id=."q"/>
+	is extended to
+	  <state id="q">
+	    <formula>propositional_formula</formula>
+	  </state>
      *)
 
-(** helpers *)
+val split_transitions : Model.t -> Model.t
+    (** split each transition that can be triggered by <n> different events into <n> transitions
+	so that each corresponds with a single event
 
-val update_states : Ldlmodel.t -> Ldlmodel.t
-    (** associate possible worlds with each state *)
-
-val split_transitions : Ldlmodel.t -> Ldlmodel.t
-    (** split a transition for <n> multiple events into <n> transitions
-	so each corresponds with a single event
+	each transition
+	  <transition id="t" event="e1 e2 .."/>
+	is split to
+	  <transition id="t_1" event="e1"/>
+	  <transition id="t_2" event="e2"/>
+	  ...
      *)
 
-val find_applicable_rules : Ldlmodel.t -> Ldlrule.t list -> (string * string) list
-    (** model -> rules -> [rid, tid; ...] *)
+val chart_rules :  Model.t -> Model.t
+    (** for each rule, find its corresponding transitions,
+	and attach their references to the rule.
+
+	each rule
+	  <rule id="r"/>
+	is extended to
+	  <rule id="r">
+	    <applicable><tr name=../><tr name=../>...</applicable>
+	  </rule>
+     *)
+
+(** for debugging *)
+
+val verbosity_set : int -> unit
+val verbosity_get : unit -> int

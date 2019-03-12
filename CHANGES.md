@@ -5,6 +5,9 @@
   refer to tests/test22.
   (2dd2d3e)
 
+- [tools/modlegen] integration of [z3](https://github.com/Z3Prover/z3) for efficiency
+  it is now used for checking correspondence between rules and state transitions.
+
 ## fixes
 - [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.
   (7b85a4c)

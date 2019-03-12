@@ -9,6 +9,7 @@ LDLSATLIBDIR	?= /usr/local/lib/ldlsat
 TOP_DIR		= $(shell readlink -f ../../..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml/modelgen
 DSL4SCLIBDIRS	= $(foreach dir,. rules spec,$(TOP_DIR)/_build/caml/$(dir))
+#DSL4SCLIBDIRS	= $(TOP_DIR)/_build/caml/_export
 SRC_DIRS	= .
 
 OPAM_PREFIX	= $(shell opam config var prefix)
@@ -93,10 +94,10 @@ all::	$(BINS)
 
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{oracle,ldlrule,ldlmodel,modelgen}.cmo
+	$(BUILD_DIR)/{oracle,model,modelgen}.cmo
 $(BUILD_DIR)/modelgen.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
-	$(BUILD_DIR)/{oracle,ldlrule,ldlmodel,modelgen}.cmx
+	$(BUILD_DIR)/{oracle,model,modelgen}.cmx
 
 # $(BINS.byte)
 $(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo

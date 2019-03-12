@@ -14,15 +14,24 @@
  * limitations under the License.
  *)
 
-open Ldl
+open Ldlsat
+open Ldlsat.Ldl
 open Printf
 
+module Rule = Model.Rule
 module Simp = Oracle.Simp
 
-type model = Ldlmodel.t
-type rule = Ldlrule.t
+type model = Model.t
+type rule = Rule.t
 
 let verbose = ref 0
+
+let verbosity_set n =
+  Model.verbosity_set n;
+  verbose := n
+      
+let verbosity_get () =
+  !verbose
 
 let rule_id (rid, _, _, _) = rid
 
@@ -47,13 +56,13 @@ let gen_id (prefix : string) =
 
 (* collect_transitions m returns [(qid1, l, qid2); ..] *)
 (*
-let collect_transitions (m : Ldlmodel.t) =
+let collect_transitions (m : Model.t) =
   let edges : (int * (int option * int) list) list = Fsa.alist_of_delta m in
   List.fold_left
-    (fun (rslt : (string * Ldlmodel.label * string) list) (i, nexts) ->
+    (fun (rslt : (string * Model.label * string) list) (i, nexts) ->
       List.fold_left
 	(fun rslt (lab_opt, j) ->
-	  let qid1, qid2 = Ldlmodel.state_name m i, Ldlmodel.state_name m j in
+	  let qid1, qid2 = Model.state_name m i, Model.state_name m j in
 	  match lab_opt with
 	  | None -> failwith "collect_transitions"
 	  | Some k -> rslt @ [qid1, Fsa.sigma_get m k, qid2])
@@ -64,7 +73,7 @@ let collect_transitions (m : Ldlmodel.t) =
 (* detect_final *)
 
 (*
-let rec detect_final (m : Ldlmodel.t) =
+let rec detect_final (m : Model.t) =
   let _, final = detect_final_rec m ([], []) 0 in final
 
 and detect_final_rec m (visited, final) i =
@@ -97,57 +106,12 @@ and last_p m i =
     true
 *)
 
-(* split_transitions
-   for each transition t for e1, e2, ...
-   split t to t_1, t_2, ..
- *)
+(** restore_possible_worlds *)
 
-let rec split_transitions (m : Ldlmodel.t) =
-  if !verbose > 0 then (eprintf "** split_transitions\n"; flush_all ());
-  let final : int list = Ldlmodel.detect_final m in
-  (*eprintf "** final:"; List.iter (eprintf " %d") final; eprintf "\n";*)
-  let edges = Fsa.alist_of_delta m in
-  List.iter (split_transition m final) edges;
-  m
-
-and split_transition (m : Ldlmodel.t) final (i, nexts) =
-  List.iter
-    (function (lab_opt, j) ->
-      match lab_opt with
-      | None -> ()
-      | Some k ->
-	  (* transition (i -tid-> j) that accompanies events es *)
-	  let (tid, props, es) : Ldlmodel.label = Fsa.sigma_get m k in
-	  if !verbose > 1 then
-	    eprintf "  del_transition: %s (%d -> %d)\n" tid i j;
-
-	  (* remove (i -tid-> j) *)
-	  Fsa.transition_del m i (Some k, j);
-
-	  let (labs : Ldlmodel.label list), _ =
-	    List.fold_left
-	      (fun (labs, l) e ->
-		labs @ [(tid ^ "_" ^ (string_of_int l)), props, [e]], l + 1)
-	      ([], 1) es
-	  in
-	  List.iter
-	    (fun (tid', props, es) ->
-	      assert (List.length es = 1);
-	      let e' = List.hd es in
-	      if !verbose > 1 then
-		(eprintf "  add_transition: %s (%d -%s-> %d)\n" tid' i e' j;
-		 flush_all ());
-	      Fsa.transition_add m i (Some (Fsa.sigma_add m (tid', props, [e'])), j);
-	      ())
-	    labs)
-    nexts
-
-(* update_states *)
-
-let rec update_states (m : Ldlmodel.t) =
-  if !verbose > 0 then eprintf "** update_states (restore possible worlds)\n";
-  let qs : (int * Ldlmodel.state) list = Fsa.alist_of_states m
-  and edges = Fsa.alist_of_delta m in
+let rec restore_possible_worlds (m : Model.t) =
+  if !verbose > 0 then eprintf "** restore_possible_worlds (restore possible worlds)\n";
+  let qs : (int * Model.state) list = Fsa.alist_of_states m.fsa
+  and edges = Fsa.alist_of_delta m.fsa in
   List.iter (update_state m edges) qs;
   m
 
@@ -162,7 +126,7 @@ and update_state m es (i, (id, accepting, f)) =
 	    match l_opt with
 	    | None -> failwith "update_state"
 	    | Some l ->
-		let (_, props, _) = Fsa.sigma_get m l in rslt @ [Ldl_conj props])
+		let (_, props, _) = Fsa.sigma_get m.fsa l in rslt @ [Ldl_conj props])
 	  rslt nexts)
       [] es
   in
@@ -184,43 +148,98 @@ and update_state m es (i, (id, accepting, f)) =
   let f'' = Simp.simp f' in
   if !verbose > 1 then (eprintf "%s\n" (string_of_formula f''); flush_all ());
 
-  Fsa.state_set m i (id, accepting, f'')
+  Fsa.state_set m.fsa i (id, accepting, f'')
 
-(* find_applicable_rules *)
+(** split_transitions
+    for each transition t for e1, e2, ...
+    split t to t_1, t_2, ..
+ *)
 
-let rec find_applicable_rules (m : Ldlmodel.t) (rs : Ldlrule.t list) =
+let rec split_transitions (m : Model.t) =
+  if !verbose > 0 then (eprintf "** split_transitions\n"; flush_all ());
+  let final : int list = Model.detect_final m in
+  (*eprintf "** final:"; List.iter (eprintf " %d") final; eprintf "\n";*)
+  let edges = Fsa.alist_of_delta m.fsa in
+  List.iter (split_transition m final) edges;
+  m
+
+and split_transition (m : Model.t) final (i, nexts) =
+  List.iter
+    (function (lab_opt, j) ->
+      match lab_opt with
+      | None -> ()
+      | Some k ->
+	  (* transition (i -tid-> j) that accompanies events es *)
+	  let (tid, props, es) : Model.label = Fsa.sigma_get m.fsa k in
+	  if !verbose > 1 then
+	    eprintf "  del_transition: %s (%d -> %d)\n" tid i j;
+
+	  (* remove (i -tid-> j) *)
+	  Fsa.transition_del m.fsa i (Some k, j);
+
+	  let (labs : Model.label list), _ =
+	    List.fold_left
+	      (fun (labs, l) e ->
+		labs @ [(tid ^ "_" ^ (string_of_int l)), props, [e]], l + 1)
+	      ([], 1) es
+	  in
+	  List.iter
+	    (fun (tid', props, es) ->
+	      assert (List.length es = 1);
+	      let e' = List.hd es in
+	      if !verbose > 1 then
+		(eprintf "  add_transition: %s (%d -%s-> %d)\n" tid' i e' j;
+		 flush_all ());
+	      Fsa.transition_add m.fsa i (Some (Fsa.sigma_add m.fsa (tid', props, [e'])), j);
+	      ())
+	    labs)
+    nexts
+
+(** chart_rules *)
+
+let rec chart_rules (m : model) =
+ let alist1 : (string * string) list = find_applicable_rules m
+    (* alist1 = [(rid, tid); ..] *)
+  in let alist2 : (string * string list) list = aggregate_transitions alist1
+    (* alist2 = [(rid, [tid; ..]); ..] *)
+  in
+  (*if !verbose > 0 then (eprintf "** merge done\n"; flush_all ());*)
+  m.rules_map <- alist2;
+  m
+
+and find_applicable_rules (m : Model.t) =
   if !verbose > 0 then
     (eprintf "** find applicable rules for the transitions from each state\n"; flush_all ());
 
   let rs =
-    if !verbose > 1 then eprintf "  simp: %d rules\n" (List.length rs);
-    List.map Ldlrule.simp rs
-  and edges : (int * (int option * int) list) list = Fsa.alist_of_delta m
+    if !verbose > 1 then eprintf "  simp: %d rules\n" (List.length m.rules);
+    List.map Rule.simp m.rules
+  and edges : (int * (int option * int) list) list = Fsa.alist_of_delta m.fsa
   in
   List.fold_left
     (* for each state <i> and its neighboring states <nexts> *)
     (fun rslt (i, nexts) ->
       if !verbose > 1 then
 	eprintf "  state %s (%d): %d transitions\n"
-	  (let qid, _, _ = Fsa.state_get m i in qid) i (List.length nexts);
+	  (let qid, _, _ = Fsa.state_get m.fsa i in qid) i (List.length nexts);
       List.fold_left
 	(* for each neighboring state <j> *)
 	(fun rslt (l_opt, j) ->
-	  let l : Ldlmodel.label =
+	  let l : Model.label =
 	    match l_opt with
 	    | None -> failwith "find_applicable_rules"
-	    | Some k ->  Fsa.sigma_get m k
+	    | Some k ->  Fsa.sigma_get m.fsa k
 	  in rslt @ find_applicable_rules_rec m (i, l, j) rs)
 	rslt nexts)
     [] edges
 
-and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.t list) =
+and find_applicable_rules_rec m (i, l, j) (rs : Rule.t list) =
   let tid, props, es = l in
   match es with
   | [] -> []
   | [e] ->
       List.fold_left
-	(fun rslt (r : Ldlrule.t) ->
+	(fun rslt (r : Rule.t) ->
 	  let rid, (e', _), (c, _), (acts, _), (post, _) = r in
 	  if e' <> e then rslt (* r is not applicable to e *) else
 	  let _ = () in
@@ -229,7 +248,7 @@ and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.t list) =
 
 	  if !verbose > 1 then
 	    begin
-	      let q1, _, _ = Fsa.state_get m i and q2, _, _ = Fsa.state_get m j
+	      let q1, _, _ = Fsa.state_get m.fsa i and q2, _, _ = Fsa.state_get m.fsa j
 	      in
 	      eprintf "  applicable? (rid=%s, event=%s) to (tid=%s, %d->%d, %s-%s->%s):"
 		rid e' tid i j q1 e q2;
@@ -255,28 +274,16 @@ and find_applicable_rules_rec m (i, l, j) (rs : Ldlrule.t list) =
 
 (* returns: 0 = inapplicable, 0b0001-0b1111 = (conditionally) applicable *)
 and rule_applicable m r (i, j) =
-  let _, _, (w1 : formula) = Fsa.state_get m i
-  and _, _, (w2 : formula) = Fsa.state_get m j
-  in let b, certainty_opt = Ldlrule.applicable r (w1, w2) in
+  let _, _, (w1 : formula) = Fsa.state_get m.fsa i
+  and _, _, (w2 : formula) = Fsa.state_get m.fsa j
+  in let b, certainty_opt = Rule.applicable r (w1, w2) in
   (*assert (b || certainty land 0b11 = 0 || certainty land 0b1100 = 0);*)
   b, certainty_opt
 
-(* update *)
-
-let rec merge (m : Ldlmodel.t) (rs : Ldlrule.t list) =
-  verbose := Ldlmodel.verbosity_get ();
-  if !verbose > 0 then (eprintf "** merge\n"; flush_all ());
-  let m' : Ldlmodel.t = m |> update_states |> split_transitions
-  in let alist1 : (string * string) list = find_applicable_rules m' rs
-    (* alist1 = [(rid, tid); ..] *)
-  in let alist2 : (string * string list) list = aggregate_transitions alist1
-    (* alist2 = [(rid, [tid; ..]); ..] *)
-  in
-  if !verbose > 0 then (eprintf "** merge done\n"; flush_all ());
-  m', alist2
-
 and aggregate_transitions (alist : (string * string) list) =
+  (*
   if !verbose > 0 then (eprintf "** aggregate_transitions: (generate alist of rule-to-transitions)\n"; flush_all ());
+   *)
   let alist2 : (string * string) list =
     List.sort
       (fun (rid1, _) (rid2, _) ->
@@ -285,7 +292,9 @@ and aggregate_transitions (alist : (string * string) list) =
 	in if i1 = i2 then 0 else if i1 < i2 then -1 else 1)
       alist
   in
+  (*
   if !verbose > 0 then (eprintf "   alist (%d) sorted\n" (List.length alist); flush_all ());
+   *)
   let alist3 : (string * string list) list =
     match alist2 with
     | [] -> []
@@ -300,6 +309,7 @@ and aggregate_transitions (alist : (string * string) list) =
 	    ((rid, [tid]), []) rest
 	in rslt @ [rid', tid_seq']
   in
+  (*
   if !verbose > 0 then (eprintf "** aggregate_transitions done\n"; flush_all ());
   if !verbose > 1 then
     List.iter
@@ -308,4 +318,5 @@ and aggregate_transitions (alist : (string * string) list) =
 	 List.iter (eprintf " %s") tid_seq;
 	 output_string stderr "\n")
        alist3;
+   *)
   alist3

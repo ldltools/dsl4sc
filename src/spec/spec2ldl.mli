@@ -24,7 +24,7 @@ val translate :
     ?keep_terms: bool ->
     Spec.t -> Property.t list * event_map
 
-val formula_of_property : Property.t -> Ldl.formula
+val formula_of_property : Property.t -> Ldlsat.Ldl.formula
 
 (** helpers *)
 

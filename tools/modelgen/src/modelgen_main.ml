@@ -21,6 +21,7 @@ let opt_o_channel = ref stdout
 let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref 0
+let opt_parse_only = ref false
 
 let synopsis prog =
   printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
@@ -30,12 +31,6 @@ let synopsis prog =
      "  -o <file>\t\toutput to <file>\n";
      "  -V, --version\t\tdisplay version\n";
      "  -h, --help\t\tdisplay this message\n"]
-
-let input_nfa ic = function
-  | "xml" | "unspecified" ->
-      Ldlmodel.read_in ic
-  | fmt ->
-      failwith ("input_spec: unknown format (" ^ fmt ^ ")")
 
 (* *)
 let main argc argv =
@@ -51,6 +46,9 @@ let main argc argv =
 	  outfile := argv.(!i+1); incr i;
       | "-t" ->
 	  opt_fmt_out := argv.(!i+1); incr i;
+      | "-p" | "--parse-only" ->
+	  opt_parse_only := true
+
       | "-V" | "--version" ->
 	  printf "%s\n" (Version.get ());
 	  raise Exit
@@ -75,38 +73,25 @@ let main argc argv =
   if not (Sys.file_exists !infile) then
     (synopsis argv.(0); invalid_arg ("file does not exist: '" ^ !infile ^ "'"));
 
-  (* output *)
-  let oc = open_out !outfile in
-
   (* verbosity *)
-  Ldlmodel.verbosity_set !opt_verbose;
-  Ldlrule.verbosity_set !opt_verbose;
+  Modelgen.verbosity_set !opt_verbose;
 
   (* read dfa (in xml) from file into m *)
-  if !opt_verbose > 0 then eprintf "[read: %S]\n" !infile;
   let ic = open_in !infile in
-  let alist, (m : Ldlmodel.t), (rs : Ldlrule.t list) = Ldlmodel.read_in ic in
-  if !opt_verbose > 1 then List.iter Ldlrule.debug_print_rule rs;
+  let m : Model.t = Model.from_channel ic in
 
-  (* modelgen: m -> m' *)
-  if !opt_verbose > 0 then eprintf "\n[modelgen]\n";
-  let m', (alist' : (string * string list) list) = Modelgen.merge m rs
+  let oc = open_out !outfile in at_exit (fun _ -> close_out oc);
+
+  (* parse-only *)
+  if !opt_parse_only then (Model.to_channel oc m; raise Exit);
+
+  (* transformation *)
+  let m' =
+    Modelgen.restore_possible_worlds m |> Modelgen.split_transitions |> Modelgen.chart_rules
   in
 
-  (* output dfa (in xml) *)
-  let out s = output_string oc s; flush oc
-  in
-  out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
-  out (Xml.to_string (List.assoc "variables" alist)); out "\n";
-  Ldlmodel.print_states_in_xml out m;		(* states *)
-  Ldlmodel.print_transitions_in_xml out m;	(* transitions *)
-  (*out (Xml.to_string (List.assoc "variables" alist)); out "\n";*)
-  Ldlmodel.print_rules_in_xml out m alist' rs;	(* rules *)
-  if List.mem_assoc "scripts" alist then
-    (out (Xml.to_string (List.assoc "scripts" alist)); out "\n");
-  out "</dfa>\n";
-
-  (* clean-up *)
+  (* output *)
+  Model.to_channel oc m';
   ()
 ;;
 

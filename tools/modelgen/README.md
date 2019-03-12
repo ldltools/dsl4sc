@@ -42,7 +42,7 @@ The states, transitions, and rules of in the input definition are updated as fol
 
    note: **propositional simplifier** is employed.
 
-   (`Modelgen.update_states`)
+   (`Modelgen.restore_possible_worlds`)
 
 1. [transitions]  
    split transitions when they can be triggered by more than one events.  
@@ -50,7 +50,10 @@ The states, transitions, and rules of in the input definition are updated as fol
    (`Modelgen.split_transitions`)
 
 1. [rules]  
-   associate transitions to rules
+   generate rule-to-transitions mappings.
+
+   (`Modelgen.chart_rules`)
+
    - generate _rule-transition_ pairs _{(r, t), ...}_
      which indicates _r_ can be associated with _t_.  
 

@@ -15,6 +15,8 @@
 
 (** propositional SAT solver *)
 
+open Ldlsat
+
 module type SAT_t = sig
 
   val solve : Ldl.formula list -> bool * (string * bool) list

@@ -94,15 +94,6 @@ LIBS		= $(LIBS.byte) $(LIBS.opt) $(LIBS.opt:%.cmxa=%.a)
 
 all::	$(LIBS) $(BINS)
 
-$(BUILD_DIR)/dsl4sc.cma:	$(CMOS)
-	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
-	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmo \
-	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmo
-$(BUILD_DIR)/dsl4sc.cmxa:	$(CMXS)
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
-	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmx \
-	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmx
-
 # $(BINS.byte)
 $(BUILD_DIR)/rulespp.byte:	$(LIBS.byte) $(BUILD_DIR)/rules/rulespp_main.cmo
 	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo $^
@@ -115,6 +106,56 @@ $(BUILD_DIR)/rulespp.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rulespp_main.cmx
 $(BUILD_DIR)/rules2ldl.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rules2ldl_main.cmx
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
 
+# dsl4sc library
+$(BUILD_DIR)/dsl4sc.cma:	$(CMOS)
+	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmo \
+	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmo \
+	$(BUILD_DIR)/rules/version.cmo
+$(BUILD_DIR)/dsl4sc.cmxa:	$(CMXS)
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp}.cmx \
+	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmx \
+	$(BUILD_DIR)/rules/version.cmx
+
+# dsl4sc library -- moduled version
+all::	$(BUILD_DIR)/_export/dsl4sc.cma $(BUILD_DIR)/_export/dsl4sc.cmxa
+
+SRC_MODULES	= $(patsubst %,rules/%,fsa protocol property rule rules rulespp)
+SRC_MODULES	+= $(patsubst %,spec/%,spec specpp spec2ldl)
+$(BUILD_DIR)/_export/dsl4sc.mli:	$(SRC_MODULES:%=%.mli)
+	mkdir -p $$(dirname $@)
+	rm -f $@; touch $@
+	for f in $^; do \
+	  m=$$(basename $$f .mli); \
+	  echo "module $${m^} : sig" >> $@; \
+	  cat $$f >> $@; \
+	  echo "end" >> $@; \
+	done
+$(BUILD_DIR)/_export/dsl4sc.ml:	$(SRC_MODULES:%=%.ml)
+	mkdir -p $$(dirname $@)
+	rm -f $@; touch $@
+	for f in $^; do \
+	  m=$$(basename $$f .ml); \
+	  echo "module $${m^} = $${m^}" >> $@; \
+	done
+$(BUILD_DIR)/_export/dsl4sc.cmi:	$(BUILD_DIR)/_export/dsl4sc.mli $(CMIS)
+	$(CAMLC) $(CAMLCFLAGS) -c $< -o $@
+$(BUILD_DIR)/_export/dsl4sc.cmo:	$(BUILD_DIR)/_export/dsl4sc.ml $(BUILD_DIR)/_export/dsl4sc.cmi
+	$(CAMLC) $(CAMLCFLAGS) -I $$(dirname $@) -c $< -o $@
+$(BUILD_DIR)/_export/dsl4sc.cmx:	$(BUILD_DIR)/_export/dsl4sc.ml $(BUILD_DIR)/_export/dsl4sc.cmi
+	$(CAMLOPT) $(CAMLOPTFLAGS) -I $$(dirname $@) -c $< -o $@
+$(BUILD_DIR)/_export/dsl4sc.cma:	$(BUILD_DIR)/_export/dsl4sc.cmo $(CMOS)
+	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmo \
+	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmo \
+	$(BUILD_DIR)/_export/dsl4sc.cmo
+$(BUILD_DIR)/_export/dsl4sc.cmxa:	$(BUILD_DIR)/_export/dsl4sc.cmx $(CMXS)
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
+	$(BUILD_DIR)/rules/{fsa,protocol,property,rule,rules,rules_l,rules_p,rulespp,version}.cmx \
+	$(BUILD_DIR)/spec/{spec,specpp,spec2ldl}.cmx \
+	$(BUILD_DIR)/_export/dsl4sc.cmx
+
 #
 install::	install_bins install_libs
 install_bins::	all
@@ -124,9 +165,10 @@ install_bins::	all
 	done
 install_libs::	all
 	@mkdir -p $(PREFIX)/lib/dsl4sc
-	rsync -avzop $(LIBS) $(PREFIX)/lib/dsl4sc
-	rsync -avzop $(CMIS) $(PREFIX)/lib/dsl4sc
-	rsync -avzop $(SRCS_mli) $(PREFIX)/lib/dsl4sc
+#	rsync -avzop $(LIBS) $(PREFIX)/lib/dsl4sc
+#	rsync -avzop $(CMIS) $(PREFIX)/lib/dsl4sc
+#	rsync -avzop $(SRCS_mli) $(PREFIX)/lib/dsl4sc
+	rsync -avzop $(BUILD_DIR)/_export/dsl4sc.{cmi,cma,cmxa,a} $(PREFIX)/lib/dsl4sc
 
 clean::
 veryclean::

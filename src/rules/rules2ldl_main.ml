@@ -14,6 +14,8 @@
  * limitations under the License.
  *)
 
+module Ldl = Ldlsat.Ldl
+
 open Printf
 
 let stdin = open_in "/dev/stdin"

@@ -13,6 +13,8 @@
  * limitations under the License.
  *)
 
+open Ldlsat
+
 (** propositional SAT solver *)
 
 module type SAT_t = sig
@@ -20,8 +22,9 @@ module type SAT_t = sig
 end
 
 module SAT : SAT_t = struct
-open Ldlsimp
+
 let solve = Toysat.solve
+
 end
 
 (** propositional simplifier *)
