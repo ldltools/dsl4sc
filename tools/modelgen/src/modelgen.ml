@@ -16,6 +16,7 @@
 
 open Ldlsat
 open Ldlsat.Ldl
+open Dsl4sc
 open Printf
 
 module Rule = Model.Rule

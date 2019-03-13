@@ -62,6 +62,10 @@ and expand_prop_spec_rec rslt = function
       let rslt' = List.fold_left (fun rslt prefix -> expand1 prefix n rslt 0) [] rslt
       in
       expand_prop_spec_rec rslt' rest
+
+let report_error (msg : string) =
+  failwith @@ "[Rules_p] parse error: " ^ msg
+
 %}
 
 %start	rules decl_seq
@@ -166,7 +170,7 @@ decl	: EVENT event_spec_seq
 
 // **conflict
 //	| error
-//	  { raise @@ Rules_l.ParseError "decl" }
+//	  { report_error "decl" }
 	;
 
 // ================================================================================
@@ -213,7 +217,7 @@ protocol_spec
 //	// deprecated
 //	| NAME LPAREN param_seq RPAREN LBRACE protocol RBRACE
 //	  { let args =
-//	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
+//	      List.map (function Tm_var (x, _) -> x | _ -> report_error "protocol_spec") $3
 //	    in Some ($1, args), $6 }
 //	| LBRACE protocol_or_pcall RBRACE
 //	  { $2 }
@@ -225,7 +229,7 @@ protocol_or_pcall
 
 	// deprecated
 	| NAME LPAREN param_seq RPAREN
-	  { raise @@ Rules_l.ParseError "protocol_or_pcall" }
+	  { report_error "protocol_or_pcall" }
 	;
 
 /*
@@ -252,7 +256,7 @@ protocol
 	| protocol PLUS protocol1
 	  { Proto_sum [$1; $3] }
 	| error
-	  { raise @@ Rules_l.ParseError "protocol" }
+	  { report_error "protocol" }
 	;
 
 protocol1
@@ -309,7 +313,7 @@ var_spec_seq
 //	| var_spec_seq SEMI
 //	  { $1 }
 	| error
-	  { raise @@ Rules_l.ParseError "variable_spec" }
+	  { report_error "variable_spec" }
 	;
 
 // variables of the same type
@@ -380,7 +384,7 @@ property_spec
 //	// deprecated
 //	| NAME LPAREN param_seq RPAREN LBRACE labelled_property RBRACE
 //	  { let args =
-//	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "protocol_spec") $3
+//	      List.map (function Tm_var (x, _) -> x | _ -> report_error "protocol_spec") $3
 //	    in Some ($1, args), $6 }
 //	| LBRACE property_or_pcall RBRACE
 //	  { $2 }
@@ -390,7 +394,7 @@ property_or_pcall
 	: property
 	  { $1 }
 //	| NAME LPAREN param_seq RPAREN
-//	  { raise @@ Rules_l.ParseError "property_or_pcall" }
+//	  { report_error "property_or_pcall" }
 	;
 
 /*
@@ -466,7 +470,7 @@ property
 	| property0 IMPLIES property
 	  { Prop_disj [Prop_neg $1; $3] }
 	| error
-	  { raise @@ Rules_l.ParseError "property" }
+	  { report_error "property" }
 	;
 
 property0
@@ -581,7 +585,7 @@ index	: LBRACK term RBRACK
 term	: sum_term
 	  { $1 }
 	| error
-	  { raise @@ Rules_l.ParseError "term" }
+	  { report_error "term" }
 	;
 
 sum_term
@@ -646,7 +650,7 @@ path0	: labelled_path1_or_2 PLUS labelled_path1_or_2
 	| path0 PLUS labelled_path1_or_2
 	  { Path_sum (((function Path_sum ps -> ps) $1) @ [$3]) }
 	| error
-	  { raise @@ Rules_l.ParseError "path0" }
+	  { report_error "path0" }
 	;
 
 path1_or_2
@@ -755,7 +759,7 @@ rule_spec
 	  { None, genrule $2 }
 	| NAME LPAREN param_seq RPAREN LBRACE rule RBRACE
 	  { let args =
-	      List.map (function Tm_var (x, _) -> x | _ -> raise @@ Rules_l.ParseError "rule_spec") $3
+	      List.map (function Tm_var (x, _) -> x | _ -> report_error "rule_spec") $3
 	    in Some ($1, args), genrule $6 }
 */
 	;
@@ -765,7 +769,7 @@ rule_or_rcall
 	: rule
 	  { $1 }
 	| NAME LPAREN param_seq RPAREN
-	  { raise @@ Rules_l.ParseError "rule_or_rcall" }
+	  { report_error "rule_or_rcall" }
 	;
 */
 
@@ -869,7 +873,7 @@ state	: state0
 	| state0 IMPLIES state
 	  { Prop_disj [Prop_neg $1; $3] }
 	| error
-	  { raise @@ Rules_l.ParseError "state" }
+	  { report_error "state" }
 	;
 
 state0	: state1

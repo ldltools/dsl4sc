@@ -390,4 +390,7 @@ let parse (p : (Rules_p.token, 'ast) MenhirLib.Convert.traditional) (buf : lexbu
       eprintf " at line:%d, column:%d, position:%d\n" lnum col pos;
       flush_all ();
       exit 1
-	
+  | Rules_p.Error ->
+      let p = buf._pos in
+      eprintf ";; Rules_p.Error: lnum=%d, bol=%d, cnum=%d\n" p.pos_lnum p.pos_bol p.pos_cnum;
+      exit 1

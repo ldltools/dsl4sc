@@ -55,7 +55,7 @@ end
 (** executable model *)
 
 type model =
-    { fsa : (state, label) Fsa.t;
+    { fsa : (state, label) Dsl4sc.Fsa.t;
       mutable rules : Rule.t list;
       mutable rules_map : (string * string list) list;
       elements : (string * Xml.xml) list;

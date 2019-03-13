@@ -16,6 +16,7 @@
 
 open Ldlsat
 open Ldlsat.Ldl
+open Dsl4sc
 open Printf
 
 (* for debugging *)
@@ -180,7 +181,7 @@ let rec applicable r (w1, w2) =
   if not check1 then false, detail1 else
   
   (* check2 *)
-  true, None
+  true, Some 1
 
   (* (w1 -> c) guarantees unconditional applicability *)
   (* (post -> w2) *)
@@ -621,6 +622,7 @@ and escape_rec str prev curr len (rslt : string list) =
   else
     escape_rec str prev (curr + 1) len rslt
 
+(* print_states *)
 let print_states_in_xml out (m : t) =
   if !verbose > 0 then eprintf "** print_states\n";
 
@@ -641,6 +643,7 @@ let print_states_in_xml out (m : t) =
   flush_all ();
   ()
 
+(* print_transitions *)
 let rec print_transitions_in_xml out (m : t) =
   if !verbose > 0 then eprintf "** print_transitions\n";
 
@@ -683,12 +686,11 @@ and subst_event_name (m : t) (initial: int) (final : int list) (i, j) e =
   else
     if i = initial && j <> initial then Some "_init" else None
 
+(* print_rules *)
 (* alist = [(rid, [tid; ...]); ..] *)
 let rec print_rules_in_xml out (m : t) =
-  if !verbose > 0 then eprintf "** print_rules\n";
-
-  let alist = []
-  in print_rules_in_xml_helper out m alist m.rules
+  if !verbose > 0 then eprintf "** print_rules (%d)\n" (List.length m.rules);
+  print_rules_in_xml_helper out m m.rules_map m.rules
 
 (* print_rules_in_xml_helper out m alist rs
    where alist is of the form [(rid, [tid; ...]); ..]
@@ -719,9 +721,8 @@ and print_rules_in_xml_helper out (m : t) alist (rs : rule list) =
 
 (* tid = id of transition to which r is applicable.
    alist = [(tid, (w1, w2)); ..] *)
-(*
 and print_rule_in_xml out tid_seq alist (r : rule) =
-  let rid, e, (c, c_opt), (a, a_opt) = r in
+  let rid, (e, _), (c, c_opt), (a, a_opt), (post, _) = r in
   out (sprintf "<rule id=%S>\n" rid);
 
   (* event *)
@@ -729,8 +730,8 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
 
   (* condition *)
   out "<condition>";
-  out (sprintf "<formula%s>" (if propositional c then "" else " modal=\"true\""));
-  escape out (string_of_formula (simp c));
+  out (sprintf "<formula%s>" (if modal c then " modal=\"true\"" else ""));
+  escape out (string_of_formula (Simp.simp c));
   out "</formula>\n";
   (match c_opt with Some str -> out "<script>"; escape out str; out "</script>\n" | None -> ());
   out "</condition>\n";
@@ -738,16 +739,16 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
   (* action *)
   let post : formula list =
     List.fold_left
-      (fun rslt -> function Act_ensure f -> rslt @ [f] | _ -> rslt)
+      (fun rslt -> function Rule.Act_ensure f -> rslt @ [f] | _ -> rslt)
       [] a in
   out "<action>";
   out "<formula>";
-  escape out (string_of_formula (simp (Ldl_conj post)));
+  escape out (string_of_formula (Simp.simp (Ldl_conj post)));
   out "</formula>\n";
   List.iter
     (function
-      | Act_raise e -> out (sprintf "<raise event=%S/>\n" e)
-      | Act_raise_sum es ->
+      | Rule.Act_raise e -> out (sprintf "<raise event=%S/>\n" e)
+      | Rule.Act_raise_sum es ->
 	  out "<choice>";
 	  List.iter (fun e -> out @@ sprintf "<raise event=%S/>" e) es;
 	  out "</choice>\n"
@@ -779,7 +780,6 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
 
   out "</rule>\n";
   ()
-*)
 
 let to_channel oc m =
   if !verbose > 0 then eprintf "** to_channel\n";

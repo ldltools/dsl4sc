@@ -1,12 +1,11 @@
 # v0.12.0rc
 
+- [dsl4sc] pack all modules into "Dsl4sc"
+
 - [rules2scxml] SCXML event names can be overridden  
   when a rule is of the form "on e { e' } ...", "e'" turns out to be the event name.  
   refer to tests/test22.
   (2dd2d3e)
-
-- [tools/modlegen] integration of [z3](https://github.com/Z3Prover/z3) for efficiency
-  it is now used for checking correspondence between rules and state transitions.
 
 ## fixes
 - [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.

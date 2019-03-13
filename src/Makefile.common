@@ -7,7 +7,7 @@ veryclean::	clean
 
 BUILD_DIR	?= _build
 SRC_DIR		?= .
-SRC_DIRS	?= $(shell find $(SRC_DIRS) -type d | xargs -I {} bash -c "test -f {}/.ignore || echo {}")
+SRC_DIRS	?= $(shell find $(SRC_DIR) -type d | xargs -I {} bash -c "test -f {}/.ignore || echo {}")
 
 SED		?= sed
 AWK		?= awk
@@ -41,6 +41,8 @@ CAMLOPT		?= ocamlopt.opt
 CAMLOPTFLAGS	?=
 CAMLOPTFLAGS	+= $(INC_FLAGS)
 
+FOR_PACK	?=
+
 CAMLLEX		?= ocamllex
 #CAMLYACC	?= ocamlyacc -v
 CAMLYACC	?= menhir -v
@@ -50,35 +52,35 @@ CAMLYACC	?= menhir -v
 #
 $(BUILD_DIR)/%.cmi: %.mli
 	$(MKDIR_P) $(dir $@)
-	$(CAMLC) $(CAMLCFLAGS) -c -o $@ $<
+	$(CAMLC) $(CAMLCFLAGS) -o $@ -c $<
 $(BUILD_DIR)/%.cmo: %.ml
 	$(MKDIR_P) $(dir $@)
-	$(CAMLC) $(CAMLCFLAGS) -c -o $@ $<
+	$(CAMLC) $(CAMLCFLAGS) $(FOR_PACK) -o $@ -c $<
 $(BUILD_DIR)/%.cmx: %.ml
 	$(MKDIR_P) $(dir $@)
-	$(CAMLOPT) $(CAMLOPTFLAGS) -c -o $@ $<
+	$(CAMLOPT) $(CAMLOPTFLAGS) $(FOR_PACK) -o $@ -c $<
+
+# for those generated at compile-time
+$(BUILD_DIR)/%.cmi: $(BUILD_DIR)/%.mli
+	$(CAMLC) $(CAMLCFLAGS) -c $<
+$(BUILD_DIR)/%.cmo: $(BUILD_DIR)/%.ml
+	$(CAMLC) $(CAMLCFLAGS) $(FOR_PACK) -c $<
+$(BUILD_DIR)/%.cmx: $(BUILD_DIR)/%.ml
+	$(CAMLOPT) $(CAMLOPTFLAGS) $(FOR_PACK) -c $<
 
 # ocamllex
-$(BUILD_DIR)/%.cmi: %.mll
+$(BUILD_DIR)/%.ml:	%.mll
 	$(MKDIR_P) $(dir $@)
 	cp -fp $< $(dir $@)
 	$(CAMLLEX) $(BUILD_DIR)/$<
-	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).ml
-$(BUILD_DIR)/%.cmo: %.mll $(BUILD_DIR)/%.cmi
-	test -f $@ || exit 1
-$(BUILD_DIR)/%.cmx: %.mll $(BUILD_DIR)/%.cmi
-	$(CAMLOPT) $(CAMLOPTFLAGS) -c $(basename $@).ml
 
-# ocamlyacc
-$(BUILD_DIR)/%.cmi: %.mly
+# ocamlyacc (or menhir)
+$(BUILD_DIR)/%.mli $(BUILD_DIR)/%.ml:	%.mly
 	$(MKDIR_P) $(dir $@)
 	cp -fp $< $(dir $@)
 	$(CAMLYACC) $(BUILD_DIR)/$<
-	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).mli
-$(BUILD_DIR)/%.cmo: $(BUILD_DIR)/%.cmi
-	$(CAMLC) $(CAMLCFLAGS) -c $(basename $@).ml
-$(BUILD_DIR)/%.cmx: $(BUILD_DIR)/%.cmi
-	$(CAMLOPT) $(CAMLOPTFLAGS) -c $(basename $@).ml
+
+.PRECIOUS:	$(BUILD_DIR)/%.mli $(BUILD_DIR)/%.ml
 
 all::	$(CMIS) $(CMOS) $(CMXS)
 	@echo [SRC] $(SRCS_mli) $(SRCS_ml) $(SRCS_mll) $(SRCS_mly)

@@ -3,13 +3,12 @@
 
 all::
 
-PREFIX		?= /usr/local
-LDLSATLIBDIR	?= /usr/local/lib/ldlsat
-
 TOP_DIR		= $(shell readlink -f ../../..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml/modelgen
-DSL4SCLIBDIRS	= $(foreach dir,. rules spec,$(TOP_DIR)/_build/caml/$(dir))
-#DSL4SCLIBDIRS	= $(TOP_DIR)/_build/caml/_export
+PREFIX		?= /usr/local
+
+LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+DSL4SCLIBDIR	= $(TOP_DIR)/_build/caml/_export
 SRC_DIRS	= .
 
 OPAM_PREFIX	= $(shell opam config var prefix)
@@ -44,12 +43,15 @@ CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/easy-format
 #CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/sexplib
 #CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/ppx_sexp_conv
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/xml-light
+CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/gen
+CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/sedlex
+CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/menhirLib
 
 CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
-CAML_INC_FLAGS	+= $(DSL4SCLIBDIRS:%=-I %)
+CAML_INC_FLAGS	+= -I $(DSL4SCLIBDIR)
 
-CAMLCFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
-CAMLOPTFLAGS	= $(CAML_INC_FLAGS) $(CAML_PKG_FLAGS)
+CAMLCFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
+CAMLOPTFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
 
 CAMLCFLAGS	+= -unsafe-string
 CAMLOPTFLAGS	+= -unsafe-string
@@ -74,8 +76,8 @@ CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= unix.cma bigarray.cma bigstring.cma sexplib.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
 CMAS		+= xml-light.cma
+CMAS		+= gen.cma sedlexing.cma
 CMAS		+= ldlsat.cma
-CMAS		+= dsl4sc.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
 include $(TOP_DIR)/src/Makefile.common
@@ -92,20 +94,18 @@ LIBS		= $(LIBS.byte) $(LIBS.opt) $(LIBS.opt:%.cmxa=%.a)
 
 all::	$(BINS)
 
+$(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma $^
+$(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa $^
+
+# library
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)
 	$(CAMLC) $(CAMLCFLAGS) -o $@ -a \
 	$(BUILD_DIR)/{oracle,model,modelgen}.cmo
 $(BUILD_DIR)/modelgen.cmxa:	$(CMXS)
 	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ -a \
 	$(BUILD_DIR)/{oracle,model,modelgen}.cmx
-
-# $(BINS.byte)
-$(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) $^
-
-# $(BINS.opt)
-$(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 
 #
 install::	install_bins
