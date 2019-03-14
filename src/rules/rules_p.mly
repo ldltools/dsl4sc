@@ -963,19 +963,28 @@ preserve_rule_a
 	;
 
 preserve
-	: PRESERVE preserve_args
-	  { [Elt_action [(Act_preserve $2), None]] }
-	| PRESERVE property
+	: PRESERVE property
 	  { [Elt_action [(Act_preserve [$2]), None]] }
+	| PRESERVE preserve_args
+	  { [Elt_action [(Act_preserve $2), None]] }
+//	| PRESERVE preserve_args
+//	  { [Elt_action [(Act_preserve $2), None]] }
 // 	| PRESERVE LPAREN args RPAREN
 //	  { [Elt_action [(Act_preserve $3), None]] }
 	;
 
 preserve_args
-	: NAME COMMA NAME
-	  { [Prop_atomic $1; Prop_atomic $3] }
-	| preserve_args COMMA NAME
-	  { $1 @ [Prop_atomic $3] }
+	: property COMMA property
+	  { [$1; $3] }
+	| preserve_args COMMA property
+	  { $1 @ [$3] }
 	;
+
+//preserve_args
+//	: NAME COMMA NAME
+//	  { [Prop_atomic $1; Prop_atomic $3] }
+//	| preserve_args COMMA NAME
+//	  { $1 @ [Prop_atomic $3] }
+//	;
  
 %%

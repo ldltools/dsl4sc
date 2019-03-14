@@ -190,6 +190,7 @@ let update_terms_rule tenv (r : Rule.t) =
       (fun (act, a_opt) ->
 	(match act with
 	| Act_ensure p -> Act_ensure (update_terms_property tenv p)
+	| Act_preserve ps -> Act_preserve (List.map (update_terms_property tenv) ps)
 	| _ -> act),
 	a_opt)
       r.action
