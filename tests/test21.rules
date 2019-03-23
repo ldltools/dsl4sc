@@ -1,4 +1,7 @@
 // e; (case1 + case2) -- upon e, execution internally splits to 2 cases
+//
+// non-determinism 1
+// non-deterministic 'e' -> e; (case1 + case2)
 
 protocol e; (case1 + case2) ;;
 

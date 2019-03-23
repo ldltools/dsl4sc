@@ -1,0 +1,16 @@
+// e -- upon e, execution does NOT split but just performs a conditional operation at run-time.
+
+// non-determinism 2
+// non-deterministic 'e' -> e (implementation)
+
+protocol e;;
+
+rule
+on e
+do
+{
+  if (_event.data == 1)
+    console.log ("case1");
+  else
+    console.log ("case2");
+}

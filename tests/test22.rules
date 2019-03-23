@@ -1,5 +1,8 @@
 // e -- upon e, execution internally splits to 2 cases
 // equivalent w. test21
+//
+// non-determinism 2
+// non-deterministic 'e' -> e_case1 + e_case2
 
 protocol e_case1 + e_case2;;
 

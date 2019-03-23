@@ -4,7 +4,7 @@
 all::
 
 TOP_DIR		= $(shell readlink -f ../../..)
-BUILD_DIR	= $(TOP_DIR)/_build/caml/modelgen
+BUILD_DIR	= $(TOP_DIR)/_build/caml/tools/modelgen
 PREFIX		?= /usr/local
 
 LDLSATLIBDIR	?= /usr/local/lib/ldlsat

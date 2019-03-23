@@ -8,9 +8,15 @@ SUBDIRS		=
 
 %.man:	%.tex
 	latex2man $< $@
+%.html:	%.tex
+	latex2man -H: $< $@
 
-MANPAGES	= rulessat.man rulesmc.man rules2ldl.man
+COMMANDS	= rulessat rulesmc rules2ldl
+MANPAGES	= $(COMMANDS:%=%.man)
+HTMLPAGES	= $(COMMANDS:%=%.html)
+
 man:	$(MANPAGES)
+html:	$(HTMLPAGES)
 
 install::	all
 	@dir=$(PREFIX)/share/man/man1; mkdir -p $$dir && test -w $$dir || exit 1
