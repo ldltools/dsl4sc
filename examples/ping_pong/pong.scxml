@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel/>
+  <final id="q6">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+  </final>
+  <state id="q4">
+    <transition target="q2" event="ping">
+      <!--tid t10_1-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>    SCXML.send ({event: _event, topic: "ping"});
+    // note: this outbound "ping" event is not included in the protocol ;</script>
+      <!--rule: r2 event: ping certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+    <transition target="q5" event="quit">
+      <!--tid t11_1-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>    if (_event.data.die_alone == 0)
+	SCXML.send ({event: {name: "quit", data: {die_alone: 1}}, topic: "ping"}); ;</script>
+      <!--rule: r3 event: quit certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
+  <state id="q2">
+    <transition target="q4" event="pong">
+      <!--tid t5_1-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>    var n = _event.data.count;
+    if (n == 0)
+	SCXML.raise ({name: "quit", data: {die_alone: 0}});
+    else
+	SCXML.raise ({name: "ping", data: {count: (n - 1)}});
+        // note: this event is what the protocol means by "ping"
+    console.log ("[pong]", _event.data.count); ;</script>
+      <!--rule: r1 event: pong certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+      <!--rule.raise_sum: quit ping-->
+    </transition>
+    <transition target="q5" event="quit">
+      <!--tid t7_1-->
+      <!--transition: curr_world: true label: true next_world: true-->
+      <script>    if (_event.data.die_alone == 0)
+	SCXML.send ({event: {name: "quit", data: {die_alone: 1}}, topic: "ping"}); ;</script>
+      <!--rule: r3 event: quit certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: true-->
+    </transition>
+  </state>
+  <state id="q5">
+    <transition target="q6" event=" ">
+      <!--tid t12_1-->
+    </transition>
+  </state>
+</scxml>

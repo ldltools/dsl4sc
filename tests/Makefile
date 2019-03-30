@@ -14,9 +14,10 @@ test::
 	shelltest equality.conf
 
 test::
+	rm -f out/test*.scxml
 	shelltest tests.conf
 
-EXAMPLES =	echo ping_pong bounded_buffer accumulator
+EXAMPLES =	echo ping_pong deuce bounded_buffer
 define TESTRULE
 test::	test_$(1)
 test_$(1):

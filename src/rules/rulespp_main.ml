@@ -14,6 +14,7 @@
  * limitations under the License.
  *)
 
+open Dsl4sc
 open Printf
 
 let stdin = open_in "/dev/stdin"

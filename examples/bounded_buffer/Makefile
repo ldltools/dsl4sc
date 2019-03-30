@@ -11,13 +11,12 @@ testcase = bounded_buffer
 TOP_DIR	= $(shell readlink -f ../..)
 -include ../Makefile.common
 
-scxml:	out/$(testcase).scxml
-puml:	out/$(testcase).puml
-svg:	out/$(testcase).svg
+scxml:	out/bounded_buffer.scxml
+out/bounded_buffer.scxml:	bounded_buffer.rules
+	mkdir -p out && rules2scxml $< -o $@
 
 run:
-	@test -f $(testcase).scxml -a -f $(testcase).in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
-	$(SCXMLRUN) $(testcase).scxml $(testcase).in
+	shelltest bounded_buffer.conf
 
 install::
 clean::

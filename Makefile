@@ -20,27 +20,49 @@ veryclean::	clean
 	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 	rm -rf _build/*
 
+# docker
+
+DOCKER_REPO	= ldltools/dsl4sc
+DOCKER_OPTS	?=
+VERSION		= $(shell gawk '/^let get /{print($$NF)}' src/rules/version.ml)
+
+.PHONY:	$(DOCKER_REPO)-dev $(DOCKER_REPO)
+
+$(DOCKER_REPO)-dev:
+	docker build --target builder -t $(DOCKER_REPO)-dev .
+$(DOCKER_REPO):
+	docker build -t $(DOCKER_REPO) .
+
+docker-build:	docker-build-$(DOCKER_REPO)
+docker-run:	check-latest-$(DOCKER_REPO)
+	docker run -it --rm $(DOCKER_OPTS) $(DOCKER_REPO)
+
 #
+define GENRULES
+docker-build-all::	docker-build-$(1)
+docker-build-$(1):	$(1)
+
+docker-tag::	docker-tag-$(1)
+docker-tag-$(1):	check-latest-$(1) docker-untag-$(1)
+	docker tag $(1):latest $(1):$$(VERSION)
+	docker rmi $(1):latest
+
+docker-untag::	docker-untag-$(1)
+docker-untag-$(1):	check-latest-$(1)
+	@docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$(1):$$(VERSION)" && docker rmi $(1):$$(VERSION) || true
+
+check-latest-$(1):
+	@docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$(1):latest" || { echo "** image \"$(1):latest\" not found"; exit 1; }
+endef
+$(foreach repo,$(DOCKER_REPO)-dev $(DOCKER_REPO),$(eval $(call GENRULES,$(repo))))
+
+# admin
+
+#
+tar:	veryclean
+	(dir=`basename $$PWD`; cd ..; tar cvJf dsl4sc`date +%y%m%d`.tar.xz --exclude=.git --exclude=_build --exclude=RCS --exclude=obsolete $$dir)
+
 GITHOME ?= $(HOME)/git/github.com/ldltools/dsl4sc
 rsync::	clean
 	test -d $(GITHOME) || exit 1
 	rsync -avzop --exclude=_build --exclude=.git --exclude=out --exclude=obsolete ./ $(GITHOME)
-tar:	veryclean
-	(dir=`basename $$PWD`; cd ..; tar cvJf dsl4sc`date +%y%m%d`.tar.xz --exclude=.git --exclude=_build --exclude=RCS --exclude=obsolete $$dir)
-
-# docker
-DOCKER_IMAGE	= ldltools/dsl4sc
-.PHONY:	$(DOCKER_IMAGE)-dev $(DOCKER_IMAGE)
-$(DOCKER_IMAGE)-dev:
-	docker images | grep -q '^ldltools/ldlsat-dev' || exit 1
-	docker images | grep -q "^$@ " && { echo "** $@ exists"; exit 0; } ||\
-	docker build --target builder -t $@ .
-$(DOCKER_IMAGE):
-	docker images | grep -q '^ldltools/ldlsat-dev' || exit 1
-	docker images | grep -q "^$@ " && { echo "** $@ exists"; exit 0; } ||\
-	docker build -t $@ .
-
-docker-build-all:	$(DOCKER_IMAGE)-dev $(DOCKER_IMAGE)
-docker-build:	$(DOCKER_IMAGE)
-docker-run:	$(DOCKER_IMAGE)
-	docker run -it --rm $<

@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Fri Dec 28 12:34:59 2018
+.\" Manual page created with latex2man on Wed Mar 27 06:55:30 2019
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -31,7 +31,7 @@ and translates them to a single LDL formula.
 \fB\-o\fP \fIfile\fP
  output to \fIfile\fP
 .TP
-\fB\-t\fP fmt
+\fB\-t\fP \fIfmt\fP
  output in \fIfmt\fP
 ("caml", "json") 
 .TP

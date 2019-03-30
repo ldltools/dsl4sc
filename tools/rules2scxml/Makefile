@@ -2,10 +2,9 @@
 
 TOP_DIR		= $(shell readlink -f ../..)
 PREFIX		?= $(TOP_DIR)/_build/install
-SUBDIRS		= rules2dfa dfa2scxml docs
+SUBDIRS		= dfa2scxml docs
 
-BINS		=
-BINS		+= rules2scxml ldl2scxml
+BINS		= rules2scxml
 
 all::
 install::	all

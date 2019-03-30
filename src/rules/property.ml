@@ -54,7 +54,7 @@ let rec eval_term_int (env : (string * (base_t * int)) list) = function
       (* work-around: this actually should be regarded as a bool term, instead of a int term *)
       let n1, n2 = eval_term_int env e1, eval_term_int env e2
       in if n1 < n2 then 1 else 0
-  | Tm_op (op, es) -> invalid_arg op
+  | Tm_op (op, es) -> invalid_arg @@ "[eval_term_int] " ^ op
 
   | _ -> failwith "[eval_term]"
 
@@ -63,6 +63,7 @@ let term_to_propositions = function
   | Tm_var (x, Ty_nat n) ->
       let len = float_of_int n in
       let nbit = int_of_float @@ ceil (log len /. log 2.0) in
+      assert (nbit > 0);
       List.init nbit (fun i -> "_" ^ x ^ "_" ^ string_of_int i)
   | _ -> invalid_arg "[term_to_propositions]"
 
@@ -72,7 +73,7 @@ let rec print_term (out : string -> unit) (e : int term) =
   match e with
   | Tm_const (n, Ty_nat _) ->
       out (string_of_int n)
-  | Tm_var (x, _) ->
+  | Tm_var (x, Ty_nat _) ->
       out x
   | Tm_op (op, [e']) when prec e' <= prec e ->
       print_term out e';
@@ -101,8 +102,12 @@ and prec = function
 
 let rec pp_term (pp : Format.formatter -> int -> unit) (fmt : Format.formatter) (tm : int term) =
   match tm with
-  | Tm_const (n, Ty_nat _) -> Format.pp_print_int fmt n
-  | Tm_var (x, Ty_nat _) -> Format.pp_print_string fmt x
+  | Tm_const (n, Ty_nat _) ->
+      Format.pp_print_int fmt n
+  | Tm_var (x, ty) ->
+      Format.pp_print_string fmt ("Property.Tm_var (" ^ x ^ ", ");
+      pp_base_t fmt ty;
+      Format.pp_print_string fmt ")"
   | Tm_op (op, e :: rest) ->
       Format.pp_print_string fmt "(";
       pp_term pp fmt e;
@@ -299,8 +304,7 @@ and simp_equiv_disj rslt disj =
 let rec simp p =
   p |> flatten |> simp_equiv
 
-(* *)
-
+(* f -> [(x_1, t_1); (x_2, t_2); ...] *)
 let rec find_term_variables f =
   find_term_variables_rec [] f
 
@@ -349,22 +353,31 @@ and instantiate_path env r =
   | _ -> r
  *)
 
-(* split : p -> [env1, q1; env2, q2; ...] *)
+(* split : p -> [(env_1, q_1); (env_2, q_2); ...]
+   where
+   - env_i = (x_i, (t_i, n_i))
+   - q_i   = ⟦p⟧env_i = instantiate env_i p
+ *)
 
 let rec split p =
   let alist, _ =
     (* alist = [x_1, (t_1, pos_1, len_1); x_2, (t_2, pos_2, len_2); ..]
        where
        - x_i : name of the i-th term variable in p
-       - t_i : type (base_t) of the variable
-       - len_i = (bit-)length of the variable
-       - pos_i = (bit-)position in a single int value representing term values
+       - t_i : type (base_t) of x_i
+       - pos_i = (bit-)position of x_i.
+                 e.g., t_1 = Ty_nat 4, t_2 = Ty_nat 8 => pos_1 = 0, pos_2 = 2, pos_3 = 5
+       - len_i = (bit-)length of x_i.
+                 e.g., t_i = Ty_nat 3 => len_i = 2
      *)
     List.fold_left
       (fun (rslt, i) (x, ty) ->
 	match ty with
 	| Ty_nat n when not (List.mem_assoc x rslt) ->
-	    let nbit = int_of_float @@ ceil (log (float_of_int n) /. log 2.0) in
+	    let nbit = int_of_float @@ ceil (log (float_of_int @@ max 2 n) /. log 2.0)
+	    (* 'max 2 n' ensures nbit > 0 *)
+	    in
+	    assert (nbit > 0);
 	    (rslt @ [x, (Ty_nat n, i, nbit)]), i + nbit
 	| _ -> rslt, i)
       ([], 0) (find_term_variables p)
@@ -453,10 +466,12 @@ and propositionalize_eq ?(keep_terms = false) (e1 : int term) (e2 : int term) =
       Prop_equal (e1, e2)
   | Tm_var (x1, Ty_nat n1), Tm_const (c2, Ty_nat n2) ->
       (* x1 = c2 *)
-      let xs : string list = term_to_propositions e1 in
-      let nbit = int_of_float @@ ceil (log (float_of_int n1) /. log 2.0) in
-      let bits : bool list = gen_bits nbit c2 in
-      let props, _  =
+      let xs : string list = term_to_propositions e1
+      in let nbit = int_of_float @@ ceil (log (float_of_int n1) /. log 2.0)
+      in
+      assert (nbit > 0);
+      let bits : bool list = gen_bits nbit c2
+      in let props, _  =
 	List.fold_left
 	  (fun (rslt, i) x ->
 	    let f =
@@ -495,10 +510,12 @@ and propositionalize_eq ?(keep_terms = false) (e1 : int term) (e2 : int term) =
       (* general case -- split to cases *)
       split_and_propositionalize ~keep_terms (Prop_equal (e1, e2))
 
+(* p -> (case1 -> q1) & (case2 -> q2) & ... *)
 and split_and_propositionalize ?(keep_terms = false) (p : t) =
   assert (not (modal_p p) && include_term_variable_p p);
+  (* p -> alist = [env1, q1; env2, q2; ...] *)
   let alist = split p
-  (* p -> cases *)
+  (* alist -> [case1 -> q1; case2 -> q2; ...] *)
   in let qs =
     assert (alist <> []);
     List.map
@@ -507,8 +524,16 @@ and split_and_propositionalize ?(keep_terms = false) (p : t) =
 	let binds, in_range =
 	  List.fold_left
 	    (fun (rslt, in_range) (x, (Ty_nat n, n')) ->
-	      (* (x, (ty, n') -> x = n' *)
-	      let eq = Prop_equal (Tm_var (x, Ty_nat n), Tm_const (n', Ty_nat n'))
+	      (* case x : Ty_nat n = n' *)
+	      let nbit = int_of_float @@ ceil (log (float_of_int n) /. log 2.0)
+	      in
+	      assert (nbit > 0);
+	      let n'' = 1 lsl nbit
+		  (* round n to n'' = power of 2
+		     note, without this, propositionalize_rec eq wrongly returns 'false'
+		     when n <= x < n''
+		   *)
+	      in let eq = Prop_equal (Tm_var (x, Ty_nat n''), Tm_const (n', Ty_nat (n' + 1)))
 	      in
 	      rslt @ [if keep_terms then eq else propositionalize_rec eq],
 	      in_range && n > n')

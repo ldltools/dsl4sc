@@ -18,8 +18,8 @@ CMD ["/bin/bash"]
 # ====================
 # final image
 # ====================
-#FROM alpine:latest
-FROM debian:stable-slim
+FROM debian:stretch-slim
+#FROM ubuntu:18.04
 
 RUN echo "dash dash/sh boolean false" | debconf-set-selections;\
     dpkg-reconfigure -f noninteractive dash;\

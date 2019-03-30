@@ -12,13 +12,12 @@ testcase = echo
 TOP_DIR	= $(shell readlink -f ../..)
 -include ../Makefile.common
 
-scxml:	out/$(testcase).scxml
-puml:	out/$(testcase).puml
-svg:	out/$(testcase).svg
+out/echo.scxml:	echo.rules
+	mkdir -p out && rules2scxml $< -o $@ --auto-exit
 
+scxml:	out/echo.scxml
 run:
-	@test -f $(testcase).scxml -a -f $(testcase).in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
-	$(SCXMLRUN) $(testcase).scxml $(testcase).in
+	shelltest echo.conf
 
 install::
 clean::

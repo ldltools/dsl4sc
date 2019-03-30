@@ -1,35 +1,25 @@
 <?xml version="1.0"?>
 <scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
-  <datamodel>
-    <!-- _trace for each 'run' is a sequence of 'possible worlds' generated/tracked at run-time -->
-    <data id="_trace"/>
-    <!-- _trace_matches (guard) examines whether _trace ⊨ [true*]guard holds or not -->
-    <data id="_trace_matches" expr="function (guard) { return true; }"/>
-    <!-- _trace_append (next_world) appends next_world to _trace -->
-    <data id="_trace_append" expr="function (next_world) { }"/>
-  </datamodel>
-  <state id="q2">
-    <transition target="q4" event="echo">
-      <!--tid t15-->
-      <!--transition: curr_world: true label: true next_world: true-->
-      <script>_trace_append (" true ");  console.log (_event.data);  ;</script>
-      <!--rule: r9 event: echo certainty: 15-->
-      <!--rule.when: true-->
-      <!--rule.ensure: true-->
-    </transition>
-  </state>
-  <final id="q5"/>
+  <datamodel/>
   <state id="q4">
-    <transition target="q5" event="_accept">
-      <!--tid t18-->
+    <transition target="q5" event=" ">
+      <!--tid t9_1-->
     </transition>
-    <transition target="q4" event="echo">
-      <!--tid t19-->
+  </state>
+  <state id="q2">
+    <transition target="q4" event="quit">
+      <!--tid t5_1-->
+    </transition>
+    <transition target="q2" event="echo">
+      <!--tid t6_1-->
       <!--transition: curr_world: true label: true next_world: true-->
-      <script>_trace_append (" true ");  console.log (_event.data);  ;</script>
-      <!--rule: r9 event: echo certainty: 15-->
+      <script> console.log (_event.data);  ;</script>
+      <!--rule: r1 event: echo certainty: 1-->
       <!--rule.when: true-->
       <!--rule.ensure: true-->
     </transition>
   </state>
+  <final id="q5">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+  </final>
 </scxml>

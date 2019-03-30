@@ -13,8 +13,8 @@
  * limitations under the License.
  *)
 
-let get () = "0.11.1"
+let get () = "0.12.0rc"
 
 let get_major () = 0
-let get_minor () = 11
-let get_micro () = 1
+let get_minor () = 12
+let get_micro () = 0

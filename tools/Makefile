@@ -1,7 +1,7 @@
 # $Id: $
 
 PREFIX		?= $(shell readlink -f ../_build/install)
-SUBDIRS		= dfa2dfa rules2scxml
+SUBDIRS		= rules2dfa modelgen rules2scxml
 
 all::
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
@@ -15,4 +15,3 @@ clean::
 
 veryclean::	clean
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
-	rm -rf _build/*

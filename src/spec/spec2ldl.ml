@@ -14,6 +14,7 @@
  * limitations under the License.
  *)
 
+open Ldlsat
 open Protocol
 open Property
 open Rule

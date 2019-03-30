@@ -14,7 +14,10 @@
  * limitations under the License.
  *)
 
+open Dsl4sc
 open Printf
+
+module Ldl = Ldlsat.Ldl
 
 let stdin = open_in "/dev/stdin"
 let opt_o = ref "unspecified"

@@ -169,8 +169,25 @@ let rec update_terms_property (tenv : (string * base_t) list) (f : Property.t) =
   | Prop_neg f' -> Prop_neg (update_terms_property tenv f')
   | Prop_conj fs -> Prop_conj (List.map (update_terms_property tenv) fs)
   | Prop_disj fs -> Prop_disj (List.map (update_terms_property tenv) fs)
-  | Prop_modal (m, lp, (f, l_opt)) -> Prop_modal (m, lp, (update_terms_property tenv f, l_opt))
+  | Prop_modal (m, lp, (f, l_opt)) ->
+      Prop_modal (m, update_terms_labelled_path tenv lp, (update_terms_property tenv f, l_opt))
   | _ -> f
+
+and update_terms_labelled_path tenv (r, l_opt) =
+  update_terms_path tenv r, l_opt
+
+and update_terms_path tenv (r : Property.path) =
+  match r with
+  | Path_prop f ->
+      Path_prop (update_terms_property tenv f)
+  | Path_seq rs ->
+      Path_seq (List.map (update_terms_labelled_path tenv) rs)
+  | Path_sum rs ->
+      Path_sum (List.map (update_terms_labelled_path tenv) rs)
+  | Path_test f ->
+      Path_test (update_terms_property tenv f)
+  | Path_star lp ->
+      Path_star (update_terms_labelled_path tenv lp)
 
 and update_term tenv e =
   match e with
@@ -190,6 +207,7 @@ let update_terms_rule tenv (r : Rule.t) =
       (fun (act, a_opt) ->
 	(match act with
 	| Act_ensure p -> Act_ensure (update_terms_property tenv p)
+	| Act_preserve ps -> Act_preserve (List.map (update_terms_property tenv) ps)
 	| _ -> act),
 	a_opt)
       r.action

@@ -1,3 +1,4 @@
 out/
 *.svg
 *.puml
+accumulator/
