@@ -73,7 +73,7 @@ let rec print_term (out : string -> unit) (e : int term) =
   match e with
   | Tm_const (n, Ty_nat _) ->
       out (string_of_int n)
-  | Tm_var (x, _) ->
+  | Tm_var (x, Ty_nat _) ->
       out x
   | Tm_op (op, [e']) when prec e' <= prec e ->
       print_term out e';
@@ -102,8 +102,12 @@ and prec = function
 
 let rec pp_term (pp : Format.formatter -> int -> unit) (fmt : Format.formatter) (tm : int term) =
   match tm with
-  | Tm_const (n, Ty_nat _) -> Format.pp_print_int fmt n
-  | Tm_var (x, Ty_nat _) -> Format.pp_print_string fmt x
+  | Tm_const (n, Ty_nat _) ->
+      Format.pp_print_int fmt n
+  | Tm_var (x, ty) ->
+      Format.pp_print_string fmt ("Property.Tm_var (" ^ x ^ ", ");
+      pp_base_t fmt ty;
+      Format.pp_print_string fmt ")"
   | Tm_op (op, e :: rest) ->
       Format.pp_print_string fmt "(";
       pp_term pp fmt e;
