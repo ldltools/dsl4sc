@@ -1,71 +1,217 @@
-# ping pong
+# ping & pong
 
-## (1) [*ping\_pong2.rules*](ping_pong2.rules) is defined in *dsl4sc* as follows.
+Two dsl4sc models, [ping](ping.rules) and [pong](pong.rules), 
+interact with each other by exchanging _ping_ and _pong_ events.  
+Specifically,
+starting from a _ping ({"count" : n})_ event arriving at [ping](ping.scxml),
+the 2 processes exchange the following events.
 
-&ensp; **protocol**  
-&ensp;&ensp; (ping; pong)\*;;  
-&ensp;&ensp;&ensp; // pairs of *ping* and *pong* events (repeated 0 or more times)  
-&ensp; **rule**  
-&ensp;&ensp; **on** ping  
-&ensp;&ensp; **raise** pong { console.log ("ping", \_event.data); \_\_raiseEvent ("pong", \_event.data); };  
-&ensp;&ensp;&ensp; // Each incoming *ping* event is responded with _pong_  
-&ensp;&ensp;&ensp; // Note: The above "**raise** _pong_" action in _dsl4sc_ needs to be _refined/implemented_ within the "{...}" block using `SCXML.raise`  
-&ensp;  
-&ensp;&ensp; **on** pong  
-&ensp;&ensp; **do** { console.log ("pong", \_event.data); };  
+- _ping ({"count" : n})_
+- _pong ({"count" : n - 1})_
+- ...
+- _ping ({"count" : 0})_ or _pong ({"count" : 0})_ depending on the parity of _n_
+- _quit_
 
-## (2) [*ping\_pong2.rules*](ping_pong2.rules) can be statically verified against different properties.
+![ping\_pong](ping_pong.svg)
 
-### verification 1: reachability of "_ping; pong_"
 
-Can two consecutive events of "ping" and "pong" be processed/accepted by [*ping\_pong2.rules*](ping_pong2.rules)?
+## (1) [*ping*](ping.rules)
 
-First, this property is defined as [ping\_pong.prop1](ping_pong.prop1) as follows:
+The definition of the model includes 2 distinct parts,
+namely _protocol_ and _rule_ definition parts.
 
-**protocol** ping; pong;;
+<details>
+  <summary>ping</summary>
+  <div><img alt="statechart" src="ping.svg?sanitize=true"/></div>
+</details>
 
-Then, run our dsl4sc model checker _rulesmc_ to verify if this holds or not,
-and check out that the answer is positive.
+
+### protocol
+
+Each protocol defines a _regular pattern_ of acceptable event sequences.
+
+- Operators such as sequence (;), choice (+), and loop (\*) can be used
+  for composing regular patterns.
+- Event parameters cannot be included.
 
 ```
-$ rulesmc --model ping_pong2.rules ping_pong.prop1 -- reachability  
+protocol  
+ping; ((pong; ping)* + pong; (ping; pong)*); quit ;;  
+  // regular pattern of the incoming events  
+  // [operator precedence] high: sequence (;), loop (*), choice (+) :low  
+```
+
+The above definition is interpreted as follows.
+
+- Each _run_ (execution) of the model always starts upon a "_ping_" event  
+  ("_ping; ..._")
+- Subsequently, either of the following 2 cases occurs  
+  1. 2 consecutive events, "_pong_" followed by "_ping_", repeat 0 or more times  
+     ("_(pong; ping)\*_")
+  1. "_pong_" followed by a loop of consecutive "_ping_" and "_pong_"  
+     ("_pong; (ping; pong)\*_")
+- Lastly, the run terminates when a "_quit_" event arrives  
+  ("_...; quit;;_")
+
+
+### rules (abstract)
+
+Rules define how to respond to incoming events, and
+they can carry implementation code.
+
+- [_abstract rules_] rules without implementation code  
+  these are for formal verification.
+- [_implementation rules_] rules including implementation code  
+  these are for generating an executable model.
+
+For the _ping_ model, rules are primarily about how to process each incoming "_ping_" event.  
+Upon receiving a "_ping_", it chooses one of the following actions
+
+- raise a "_pong_" event for moving on to the next step
+- raise a "_quit_" event for termination
+
+```
+rule  
+on ping  
+raise quit + pong;  
+```
+
+
+### rules (implementation)
+
+Implementation rules carry (JavaScript) code that
+look into event parameters
+and take proper actions depending on their values.
+
+```
+rule  
+// event: ping ({count})  
+on ping  
+raise quit + pong  
+{  
+    var n = _event.data.count;  
+    if (n == 0)  
+	SCXML.raise ({name: "quit", data: {die_alone: 0}});  
+    else  
+	SCXML.raise ({name: "pong", data: {count: (n - 1)}});  
+        // note: this event is what the protocol means by "pong"  
+}  
+// event: ping ({count})  
+on pong  
+do { SCXML.send ({event: _event, topic: "pong"}); }  
+// event: quit ({die_alone})  
+on quit  
+do { if (_event.data.die_alone == 0) SCXML.send ({event: {name: "quit", data: {die_alone: 1}}, topic: "pong"}); }
+```
+
+Note that
+each `SCXML.raise` operation in the code has a corresponding dsl4sc `raise` operation, whereas
+no `SCXML.send` operation has any such dsl4sc counterpart.
+This is since dsl4sc models just take account of incoming events, that is,
+events emitted by `SCXML.raise` are received internally and thus recognized
+as a part of the model definition, though
+those emitted by `SCXML.send` are outbound and not processed by the model itself.
+
+
+## (2) [*pong*](pong.rules)
+
+### protocol
+
+```
+protocol  
+(pong; ping)*; pong?; quit ;;
+```
+
+<details>
+  <summary>pong</summary>
+  <div><img alt="statechart" src="pong.svg?sanitize=true"/></div>
+</details>
+
+
+## Formal verification
+
+### claim 1: "_ping; pong; quit_" is an acceptable event sequence for the _ping_ model.
+
+Can two consecutive events of "ping" and "pong" be processed/accepted by [*ping*](ping.rules)?
+
+To verify this formally,
+we first define this claim in dsl4sc as the following protocol
+
+```
+protocol ping; pong; quit;;
+```
+
+Then, by providing this and the model definition for our model checking tool, `rulesmc`,
+we positively confirm the claim.
+
+```
+$ echo "protocol ping; pong; quit;;" | rulesmc ping.rules -- reachability  
 reachable
 ```
 
-### verification 2: logical entailment
+### claim 2: it is always the case that either "_ping_" or "_pong_" repeats until "_quit_" arrives.
 
-For any event sequence, does it include only "_ping_" or "_pong_"?  
-This property is defined as [ping\_pong.prop2](ping_pong.prop2) as follows:
-
-**protocol** (ping + pong)*;;
-
-Then, run _rulesmc_ to verify if this holds or not.
+In the same way, we first define the claim as follows.
 
 ```
-$ rulesmc --model ping_pong2.rules ping_pong.prop2  
+protocol (ping + pong)*; quit;;
+```
+
+Succeedingly, run the model checker as follows.
+
+```
+$ echo "protocol (ping + pong)*; quit;;" | rulesmc ping.rules  
+claim holds  
+$ echo "protocol (ping + pong)*; quit;;" | rulesmc pong.rules  
 claim holds
 ```
 
-## (3) To generate [*ping\_pong2.scxml*](ping_pong2.scxml) from [*ping\_pong2.rules*](ping_pong2.rules), run _rules2scxml_
 
-run: `rules2scxml ping_pong2.rules -o ping_pong2.scxml`
+## Statechart generation and its execution
 
-![statechart](ping_pong2.svg)
+For brevity,
+we just show how to run one of the 2 models.
+To run the both together, visit
+[this page](https://github.com/ldltools/scxmlrun/examples/ping_pong/README.md).
 
-## (4) [ping\_pong2.in](ping_pong2.in) is defined as an input scenario,
-which includes the following input events
 
-&ensp; {"event" : {"name" : "ping", "data" : 1}  
-&ensp; {"event" : {"name" : "ping", "data" : 2}
+## generation of SCXML statecharts
 
-##(5) To test *ping\_pong2.scxml* against *ping\_pong2.in*, run [_scxmlrun_](https://github.com/ldltools/scxmlrun), our SCXML interperter
+Each of [ping](ping.rules) and [pong](pong.rules) can be translated into SCXML
+using our `rules2scxml` tool.
 
-run: `scxmlrun ping_pong2.scxml ping_pong2.in`
+```
+$ rules2scxml ping.rules -o ping.scxml --auto-exit  
+$ rules2scxml pong.rules -o pong.scxml --auto-exit
+```
 
-The following messages should appear on your terminal.
+Remark:  
+the `--auto-exit` option indicates that the model definition includes
+its own termination event ("_quit_") and
+needs no extra event to be auto-generated.
 
-&ensp; ping 1  
-&ensp; pong 1  
-&ensp; ping 2  
-&ensp; pong 2  
 
+## statechart execution
+
+Events are JSON objects of the following form:
+
+```
+{"event": {"name": "ping", "data": {"count": 2}}}  
+{"event": {"name": "pong", "data": {"count": 1}}}
+```
+
+To run either _ping_ or _pong_ statechart, we just need to supply input events.
+
+```
+$ cat <<EOF | scxmlrun ping.scxml | jq -c '.event.name, .event.data'  
+{"event": {"name": "ping", "data": {"count": 2}}}  
+{"event": {"name": "ping", "data": {"count": 0}}}  
+EOF  
+"pong"  
+{"count":1}  
+"quit"  
+{"die_alone":1}
+```
+
+This corresponds with a sequence of:
+_ping ({"count": 2}); pong ({"count": 1}); ping ({"count": 0}); quit_

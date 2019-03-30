@@ -1,4 +1,6 @@
 protocol
- echo; echo*;;  // seq of "echo" events (1 or more times)
+ echo*; quit;;
+  // seq of "echo" events (0 or more times)
 rule
- on echo do { console.log (_event.data); } // print out the param of the incoming "echo" event
+ on echo do { console.log (_event.data); };
+  // print out the param of the incoming "echo" event

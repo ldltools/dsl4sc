@@ -1,34 +1,84 @@
 # [echo](echo.rules)
 
-(1) [*echo.rules*](echo.rules) is defined in *dsl4sc* as follows.
+## dsl4sc script: [*echo*](echo.rules)
+
+The script is defined in *dsl4sc* as follows.
 
 &ensp; **protocol**  
-&ensp;&ensp; echo; echo\*;;  
-&ensp;&ensp;&ensp; // sequence of *echo* events (repeated 1 or more times)  
+&ensp;&ensp; echo\*; quit;;  
+&ensp;&ensp;&ensp; // sequence of *echo* events (repeated 0 or more times) terminated by *quit*  
 &ensp; **rule**  
 &ensp;&ensp; **on** echo **do** { console.log (_event.data); };  
 &ensp;&ensp;&ensp; // upon each incoming *echo* event, print out its parameter string
 
-(2) [*echo.scxml*](echo.scxml) can be generated
-from [*echo.rules*](echo.rules) as a semantically-equivalent
-statechart in the [SCXML](https://www.w3.org/TR/scxml/) format.
+The **protocol** part of the script defines a _regular pattern_ of acceptable events,
+whereas the **rule** part defines how to process each incoming event.
 
-run: `rules2scxml echo.rules -o echo.scxml`
+
+## Formal verification
+
+## claim 1: _echo_ can repeat 1 or more times 
+
+This is about finding an acceptable event sequence that includes 1 or more _echo_ events,
+and we obtain a positive result as follows.
+
+```
+$ echo 'protocol echo; echo*; quit;;' | rulesmc echo.rules --reachability  
+reachable
+```
+
+## claim 2: _echo_ always repeats 1 or more times 
+
+If we make a stricter claim -- it is always the case that _echo_ repeats 1 or more times,
+then it turns out not to hold.
+
+```
+$echo 'protocol echo; echo*; quit;;' | rulesmc echo.rules  
+claim does not hold
+```
+
+## claim 3: either _echo_ or _quit_ always repeats 1 or more times 
+
+Then, if we relax the above and make a weaker claim
+-- it's not _echo_ but either _echo_ or _quit_ that always repeats 1 or more times,
+then it holds this time.
+
+```
+$ echo 'protocol (echo + quit)*;;' | rulesmc echo.rules  
+claim holds
+```
+
+
+## Statechart generation and its execution
+
+### Generation of statechart: [*echo.scxml*](echo.scxml)
+
+From [*echo.rules*](echo.rules), our _rules2scxml_ tool included in this repository generates
+an equivalent statechart that conforms to the [SCXML](https://www.w3.org/TR/scxml/) specification.
+
+```
+$ rules2scxml echo.rules -o echo.scxml --auto-exit
+```
 
 ![statechart](echo.svg)
 
-(3) [echo.in](echo.in) is defined as an input scenario,
-which includes the following input events
 
-&ensp; {"event" : {"name" : "echo", "data" : "hello"}}  
-&ensp; {"event" : {"name" : "echo", "data" : "world"}}
+### its execution
 
-(4) To test *echo.scxml* against *echo.in*
-using [scxmlrun](https://github.com/ldltools/scxmlrun), our SCXML interperter,
+We can run the statechart as an executable program
+by using our companion tool, called
+[scxmlrun](https://github.com/ldltools/scxmlrun).
 
-run: `scxmlrun echo.scxml echo.in`
+To run the statechart with a particular input event sequence,
+we just need to invoke [scxmlrun](https://github.com/ldltools/scxmlrun) in the following manner.
 
-The following messages should appear on your terminal.
+```
+$ cat <<EOF | scxmlrun echo.scxml  
+{"event" : {"name" : "echo", "data" : "hello"}}  
+{"event" : {"name" : "echo", "data" : "world"}}  
+{"event" : {"name" : "quit"}}  
+EOF  
+hello  
+world  
+```
 
-&ensp; hello  
-&ensp; world  

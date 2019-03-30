@@ -1,13 +1,13 @@
 # v0.12.0rc
 
-- [dsl4sc] pack all modules into "Dsl4sc"
+- [dsl4sc] pack all ocaml modules into "Dsl4sc"
 - [rules2scxml] SCXML event names can be overridden  
-  when a rule is of the form "on e { e' } ...", "e'" turns out to be the event name.  
+  when a rule is of the form "on e1 { e2 } ...", it is "e2", instead of "e1", that appears in the generated SCXML.  
   refer to tests/test22.
   (2dd2d3e)
 
 ## fixes
-- [rulespp] "preserve" rules with term variables.
+- [rulespp] recognize term variables in "preserve" rules correctly.
   (39bcf14)
 - [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.
   (7b85a4c)

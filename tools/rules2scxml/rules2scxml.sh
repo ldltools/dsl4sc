@@ -32,7 +32,8 @@ usage () {
     echo -e "  -p, --parse-only\tparse-only"
     echo -e "  -E, --rulespp-only\tpreprocess-only"
     echo -e "  --until <stage>\tterminate when <stage> gets reached"
-    echo -e "  \t\t\t<stage> ::= spec | ldl | mso | dfa | dfadot | dfa[2-4] | scxml"
+    echo -e "  \t\t\t<stage> ::= spec | ldl | dfa | dfa[1-4] | scxml"
+    echo -e "  --auto-exit\t\tset the transitions to the final states as event-less"
     echo -e "  --monitor\t\tgenerate monitor"
     echo -e "  -v\t\t\tbecome verbose"
     echo -e "  -h\t\t\tdisplay this message<outfile>"
@@ -63,6 +64,12 @@ do
 	-u | --until)
 	    until=$2
 	    shift
+	    ;;
+
+	## extra options (for dfa2scxml.sh)
+	--auto-exit)
+	    # pass down to dfa2scxml.sh
+	    export accept_transition=" "
 	    ;;
 	--monitor)
 	    # pass down to dfa2scxml.sh

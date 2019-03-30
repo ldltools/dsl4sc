@@ -1,5 +1,5 @@
 protocol
-(put + get)*;;
+(put + get)* ;;
 
 variable
 n : nat (4);  // num of contents. 0 <= n <= 3

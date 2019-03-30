@@ -6,20 +6,23 @@ usage:
 	@echo -e "  scxml\t\tgenerate \"$(testcase).scxml\" (in ./out)"
 	@echo -e "  run\t\trun \"$(testcase).scxml\" (needs: scxmlrun)"
 
+clean::;	rm -f *~
+veryclean::
+install::
+
 # overrides defs in ..//Makefile.common
 TOP_DIR	= $(shell readlink -f ../..)
 include ../Makefile.common
 
-testcase = ping_pong2
+MODELS	= ping pong
+MODELS	+= monitor monitor2
 
-scxml:	out/$(testcase).scxml
-puml:	out/$(testcase).puml
-svg:	out/$(testcase).svg
+%.scxml:	%.rules
+	accept_transition=" " rules2scxml $< -o $@
+
+scxml:	$(MODELS:%=%.scxml)
+svg:	$(MODELS:%=%.svg)
 
 run:
-	@test -f $(testcase).scxml -a -f $(testcase).in || { echo "input file(s) missing" > /dev/stderr; exit 1; }
-	$(SCXMLRUN) $(testcase).scxml $(testcase).in
+	shelltest ping_pong.conf
 
-install::
-clean::
-veryclean::

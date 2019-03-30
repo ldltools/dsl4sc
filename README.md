@@ -1,71 +1,75 @@
 # Summary
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
-for defining and verifying state transition models for event processing.
+primarily targeted at defining and verifying state transition models for event processing.
 
 Each model in dsl4sc has the following unique characteristics:
 
-- It can be defined in terms of event _protocol_, _properties_, and ECA _rules_
-  - event protocol: _regular_ pattern of acceptable event sequences
-  - propery: LDL<sub>f</sub> formula that globally holds as an invariant condition.
-  - [_ECA rule_](https://en.wikipedia.org/wiki/Event_condition_action):
-    triple of event, condition, and action
-- It has a clear semantics in terms of LDL<sub>f</sub>.
+- It can include the following 3 different sort of declarations:
+  - event **protocol**:
+    _regular_ pattern of acceptable event sequences
+  - logical **property**:
+    temporal LDL<sub>f</sub> formula the model should meet.
+  - ECA **rule**:
+    triple of _event_, _condition_, and _action_
+    that defines how to respond to the specified incoming event.
+- It has a clear semantics in terms of the LDL<sub>f</sub> formalism.
 - it can be verified statically and formally against arbitrary requirements
   that are also defined in dsl4sc
 - It can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/)
 
-# Example: [ping\_pong](examples/ping\_pong/README.md) -- You say "ping" and I say "pong"
+# Example: [deuce](examples/deuce/README.md) -- Sharapova vs. Williams
 
-Consider 2 sorts of events, _ping_ and _pong_:
-The following two dsl4sc models both track ping and pong events
-emitted in an alternating manner.  
+Consider 2 proffessional tennis players, fictitiously called Sharapova and Williams,
+are fighting for winning a game.
+They are currently at deuce and either needs to win by 2 points ahead of her opponent.
 
-(1) ping\_pong1.rules -- _protocol-only_ model
-
-```
-protocol (ping; pong)* ;; // ping followed by pong (repeats 0 or more times)
-```
-
-(2) ping\_pong2.rules -- model that includes _protocol_, _property_, and _rule_ parts
+To model what can happen until the game is won,
+let us start with the following protocol definition
 
 ```
 protocol  
-  (ping + pong)*;; // ping or pong (repeats 0 or more times)  
+(sharapova + williams)*; game ;;
+```
+
+This declares that, until the "_game_" event is emitted when the game is won,
+either of the "_sharapova_" and "_williams_" events, indicating which player wins a point,
+repeats 0 or more times.  
+
+Succeedingly, we add the following _property_ declaration that
+the players are initially at deuce and either will win the game in the end.
+
+```
+variable  
+state : nat(4); // nat(4) = {0,1,2,3}  
+  // 0: deuce, 1: advantage with sharapova, 2: advantage with williams, 3: game won  
 property  
-  !pinged; // not "pinged", initially  
+state = 0 & [](last -> state = 3); // initial and final conditions
+```
+
+Lastly, we add the following rules that define how each event is processed.
+
+```
 rule  
-  on ping when !pinged ensure pinged; // pinged after processing ping  
-  on pong when pinged ensure !pinged;  
+on sharapova when state = 0 ensure state = 1;  
+on sharapova when state = 1 raise game ensure state = 3;  
+on sharapova when state = 2 ensure state = 0;  
+...
 ```
 
-(3) model checking
+Here, the first rule defines that
+if a "_sharapova_" event is emitted when the game is at deuce (state = 0),
+then it turns out that the advantage is with the player called Sharapova (state = 1).
 
-ping\_pong1 accepts ping or pong -- (ping; pong)* |= (ping + pong)*
+By combining all of these, we derive a state-transition model illustrated as follows.
 
-```
-$ echo 'protocol (ping + pong)*;;' | rulesmc -m ping_pong1.rules /dev/stdin  
-claim holds
-```
+![statechart](examples/deuce/deuce.svg)
 
-ping\_pong2 includes ping\_pong1
+Once a model is defined, we can formally verify the model in various ways.
+Take a look at [this](examples/deuce/README.md) for the detail.
 
-```
-$ rulesmc -m ping_pong2.rules ping_pong1.rules --reachability  
-reachable
-```
+You can also check out [more examples](examples/README.md) if you are interested.  
 
-ping\_pong3, defined as the _conjunction_ of ping\_pong1 and ping\_pong2,
-entails that _!pinged_ and _pinged_ hold in an alternating manner.
--- ping\_pong3 |= <({!pinged}; {pinged})*> !pinged
-
-```
-$ cat ping_pong1.rules ping_pong2.rules > ping_pong3.rules  
-$ echo 'property <({!pinged}; {pinged})*> !pinged;' | rulesmc -m ping_pong3.rules /dev/stdin  
-claim holds
-```
-
-Check out [more examples](examples/README.md) if you are interested.  
 
 # Installation on Docker
 
