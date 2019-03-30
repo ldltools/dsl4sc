@@ -36,7 +36,7 @@ This declares that, until the "_game_" event is emitted when the game is won,
 either of the "_sharapova_" and "_williams_" events, indicating which player wins a point,
 repeats 0 or more times.  
 
-Succeedingly, we add the following _property_ declaration that
+Succeedingly, we add the following _property_ that defines
 the players are initially at deuce and either will win the game in the end.
 
 ```
@@ -121,7 +121,6 @@ In addition to the tools listed above, you also need the following GNU tools:
   and build with `MAKE=remake remake` instead of `make`
 
 # Testing
+
 - run: `make -C tests test`  
   run test cases using `rulessat`, `rulesmc`, and `rules2scxml`.
-- run: `make -C tests scxml`  
-  SCXML files will be generated from rules definitions and stored into `tests/out`

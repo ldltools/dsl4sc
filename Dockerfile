@@ -28,9 +28,15 @@ RUN apt-get update;\
     apt-get install -y gawk;\
     apt-get install -y graphviz xqilla libxml2-utils
 
+# dsl4sc
 WORKDIR /usr/local
 COPY --from=builder /usr/local .
 RUN ldconfig
+
+# examples & tests
+ADD examples /root/examples
+ADD tests /root/tests
+RUN apt-get install -y make gawk shelltestrunner
 
 WORKDIR /root
 CMD ["/bin/bash"]

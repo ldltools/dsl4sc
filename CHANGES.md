@@ -1,4 +1,4 @@
-# v0.12.0rc
+# v0.11.2 (2019-03-30)
 
 - [dsl4sc] pack all ocaml modules into "Dsl4sc"
 - [rules2scxml] SCXML event names can be overridden  
@@ -7,6 +7,8 @@
   (2dd2d3e)
 
 ## fixes
+- [rulespp] recognize term variables in modal paths correctly.
+  (b098d28)
 - [rulespp] recognize term variables in "preserve" rules correctly.
   (39bcf14)
 - [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.
