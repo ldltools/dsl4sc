@@ -26,5 +26,16 @@ state = 0;
 
 ### rules
 
+```
+rule  
+on sharapova when state = 0 ensure state = 1;  
+on sharapova when state = 1 raise game ensure state = 3;  
+on sharapova when state = 2 ensure state = 0;  
+on sharapova when state = 3 ensure false;  
+...
+```
+
 
 ## Formal verification
+
+(to be filled in)

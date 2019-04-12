@@ -25,6 +25,8 @@ let opt_fmt_out = ref "unspecified"
 let opt_verbose = ref false
 let opt_parse_only = ref false
 
+(* variables *)
+let opt_allow_undeclared = ref true
 (* protocol *)
 let opt_expand_any = ref true
 let opt_proto_min = ref 1
@@ -127,6 +129,9 @@ let main argc argv =
       | "-p" | "--parse-only"  ->
 	  opt_parse_only := true
 
+      (* variables *)
+      | _ when matches 11 "--no-undeclared" ->
+	  opt_allow_undeclared := false
       (* protocol *)
       | _ when matches 7 "--relax-protocols" ->
 	  opt_relax_protocols := true
@@ -166,6 +171,7 @@ let main argc argv =
   (* decls -> decls' *)
   let decls' =
     Rulespp.preprocess
+      ~allow_undeclared: !opt_allow_undeclared
       ~expand_any: !opt_expand_any
       ~minimize_protocols: !opt_proto_min
       ~relax_protocols: !opt_relax_protocols
@@ -190,6 +196,10 @@ with
     flush_all ();
     eprintf ";; Failure: %s\n" s;
     exit 1;
+| Invalid_argument s ->
+    flush_all ();
+    eprintf ";; Invalid argument: %s\n" s;
+    exit 1
 | Not_found ->
     flush_all ();
     eprintf ";; Something seems missing!\n";

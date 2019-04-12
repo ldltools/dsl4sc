@@ -260,6 +260,11 @@ and property (buf : lexbuf) =
   | "=>"		-> IMPLIES
 
   (* modal *)
+  | 'X' | "()"		-> LTL_UOP 'X'
+  | 'F' | "<>"		-> LTL_UOP 'F'
+  | 'G' | "[]"		-> LTL_UOP 'G'
+  | 'U'			-> LTL_BOP 'U'
+
   | '['			-> LBRACK
   | ']'			-> RBRACK
   | '?'			-> QUESTION

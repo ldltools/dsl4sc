@@ -20,11 +20,11 @@ Each model in dsl4sc has the following unique characteristics:
 
 # Example: [deuce](examples/deuce/README.md) -- Sharapova vs. Williams
 
-Consider 2 proffessional tennis players, fictitiously called Sharapova and Williams,
+Consider 2 professional tennis players, fictitiously called Sharapova and Williams,
 are fighting for winning a game.
 They are currently at deuce and either needs to win by 2 points ahead of her opponent.
 
-To model what can happen until the game is won,
+To model what can happen through the game,
 let us start with the following protocol definition
 
 ```
