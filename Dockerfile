@@ -9,6 +9,9 @@ RUN eval `opam config env`;\
     apt-get install -y libgmp-dev; opam install -y z3;\
     export PREFIX=/usr/local; make veryclean && make && make install
 
+# z3 archive
+RUN tar cf /root/z3.tar `opam config var lib`/z3
+
 # helpers
 RUN apt-get install -y graphviz xqilla libxml2-utils
 
@@ -25,15 +28,16 @@ FROM debian:stretch-slim
 RUN echo "dash dash/sh boolean false" | debconf-set-selections;\
     dpkg-reconfigure -f noninteractive dash;\
     echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local-lib.conf;\
-    apt-get update;\
-    apt-get install -y gawk
+    apt-get update
 
 # dsl4sc (and ldlsat)
 COPY --from=builder /usr/local /usr/local
 # z3
-COPY --from=builder /root/.opam /root/.opam
+#COPY --from=builder /root/.opam /root/.opam
+COPY --from=builder /root/z3.tar /root
+RUN tar xf /root/z3.tar; rm -f /root/z3.tar
 # helpers
-RUN apt-get install -y libgomp1 xqilla libxml2-utils
+RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils
 
 # examples & tests
 ADD examples /root/examples

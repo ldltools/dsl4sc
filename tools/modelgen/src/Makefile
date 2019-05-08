@@ -97,15 +97,15 @@ LIBS		= $(LIBS.byte) $(LIBS.opt) $(LIBS.opt:%.cmxa=%.a)
 
 all::	$(BINS)
 
+#Z3LIB.byte	= -dllib z3ml
+Z3LIB.byte	= -custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3
+Z3LIB.opt	= -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3
+
 $(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma \
-	-custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3 \
-	$^
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma $(Z3LIB.byte) $^
 
 $(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa \
-	-ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3 \
-	$^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa $(Z3LIB.opt) $^
 
 # library
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)
