@@ -30,6 +30,7 @@ CAML_PKG_FLAGS	+= -package ppx_deriving_yojson
 #CAML_PKG_FLAGS	+= -package bigstring
 #CAML_PKG_FLAGS	+= -package sexplib
 #CAML_PKG_FLAGS	+= -package ppx_sexp_conv
+#CAML_PKG_FLAGS	+= -package Z3
 
 # on our own
 CAML_INC_FLAGS	=
@@ -46,6 +47,7 @@ CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/xml-light
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/gen
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/sedlex
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/menhirLib
+CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/z3
 
 CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
 CAML_INC_FLAGS	+= -I $(DSL4SCLIBDIR)
@@ -70,13 +72,14 @@ CAMLOPTFLAGS	+= -p
 endif
 
 CMAS		=
-#CMAS		+= nums.cma
+CMAS		+= nums.cma
 CMAS		+= result.cma ppx_deriving_runtime.cma ppx_deriving_yojson_runtime.cma
 CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= unix.cma bigarray.cma bigstring.cma sexplib.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
 CMAS		+= xml-light.cma
 CMAS		+= gen.cma sedlexing.cma
+CMAS		+= z3ml.cma
 CMAS		+= ldlsat.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
@@ -95,9 +98,14 @@ LIBS		= $(LIBS.byte) $(LIBS.opt) $(LIBS.opt:%.cmxa=%.a)
 all::	$(BINS)
 
 $(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma $^
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma \
+	-custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3 \
+	$^
+
 $(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa \
+	-ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lz3 \
+	$^
 
 # library
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)

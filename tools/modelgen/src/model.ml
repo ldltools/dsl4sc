@@ -202,6 +202,9 @@ and applicable_check1 (pre, post) (w1, w2) =
     (*
     let f1 = Simp.simp (Ldl_conj [pre; w1])
     in f1 = Ldl_atomic "false"
+    output_string stderr "\n[pre & w1]";
+    print_formula (output_string stderr) (Ldl_conj [pre; w1]); output_string stderr "\n";
+    flush stderr;
      *)
     Ldl_conj [pre; w1] |> Toysat.tseitin |> SAT.solve 
 
@@ -210,6 +213,9 @@ and applicable_check1 (pre, post) (w1, w2) =
     (*
     let f2 = Simp.simp (Ldl_conj [post; w2])
     in f2 = Ldl_atomic "false"
+    output_string stderr "[post & w2]";
+    print_formula (output_string stderr) (Ldl_conj [pre; w1]); output_string stderr "\n";
+    flush stderr;
      *)
     Ldl_conj [post; w2] |> Toysat.tseitin |> SAT.solve 
   in
