@@ -1,9 +1,11 @@
 // -*-javascript-*-
 
 import {parse} from '@babel/parser';
+import * as t from '@babel/types';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
-import transform from './transform.js';
+
+import * as transformer from './transformer.js';
 const fs = require ('fs');
 
 // read and parse source code
@@ -23,7 +25,7 @@ const visitor = {
 }
 traverse (ast, visitor);
 */
-traverse (ast, transform (spec));
+traverse (ast, transformer.visitor (spec));
 //console.log (JSON.stringify (ast, null, "  "));
 
 // generate

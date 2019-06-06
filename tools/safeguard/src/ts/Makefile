@@ -1,15 +1,27 @@
 #
 
+TOP_DIR		= $(shell readlink -f ../../../..)
+PREFIX		?= $(TOP_DIR)/_build/install
+
 all::
 clean::
-insgall::
+install::
+	@mkdir -p $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
+	@test -f safeguard_ts.js || exit 1
+	rsync -avzop safeguard_ts.js $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
 
-test::	check
+#
+test::
 	testdir=../../tests;\
 	node -r esm main.js $$testdir/deuce.js $$testdir/deuce.guards
 
 #
-setup::	check setup_node setup_typescript setup_babel
+webpack::
+	@test -x $$(npm bin)/webpack || exit 1
+	$$(npm bin)/webpack
+
+#
+setup::	setup_check setup_node setup_typescript setup_babel setup_webpack
 setup_node::
 	npm i -D esm
 setup_typescript::
@@ -28,6 +40,6 @@ setup_prettier::
 setup_webpack::
 	npm i -D webpack webpack-cli babel-loader
 
-check::
-	@test -f package.json || exit 1
-	@test $(npm bin) = $(readlink -f $PWD/node_modules/.bin) || exit 1
+setup_check::
+	@test -f package.json || npm init -y
+	@test $$(npm bin) = $$(readlink -f $$PWD/node_modules/.bin) || exit 1

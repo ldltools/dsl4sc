@@ -1,3 +1,5 @@
+#
+
 FROM ldltools/ldlsat-dev as builder
 MAINTAINER LDL Tools development team <ldltools@outlook.com>
 
@@ -37,7 +39,9 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /root/z3.tar /root
 RUN tar xf /root/z3.tar; rm -f /root/z3.tar
 # helpers
-RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils
+RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils wget
+RUN wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
+    nvm install 11.6; nvm use 11.6
 
 # examples & tests
 ADD examples /root/examples

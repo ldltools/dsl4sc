@@ -15,6 +15,8 @@ LIBDIR=$(readlink -f `dirname $0`/../lib/dsl4sc)
 # helpers
 RULES2SCXML=rules2scxml
 GUARDGEN=${LIBDIR}/tools/guardgen.sh
+TRANSPILER=${LIBDIR}/tools/safeguard_helpers/safeguard_ts.js
+NODE=node
 
 usage ()
 {
@@ -118,6 +120,10 @@ guardgen ()
 
 guardfile=$(tempfile -d /tmp/.dsl4sc -s .guards)
 guardgen > $guardfile
-cat $guardfile
+#cat $guardfile
+
+test -f "$TRANSPILER" || exit 1
+$NODE $TRANSPILER $infile $guardfile > $outfile || { rm -f $guardfile; exit 1; }
 
 rm -f $guardfile
+true

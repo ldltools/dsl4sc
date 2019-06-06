@@ -108,16 +108,6 @@ To test generated SCXML files, you further need to install `scxmlrun`.
   build & install the tool by running `make && make install` in the top directory.  
   By default, the binaries will be installed into `/usr/local/bin`.
 
-## Prerequisites (optional)
-To use the [safeguard](https://github.com/ldltools/dsl4sc/tree/master/tools/#safeguard) tool,
-you also need to install the following.
-
-- ocaml packages: wtf8 [flow\_parser](https://github.com/facebook/flow/tree/master/src/parser)  
-  run: `opam install wtf8 flow_parser`
-
-- [escodegen](https://github.com/estools/escodegen)  
-  run: `npm install -g escodegen`
-
 ## Build
 - run `make && make install` in the top directory  
   Tools will be created and installed into `/usr/local/bin`.  
