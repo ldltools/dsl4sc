@@ -52,9 +52,12 @@ and action_unit =
   | Act_raise of string
   | Act_raise_sum of string list
 
-[@@deriving show]
+[@@deriving show, yojson]
 
 type t = rule
+
+let pp = pp_rule
+let show = show_rule
 
 (*
 let verbose = ref 0
@@ -341,7 +344,8 @@ type model =
     { fsa : (state, label) Fsa.t;
       mutable rules : Rule.t list;
       mutable rules_map : (string * string list) list;
-      elements : (string * Xml.xml) list;
+      elements : (string * Xml.xml) list
+	[@printer fun fmt elts -> ()];
     }
 
 and state =
@@ -351,6 +355,9 @@ and state =
 and label =
     string * formula list * string list
       (* (tid, next_world, event_name list) *)
+
+[@@deriving show]
+(*[@@deriving show, yojson]*)
 
 type t = model
 type rule = Rule.t
@@ -787,9 +794,18 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
   out "</rule>\n";
   ()
 
-let to_channel oc m =
+let rec to_channel ?(format = "xml") oc m =
   if !verbose > 0 then eprintf "** to_channel\n";
 
+  match format with
+  | "caml" ->
+      output_string oc (show_model m);
+      output_string oc "\n"
+  | "xml" | "unspecified" ->
+      to_channel_xml oc m
+  | _ -> invalid_arg ("[to_channel] " ^ format)
+
+and to_channel_xml oc m =
   let elts = m.elements in
 
   (* output dfa (in xml) *)

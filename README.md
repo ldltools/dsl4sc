@@ -1,11 +1,12 @@
 # Summary
+
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
 primarily targeted at defining and verifying state transition models for event processing.
 
 Each model in dsl4sc has the following unique characteristics:
 
-- It can include the following 3 different sort of declarations:
+- can include the following 3 different sort of declarations:
   - event **protocol**:
     _regular_ pattern of acceptable event sequences
   - logical **property**:
@@ -13,10 +14,10 @@ Each model in dsl4sc has the following unique characteristics:
   - ECA **rule**:
     triple of _event_, _condition_, and _action_
     that defines how to respond to the specified incoming event.
-- It has a clear semantics in terms of the LDL<sub>f</sub> formalism.
-- it can be verified statically and formally against arbitrary requirements
-  that are also defined in dsl4sc
-- It can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/)
+- has a clear semantics in terms of the LDL<sub>f</sub> formalism.
+- can be verified statically and formally against arbitrary requirements
+  that are also defined in dsl4sc.
+- can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/).
 
 # Example: [deuce](examples/deuce/README.md) -- Sharapova vs. Williams
 
@@ -71,20 +72,22 @@ Take a look at [this](examples/deuce/README.md) for the detail.
 You can also check out [more examples](examples/README.md) if you are interested.  
 
 
-# Installation on Docker
+# Installation on Docker (recommended)
 
 - run `docker build --target builder -t ldltools/ldlsat-dev .` in the [ldlsat](https://github.com/ldltools/ldlsat) directory
 - run `docker build -t ldltools/dsl4sc .` in this directory
 
 # Installation on Debian/Ubuntu
 ## Prerequisites
-- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.0)  
+To run dsl4sc for static verification, you need the following tools.
+
+- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.1)  
   run: `apt-get install ocaml`  
   Alternatively, you can install a particular version of the compiler using opam  
-  run: `opam switch 4.07.0` for example
+  run: `opam switch 4.07.1` for example
 - [opam](https://opam.ocaml.org) (ocaml package manager)  
   run: `apt-get install opam`
-- ocaml packages: ocamlfind, sedlex, menhir, yojson, ppx\_deriving, ppx\_deriving\_yojson, xml-light, z3  
+- ocaml packages: ocamlfind sedlex menhir yojson ppx\_deriving ppx\_deriving\_yojson xml-light z3  
   for each of these packages,  
   run: `opam install <package>`
 - [ldlsat](https://github.com/ldltools/ldlsat) (v1.0.4 or higher)  
@@ -96,12 +99,24 @@ You can also check out [more examples](examples/README.md) if you are interested
   expand the archive, and build/install the tool as is instructed.
 - [xqilla](http://xqilla.sourceforge.net/) and [xmllint](http://xmlsoft.org/)  
   run: `apt-get install xqilla libxml2-utils`
-- [scxmlrun](https://github.com/ldltools/scxmlrun) (optional, for running/testing generated SCXML files)  
+
+## Prerequisites (optional)
+To test generated SCXML files, you further need to install `scxmlrun`.
+
+- [scxmlrun](https://github.com/ldltools/scxmlrun)  
   run: `git clone https://github.com/ldltools/scxmlrun`  
   build & install the tool by running `make && make install` in the top directory.  
   By default, the binaries will be installed into `/usr/local/bin`.
-- [graphviz](http://www.graphviz.org/) (optional)  
-  run: `apt-get install graphviz`
+
+## Prerequisites (optional)
+To use the [safeguard](https://github.com/ldltools/dsl4sc/tree/master/tools/#safeguard) tool,
+you also need to install the following.
+
+- ocaml packages: wtf8 [flow\_parser](https://github.com/facebook/flow/tree/master/src/parser)  
+  run: `opam install wtf8 flow_parser`
+
+- [escodegen](https://github.com/estools/escodegen)  
+  run: `npm install -g escodegen`
 
 ## Build
 - run `make && make install` in the top directory  

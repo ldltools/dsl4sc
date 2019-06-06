@@ -36,7 +36,7 @@ usage () {
     echo -e "  --auto-exit\t\tset the transitions to the final states as event-less"
     echo -e "  --monitor\t\tgenerate monitor"
     echo -e "  -v\t\t\tbecome verbose"
-    echo -e "  -h\t\t\tdisplay this message<outfile>"
+    echo -e "  -h\t\t\tdisplay this message"
 }
 
 infile=/dev/stdin

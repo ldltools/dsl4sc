@@ -14,6 +14,8 @@ The name "dfa2dfa" is a bit misleading in that sense, though its output (in xml)
 [rules2scxml]() internally uses this.
 For the detail, refer to [this](modelgen/README.md).
 
+## safeguard
+
 ## web_ui
 
 (under construction)

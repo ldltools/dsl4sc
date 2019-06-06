@@ -1,3 +1,9 @@
+# v0.12.0 (2019-??-??)
+
+- **new** [safeguard]
+- [modelgen] switch the sat solver from toysat to [z3](https://github.com/Z3Prover/z3).
+  (015057d)
+
 # v0.11.2 (2019-03-30)
 
 - [dsl4sc] pack all ocaml modules into "Dsl4sc"
@@ -21,7 +27,7 @@
 
 # v0.11.0 (2018-12-03)
 
-- [rules2ldl] natural numbers  
+- **new** [rules2ldl] support natural numbers  
   natural numbers (literals and variables) are supported.
   `variable x : nat (n)` declares a variable `x` that ranges over 0, ..., n - 1.
   expressions such as `x = 1`, `x = y`, and `x + 1 = y + 2` are recognized as propositions.

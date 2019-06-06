@@ -81,7 +81,7 @@ val detect_final : t -> int list
 
 val from_channel : in_channel -> t
 
-val to_channel : out_channel -> t -> unit
+val to_channel : ?format: string -> out_channel -> t -> unit
 
 (* for debugging *)
 

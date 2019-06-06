@@ -65,4 +65,4 @@ tar:	veryclean
 GITHOME ?= $(HOME)/git/github.com/ldltools/dsl4sc
 rsync::	clean
 	test -d $(GITHOME) || exit 1
-	rsync -avzop --exclude=_build --exclude=.git --exclude=out --exclude=obsolete ./ $(GITHOME)
+	rsync -avzop --exclude=_build --exclude=.git --exclude=out --exclude=obsolete --exclude=node_modules ./ $(GITHOME)

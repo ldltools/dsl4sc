@@ -1,7 +1,8 @@
-# $Id: $
+#
 
-PREFIX		?= $(shell readlink -f ../_build/install)
-SUBDIRS		= rules2dfa modelgen rules2scxml safeguard
+TOP_DIR		= $(shell readlink -f ../..)
+PREFIX		?= $(TOP_DIR)/_build/install
+SUBDIRS		= src scripts
 
 all::
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
@@ -10,7 +11,6 @@ install::	all
 	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 
 clean::
-	find . -name '#*' -or -name '*~' | xargs rm -f
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
 
 veryclean::	clean
