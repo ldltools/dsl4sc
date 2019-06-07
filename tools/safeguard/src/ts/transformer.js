@@ -10,6 +10,7 @@ function gen_conditions (guards, name)
     const transitions = guard.transitions.filter ((elt) => elt != null)
     //console.log (transitions);
 
+    /*
     const pre =
 	  transitions.slice (1).reduce (
 	      (rslt, elt) => rslt + " || _state == \"" + elt.state + "\"",
@@ -41,13 +42,23 @@ function gen_conditions (guards, name)
     //console.log ("pre:", pre_str);
     //console.log ("next:", next_str);
     //console.log ();
+    */
 
-    return {pre: {exp: pre_exp, str: pre},
-	    next: {exp: next_exp, str: next}}
+    const pairs =
+	  transitions.map (
+	      (elt) => t.arrayExpression ([t.stringLiteral (elt.state), t.stringLiteral (elt.target)]));
+    //console.log (pairs);
+
+    return pairs;
 }
 
-function add_conditions (path, conds)
+function add_conditions (path, pairs)
 {
+    const deco =
+	  t.decorator (t.callExpression (t.identifier ("transitions"), [t.arrayExpression (pairs)]));
+    path.insertBefore (deco);
+    return;
+
     const deco_pre =
 	  t.decorator (t.callExpression (t.identifier ("atstate"), [conds.pre.exp]));
     path.insertBefore (deco_pre);
@@ -73,11 +84,17 @@ export function visitor (spec)
 
     return {
 	ClassDeclaration : {
-	    enter (path) { oop = true; },
+	    enter (path) {
+		oop = true;
+		const deco =
+		      t.decorator (t.callExpression (t.identifier ("initial"), [t.stringLiteral (spec.initial)]));
+		path.insertBefore (deco);
+	    },
 	    exit (path) {}
 	},
 	ClassBody (path) {
 	    //console.log (path.node.body);
+	    /*
 	    path.node.body =
 		[{type: "ClassProperty",
 		  static: false,
@@ -87,13 +104,14 @@ export function visitor (spec)
 				   typeAnnotation: {type: "TSStringKeyword"}},
 		  value: t.stringLiteral (spec.initial)}].
 		concat (path.node.body);
+	    */
 	},
 	ClassMethod (path) {
 	    const name = path.node.key.name;
 	    if (!events.includes (name)) return;
 
-	    const conds = gen_conditions (guards, name);
-	    add_conditions (path, conds);
+	    const pairs = gen_conditions (guards, name);
+	    add_conditions (path, pairs);
 	},
 
 	FunctionDeclaration (path) {
@@ -101,8 +119,8 @@ export function visitor (spec)
 	    const name = path.node.id.name;
 	    if (!events.includes (name)) return;
 
-	    const conds = gen_conditions (guards, name);
-	    add_conditions (path, conds);
+	    const pairs = gen_conditions (guards, name);
+	    add_conditions (path, pairs);
 	}
     }
 }
