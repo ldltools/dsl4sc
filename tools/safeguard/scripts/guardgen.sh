@@ -7,12 +7,6 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 # 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 
 set -eu
 
@@ -84,15 +78,15 @@ done
 
 test -e "$infile" || abort "\"${infile}\" not found"
 
+# detect $intype
 if test ".$intype" = .
 then
-    if test ! -f "$infile"
+    if test -f "$infile"
     then
-	intype=dsl
-    else
-	suffix=$(echo $infile | sed -r 's/^.*\.([^\.]*$)/\1/')
+	suffix=${infile##*.}
+	#suffix=$(echo $infile | sed -r 's/^.*\.([^\.]*$)/\1/')
 	case "$suffix" in
-	    dsl)
+	    spec | dsl | rules)
 		intype=dsl
 		;;
 	    dfa | dfa2)
@@ -101,17 +95,21 @@ then
 	    scxml)
 		intype=scxml
 		;;
-	    *)
-		intype=dsl
+	    guards)
+		intype=guards
+		;;
 	esac
     fi
+    test ".$intype" = . && intype=dsl
 fi
 
-mkdir -p /tmp/.dsl4sc
+test $intype = guards && cat $infile > $outfile && exit 0
 
 # --------------------------------------------------------------------------------
 # spec -> scxml
 # --------------------------------------------------------------------------------
+
+mkdir -p /tmp/.dsl4sc
 
 scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
 

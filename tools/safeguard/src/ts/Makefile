@@ -1,27 +1,41 @@
 #
 
-TOP_DIR		= $(shell readlink -f ../../../..)
-PREFIX		?= $(TOP_DIR)/_build/install
+TOP_DIR	= $(shell readlink -f ../../../..)
+PREFIX	?= $(TOP_DIR)/_build/install
 
-all::
+BUNDLED	= safeguard_ts.js
+SRCS	= main.js transformer.js
+
+all::	$(BUNDLED)
+
 clean::
-install::
+install::	all
 	@mkdir -p $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
-	@test -f safeguard_ts.js || exit 1
-	rsync -avzop safeguard_ts.js $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
+	@test -f $(BUNDLED) || exit 1
+	rsync -avzop $(BUNDLED) $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
 
-#
-test::
-	testdir=../../tests;\
-	node -r esm main.js $$testdir/deuce.js $$testdir/deuce.guards
-
-#
-webpack::
+$(BUNDLED):	$(SRCS)
+	$(MAKE) setup
 	@test -x $$(npm bin)/webpack || exit 1
 	$$(npm bin)/webpack
 
+test::
+	dir=$(TOP_DIR)/examples/deuce;\
+	../../scripts/guardgen.sh $$dir/deuce.dsl |\
+	node -r esm main.js $$dir/deuce.js /dev/stdin
+
 #
-setup::	setup_check setup_node setup_typescript setup_babel setup_webpack
+setup::	check
+	test -d node_modules/esm || $(MAKE) setup_node
+	test -d node_modules/typescript -a -d node_modules/@types || $(MAKE) setup_typescript
+	test -d node_modules/@babel || $(MAKE) setup_babel
+	test -d node_modules/webpack || $(MAKE) setup_webpack
+
+check::
+	@test -f package.json || npm init -y
+	@test $$(npm bin) = $$(readlink -f $$PWD/node_modules/.bin) || exit 1
+
+#
 setup_node::
 	npm i -D esm
 setup_typescript::
@@ -37,9 +51,6 @@ setup_eslint::
 	npm i -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
 setup_prettier::
 	npm i -D prettier eslint-plugin-prettier eslint-config-prettier 
+
 setup_webpack::
 	npm i -D webpack webpack-cli babel-loader
-
-setup_check::
-	@test -f package.json || npm init -y
-	@test $$(npm bin) = $$(readlink -f $$PWD/node_modules/.bin) || exit 1

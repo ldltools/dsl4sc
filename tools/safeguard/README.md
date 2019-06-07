@@ -1,18 +1,25 @@
+## summary
 
-[flow parser](https://github.com/facebook/flow/tree/master/src/parser)
-[flow](https://github.com/facebook/flow)
+Given a set of event handler functions in TypeScript
+and their formal specification in dsl4sc,
+_safeguard_ generates pre/post conditions for the handlers and
+attach each pair of the conditions to the corresponding handler.
 
-# Installation on Debian/Ubuntu
-## Prerequisites
+## usage
 
-- [flow_parser]()  
-  `opam install wtf8 flow_parser`
+```
+safeguard <impl_file> [--spec <spec_file>]
+```
 
-- [escodegen]()  
-  `npm install -g escodegen`
+## input to _safeguard_
 
-- [flow]() (optional)  
-  `npm install flow`
+- `<impl_file>`  
+  `<impl_file>` includes a set of event handler functions in TypeScript
 
-- [esparse]() (optional)  
-  `npm install esparse`
+- `<spec_file>`
+  formal specification of the handlers in dsl4sc.
+
+  [Note]
+  - `<spec_file>` can be formatted in either dsl4sc or scxml.
+  - In case `<spec_file>` is not explicitly passed, _safeguard_ tries auto-detection.
+

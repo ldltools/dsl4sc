@@ -16,7 +16,7 @@ LIBDIR=$(readlink -f `dirname $0`/../lib/dsl4sc)
 RULES2SCXML=rules2scxml
 GUARDGEN=${LIBDIR}/tools/guardgen.sh
 TRANSPILER=${LIBDIR}/tools/safeguard_helpers/safeguard_ts.js
-NODE=node
+NODE=${NODE:-node}
 
 usage ()
 {
@@ -24,7 +24,7 @@ usage ()
     echo "usage: $(basename $0) <option>* <infile>"
     echo "options:"
     echo -e "  --spec <file>\t\tgenerate guards from spec defined in <file>"
-    echo -e "  -g <file>\t\tread guards from <file> (exclusive with \"--spec\")"
+    echo -e "  --spec:<t> <file>\tinstruct the spec is of the <t> type (dsl | scxml | guards)"
     echo -e "  -o <outfile>\t\toutput to <outfile>"
     echo -e "  -v\t\t\tbecome verbose"
     echo -e "  -h\t\t\tdisplay this message"
@@ -49,13 +49,13 @@ verbose=0
 while test $# -gt 0
 do
     case $1 in
-	--spec*)
+	--spec)
 	    specfile=$2
 	    shift
 	    ;;
-	-g | --guard*)
+	--spec:*)
 	    specfile=$2
-	    spectype=guards
+	    spectype=${1##*:}
 	    shift
 	    ;;
 
@@ -84,31 +84,29 @@ do
     shift
 done
 
-test -e "$infile" || abort "source file not found"
+test -e "$infile" || abort "source file (\"$infile\") not found"
 
 if test ! -e "$specfile"
 then
+    test ."$specfile" = . || abort "$specfile not found"
+
+    # try to auto-detect
+    spectype=""
     if test -f $infile
     then
 	stem=${infile%.*}
-	if test -f ${stem}.guards; then
-	    specfile=${stem}.guards
-	    spectype=guards
-	else
-	    if test -f ${stem}.dsl; then
-		specfile=${stem}.dsl
-		spectype=dsl
-	    fi
-	fi
+	for suffix in dsl scxml guards
+	do
+	    test -f ${stem}.$suffix && specfile=${stem}.$suffix
+	done
     fi
 fi
+
 test -e "$specfile" || abort "spec not found"
 
 # spec -> guards
 guardgen ()
 {
-    test "$spectype" = guards && cat $specfile && return
-
     test -x $GUARDGEN || abort "$GUARDGEN not found"
     if test ."$spectype" != .
     then
@@ -122,6 +120,7 @@ guardfile=$(tempfile -d /tmp/.dsl4sc -s .guards)
 guardgen > $guardfile
 #cat $guardfile
 
+# transpile
 test -f "$TRANSPILER" || exit 1
 $NODE $TRANSPILER $infile $guardfile > $outfile || { rm -f $guardfile; exit 1; }
 

@@ -39,9 +39,12 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /root/z3.tar /root
 RUN tar xf /root/z3.tar; rm -f /root/z3.tar
 # helpers
-RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils wget
-RUN wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
-    nvm install 11.6; nvm use 11.6
+RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils
+# node
+RUN apt-get install -y wget;\
+    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
+    . /root/.nvm/nvm.sh; nvm install node;\
+    touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
 
 # examples & tests
 ADD examples /root/examples
