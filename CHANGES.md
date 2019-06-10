@@ -1,7 +1,8 @@
 # v0.12.0 (2019-??-??)
 
-- **new** [safeguard]
-- [modelgen] switch the sat solver from toysat to [z3](https://github.com/Z3Prover/z3).
+- **new** [safeguard] attach to existing EcmaScript code a set of pre/post conditions.
+  (33c54bc)
+- [modelgen] switch the internal SAT solver from toysat to [z3](https://github.com/Z3Prover/z3).
   (015057d)
 
 # v0.11.2 (2019-03-30)

@@ -8,13 +8,13 @@ attach each pair of the conditions to the corresponding handler.
 ## usage
 
 ```
-safeguard <impl_file> [--spec <spec_file>]
+safeguard <code_file> [--spec <spec_file>]
 ```
 
 ## input to _safeguard_
 
-- `<impl_file>`  
-  `<impl_file>` includes a set of event handler functions in TypeScript
+- `<code_file>`  
+  `<code_file>` includes a set of event handler functions in TypeScript
 
 - `<spec_file>`
   formal specification of the handlers in dsl4sc.

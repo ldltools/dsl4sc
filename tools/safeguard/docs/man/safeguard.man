@@ -1,0 +1,75 @@
+'\" t
+.\" Manual page created with latex2man on Mon Jun 10 23:11:13 2019
+.\" NOTE: This file is generated, DO NOT EDIT.
+.de Vb
+.ft CW
+.nf
+..
+.de Ve
+.ft R
+
+.fi
+..
+.TH "SAFEGUARD" "1" "June 2019" "LDL Tools " "LDL Tools "
+.SH NAME
+
+safeguard \- LDL\-based requirement enforcement tool 
+.PP
+.SH SYNOPSIS
+
+safeguard <option>* <infile> 
+.PP
+.SH DESCRIPTION
+
+safeguard reads a program from <infile> 
+and attach pre/post conditions to event handlers in the program. 
+.PP
+.SH OPTIONS
+
+.PP
+.TP
+\fB\-o\fP \fIfile\fP
+ output to \fIfile\fP
+.TP
+\fB\-\-spec:lang\fP \fIfile\fP
+ read \fIfile\fP
+in \fIlang\fP
+as spec (\fIlang\fP
+::= dsl | dfa | scxml) 
+.TP
+\fB\-\-code:lang\fP \fIfile\fP
+ read \fIfile\fP
+in \fIlang\fP
+as code (\fIlang\fP
+::= js | ts)
+.br
+note that \&'safeguard \-\-code file\&' is synonymous with \&'safeguard file\&'\&. 
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+ show usage 
+.PP
+.SH SEE ALSO
+
+rule2scxml 
+.PP
+.SH AUTHOR
+
+LDLTools development team at IBM Research. 
+.PP
+.TP
+.B *
+URL: \fBhttps://ldltools.github.io\fP
+.TP
+.B *
+Email: \fBldltools@outlook.com\fP
+.PP
+.SH COPYRIGHT
+
+(C) Copyright IBM Corp. 2018. 
+License Apache 2.0.
+.br
+.PP
+This is free software: you are free to change and redistribute it. 
+There is NO WARRANTY, to the extent permitted by law. 
+.PP
+.\" NOTE: This file is generated, DO NOT EDIT.

@@ -20,9 +20,7 @@ $(BUNDLED):	$(SRCS)
 	$$(npm bin)/webpack
 
 test::
-	dir=$(TOP_DIR)/examples/deuce;\
-	../../scripts/guardgen.sh $$dir/deuce.dsl |\
-	node -r esm main.js $$dir/deuce.js /dev/stdin
+#	node -r esm main.js ../../tests/deuce.sg
 
 #
 setup::	check

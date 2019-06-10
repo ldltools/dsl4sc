@@ -13,9 +13,13 @@ RUN eval `opam config env`;\
 
 # z3 archive
 RUN tar cf /root/z3.tar `opam config var lib`/z3
-
 # helpers
 RUN apt-get install -y graphviz xqilla libxml2-utils
+# node
+RUN apt-get install -y wget;\
+    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
+    . /root/.nvm/nvm.sh; nvm install node;\
+    touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
 
 #
 WORKDIR /root
@@ -34,6 +38,7 @@ RUN echo "dash dash/sh boolean false" | debconf-set-selections;\
 
 # dsl4sc (and ldlsat)
 COPY --from=builder /usr/local /usr/local
+
 # z3
 #COPY --from=builder /root/.opam /root/.opam
 COPY --from=builder /root/z3.tar /root
@@ -41,10 +46,8 @@ RUN tar xf /root/z3.tar; rm -f /root/z3.tar
 # helpers
 RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils
 # node
-RUN apt-get install -y wget;\
-    wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
-    . /root/.nvm/nvm.sh; nvm install node;\
-    touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
+COPY --from=builder /root/.nvm /root/.nvm
+RUN touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
 
 # examples & tests
 ADD examples /root/examples

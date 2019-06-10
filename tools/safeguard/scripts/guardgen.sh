@@ -20,12 +20,13 @@ SCXML2GUARDS=$LIBDIR/scxml2guards.xq
 
 usage () {
     echo "guardgen -- pre/post condition generator"
-    echo "usage: `basename $0` <option>* <spec_file>"
+    echo "usage: `basename $0` <option>* <file>"
     echo "options:"
-    echo -e "  -s <fmt>\t\tspecify <fmt> as the input type (<fmt> ::= dsl | dfa | scxml)"
-    echo -e "  -t <fmt>\t\tspecify <fmt> as the output type (<fmt> ::= json | xml)"
-    echo -e "  -o <file>\t\twrite output to <file>"
-    echo -e "  -h\t\t\tshow this help"
+    echo -e "  --spec[:<lang>] <file>\tread <file> in <lang> as spec (<lang> ::= dsl | dfa | scxml)"
+    echo -e "  -s <lang>\t\t\tspecify <lang> as the spec language"
+    echo -e "  -t <fmt>\t\t\tspecify <fmt> as the target type (<fmt> ::= json | xml)"
+    echo -e "  -o <file>\t\t\twrite output to <file>"
+    echo -e "  -h\t\t\t\tshow this help"
 }
 
 abort ()
@@ -35,9 +36,10 @@ abort ()
     exit 1
 }
 
-infile=/dev/stdin
-intype=
-
+#infile=/dev/stdin
+#intype=xml
+specfile=/dev/stdin
+speclang=
 outfile=/dev/stdout
 outtype=json
 
@@ -47,16 +49,25 @@ while test $# -gt 0
 do
     case $1 in
 	-s)
-	    intype=$2
+	    speclang=$2
 	    shift
 	    ;;
 	-t)
 	    outtype=$2
 	    shift
 	    ;;
-
 	-o | --output)
 	    outfile=$2
+	    shift
+	    ;;
+
+	--spec)
+	    specfile=$2
+	    shift
+	    ;;
+	--spec:*)
+	    specfile=$2
+	    speclang=${1##*:}
 	    shift
 	    ;;
 
@@ -71,60 +82,56 @@ do
 	-*)
 	    abort "unknow option: $1"
 	    ;;
-	*) infile=$1
+	*)
+	    specfile=$1
     esac
     shift
 done
 
-test -e "$infile" || abort "\"${infile}\" not found"
+test -e "$specfile" || abort "spec (\"$specfile\") not found"
+test "$speclang" = guards && cat $specfile > $outfile && exit 0
 
-# detect $intype
-if test ".$intype" = .
-then
-    if test -f "$infile"
-    then
-	suffix=${infile##*.}
-	#suffix=$(echo $infile | sed -r 's/^.*\.([^\.]*$)/\1/')
-	case "$suffix" in
-	    spec | dsl | rules)
-		intype=dsl
-		;;
-	    dfa | dfa2)
-		intype=dfa
-		;;
-	    scxml)
-		intype=scxml
-		;;
-	    guards)
-		intype=guards
-		;;
-	esac
-    fi
-    test ".$intype" = . && intype=dsl
-fi
-
-test $intype = guards && cat $infile > $outfile && exit 0
+mkdir -p /tmp/.dsl4sc
 
 # --------------------------------------------------------------------------------
 # spec -> scxml
 # --------------------------------------------------------------------------------
 
-mkdir -p /tmp/.dsl4sc
+if test -f "$specfile" -a ".$speclang" = .
+then
+    suffix=${specfile##*.}
+    #suffix=$(echo $specfile | sed -r 's/^.*\.([^\.]*$)/\1/')
+    case "$suffix" in
+	spec | dsl | rules)
+	    speclang=dsl
+	    ;;
+	dfa | dfa2)
+	    speclang=dfa
+	    ;;
+	scxml)
+	    speclang=scxml
+	    ;;
+	*)
+	    speclang=$suffix
+    esac
+fi
+
+test ".$speclang" = . && speclang=dsl
 
 scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
 
-case $intype in
+case $speclang in
     spec | dsl | rules)
-	${RULES2SCXML} $infile -o $scxmlfile
+	${RULES2SCXML} $specfile -o $scxmlfile
 	;;
     dfa)
-	${DFA2SCXML} $infile > $scxmlfile
+	${DFA2SCXML} $specfile > $scxmlfile
 	;;
     scxml)
-	cat $infile > $scxmlfile
+	cat $specfile > $scxmlfile
 	;;
     *)
-	abort "unknow input type: $intype"
+	abort "unknown spec language: $speclang"
 esac     
 
 # --------------------------------------------------------------------------------
@@ -132,19 +139,19 @@ esac
 # --------------------------------------------------------------------------------
 
 case $outtype in
-    xml)
-	SCXML2GUARDS_main="local:scxml2guards (.)"
-	;;
-    json)
-	SCXML2GUARDS_main="local:to_json (local:scxml2guards (.))"
+    xml | json)
 	;;
     *)
 	abort "unknown output type: $outtype"
 esac
 
-cat <<EOF | xqilla /dev/stdin -i $scxmlfile -o $outfile || { rm -f ${scxmlfile}; abort "xqilla crashed"; }
+cat <<EOF | xqilla /dev/stdin -o $outfile || { rm -f $scxmlfile; abort "xqilla crashed"; }
+declare namespace scxml_ns = "http://www.w3.org/2005/07/scxml";
+declare namespace dsl4sc_ns = "https://github.com/ldltools/dsl4sc";
+declare default element namespace "https://github.com/ldltools/dsl4sc";
+declare variable \$scxml := doc ("$scxmlfile");
 $(cat ${SCXML2GUARDS})
-${SCXML2GUARDS_main}
+local:scxml2guards (\$scxml, "$outtype")
 EOF
 
 rm -f $scxmlfile

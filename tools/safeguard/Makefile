@@ -2,7 +2,7 @@
 
 TOP_DIR		= $(shell readlink -f ../..)
 PREFIX		?= $(TOP_DIR)/_build/install
-SUBDIRS		= src scripts
+SUBDIRS		= src scripts docs
 
 all::
 	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
