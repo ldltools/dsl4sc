@@ -30,37 +30,31 @@ let us start with the following protocol definition
 
 ```
 protocol  
-(sharapova + williams)*; game ;;
+(sharapova; williams + williams; sharapova)*;  
+(sharapova; sharapova + williams; williams);  
+game ;;
 ```
 
-This declares that, until the "_game_" event is emitted when the game is won,
-either of the "_sharapova_" and "_williams_" events, indicating which player wins a point,
-repeats 0 or more times.  
+This protocol declares that the game proceeds throgh 3 stages, that is,
+(1) either takes an adavante but the other immediately evens the game,
+which repeats 0 or more times, and
+(2) either takes 2 points consecutively, and
+(3) the judge declares the game is won.
 
-Succeedingly, we add the following _property_ that defines
-the players are initially at deuce and either will win the game in the end.
+Succeedingly, we introduce a variable, `state`, which ranges over 0 through 2 and denotes
+if the games is at deuce (0), advantaged (1), or won (2).
+In terms of this varible, we declare how computation proceeds as a property as follows.
 
 ```
 variable  
-state : nat(4); // nat(4) = {0,1,2,3}  
-  // 0: deuce, 1: advantage with sharapova, 2: advantage with williams, 3: game won  
+state : nat(3); // nat(3) = {0,1,2}  
+  // 0: deuce, 1: advantage with either sharapova or williams, 2: game won  
 property  
-state = 0 & [](last -> state = 3); // initial and final conditions
+<{state = 0}; ({state = 1}; {state = 0})*; {state = 1}; {state = 2}; {state = 2}> last;
 ```
 
-Lastly, we add the following rules that define how each event is processed.
-
-```
-rule  
-on sharapova when state = 0 ensure state = 1;  
-on sharapova when state = 1 raise game ensure state = 3;  
-on sharapova when state = 2 ensure state = 0;  
-...
-```
-
-Here, the first rule defines that
-if a "_sharapova_" event is emitted when the game is at deuce (state = 0),
-then it turns out that the advantage is with the player called Sharapova (state = 1).
+In a similar manner to the protocol defintion,
+this defines how the `state` value changes through the computation.
 
 By combining all of these, we derive a state-transition model illustrated as follows.
 

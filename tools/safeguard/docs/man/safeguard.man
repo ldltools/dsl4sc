@@ -1,5 +1,5 @@
 '\" t
-.\" Manual page created with latex2man on Mon Jun 10 23:11:13 2019
+.\" Manual page created with latex2man on Tue Jun 11 09:16:38 2019
 .\" NOTE: This file is generated, DO NOT EDIT.
 .de Vb
 .ft CW
@@ -17,11 +17,13 @@ safeguard \- LDL\-based requirement enforcement tool
 .PP
 .SH SYNOPSIS
 
-safeguard <option>* <infile> 
+safeguard
+<option>* <infile>? 
 .PP
 .SH DESCRIPTION
 
-safeguard reads a program from <infile> 
+safeguard
+reads a program from <infile> 
 and attach pre/post conditions to event handlers in the program. 
 .PP
 .SH OPTIONS
@@ -31,19 +33,25 @@ and attach pre/post conditions to event handlers in the program.
 \fB\-o\fP \fIfile\fP
  output to \fIfile\fP
 .TP
-\fB\-\-spec:lang\fP \fIfile\fP
+\fB\-\-spec[:lang]\fP \fIfile\fP
  read \fIfile\fP
 in \fIlang\fP
 as spec (\fIlang\fP
-::= dsl | dfa | scxml) 
+::= dsl | dfa | scxml)
+.br
+when this option is not provided, safeguard
+tries auto\-detection. 
 .TP
-\fB\-\-code:lang\fP \fIfile\fP
+\fB\-\-code[:lang]\fP \fIfile\fP
  read \fIfile\fP
 in \fIlang\fP
-as code (\fIlang\fP
+as a program code (\fIlang\fP
 ::= js | ts)
 .br
-note that \&'safeguard \-\-code file\&' is synonymous with \&'safeguard file\&'\&. 
+note that \&'safeguard
+\-\-code \fIfile\fP\&'
+is synonymous with \&'safeguard
+\fIfile\fP\&'\&.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
  show usage 
