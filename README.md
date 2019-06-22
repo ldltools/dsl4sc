@@ -35,32 +35,39 @@ protocol
 game ;;
 ```
 
-This protocol declares that the game proceeds throgh 3 stages, that is,
+This protocol defines that the game proceeds through 3 stages:
 (1) either takes an adavante but the other immediately evens the game,
 which repeats 0 or more times, and
 (2) either takes 2 points consecutively, and
-(3) the judge declares the game is won.
+(3) the judge declares the game is taken.
 
-Succeedingly, we introduce a variable, `state`, which ranges over 0 through 2 and denotes
-if the games is at deuce (0), advantaged (1), or won (2).
-In terms of this varible, we declare how computation proceeds as a property as follows.
+Succeedingly, to define how _computation_ proceeds through the game,
+we introduce a variable, `state`, which ranges over 0 through 2 and denotes
+if the games is either at deuce (0), advantaged (1), or taken (2).
+In terms of this varible,
+we define a set of formulas, as properties of the model, as follows,
 
 ```
 variable  
-state : nat(3); // nat(3) = {0,1,2}  
-  // 0: deuce, 1: advantage with either sharapova or williams, 2: game won  
+state : nat(3); // nat(3) = {0, 1, 2}  
+  // 0: deuce, 1: advantage with either sharapova or williams, 2: ahead by 2 points  
 property  
-<{state = 0}; ({state = 1}; {state = 0})*; {state = 1}; {state = 2}; {state = 2}> last;
+<{state != 2}*; {state = 2}; {state = 2}> last; // state = 2  only in the last 2 steps  
+state = 0 && [](last -> state = 2); // initial and final conditions  
+[] !(<{state = 0}> state = 0 || <{state = 1}> state = 1); // state = 0/1 never repeats
 ```
-
-In a similar manner to the protocol defintion,
-this defines how the `state` value changes through the computation.
 
 By combining all of these, we derive a state-transition model illustrated as follows.
 
 ![statechart](examples/deuce/deuce.svg)
 
 Once a model is defined, we can formally verify the model in various ways.
+For examples, we can verify the following formulas all hold.
+
+- `protocol sharapova; sharapova; game ;;` : straight-win (reachable)
+- `property <{state = 0}; {state != 0}*> state = 2;` : straight-win (reachable)
+- `property []<> state = 2;` : liveness
+
 Take a look at [this](examples/deuce/README.md) for the detail.
 
 You can also check out [more examples](examples/README.md) if you are interested.  

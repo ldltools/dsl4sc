@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel/>
+  <state id="q7">
+    <transition target="q8" event=" ">
+      <!--tid t36_1-->
+    </transition>
+  </state>
+  <final id="q8">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+  </final>
+  <state id="q6">
+    <transition target="q7" event="game">
+      <!--tid t33_1-->
+    </transition>
+  </state>
+  <state id="q4">
+    <transition target="q6" event="sharapova">
+      <!--tid t17_1-->
+    </transition>
+    <transition target="q2" event="williams">
+      <!--tid t20_1-->
+    </transition>
+  </state>
+  <state id="q2">
+    <transition target="q4" event="sharapova">
+      <!--tid t8_1-->
+    </transition>
+    <transition target="q5" event="williams">
+      <!--tid t12_1-->
+    </transition>
+  </state>
+  <state id="q5">
+    <transition target="q2" event="sharapova">
+      <!--tid t24_1-->
+    </transition>
+    <transition target="q6" event="williams">
+      <!--tid t29_1-->
+    </transition>
+  </state>
+</scxml>

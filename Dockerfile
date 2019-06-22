@@ -14,12 +14,11 @@ RUN eval `opam config env`;\
 # z3 archive
 RUN tar cf /root/z3.tar `opam config var lib`/z3
 # helpers
-RUN apt-get install -y graphviz xqilla libxml2-utils
+RUN apt-get install -y graphviz xqilla libxml2-utils shelltestrunner
 # node
 RUN apt-get install -y wget;\
     wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | /bin/bash;\
-    . /root/.nvm/nvm.sh; nvm install node;\
-    touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
+    . /root/.nvm/nvm.sh; nvm install node
 
 #
 WORKDIR /root
@@ -42,17 +41,16 @@ COPY --from=builder /usr/local /usr/local
 # z3
 #COPY --from=builder /root/.opam /root/.opam
 COPY --from=builder /root/z3.tar /root
-RUN tar xf /root/z3.tar; rm -f /root/z3.tar
+RUN tar xf /root/z3.tar; rm -f /root/z3.tar;\
+    apt-get install -y libgomp1
 # helpers
-RUN apt-get install -y gawk libgomp1 xqilla libxml2-utils
-# node
+RUN apt-get install -y gawk xqilla libxml2-utils shelltestrunner
+# nvm/node
 COPY --from=builder /root/.nvm /root/.nvm
-RUN touch /root/.profile; echo '. /root/.nvm/nvm.sh' >> /root/.profile; . /root/.profile
-
+COPY --from=builder /root/.bashrc /root
 # examples & tests
 ADD examples /root/examples
 ADD tests /root/tests
-RUN apt-get install -y make shelltestrunner
 
 WORKDIR /root
 CMD ["/bin/bash"]

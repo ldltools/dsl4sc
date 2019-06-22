@@ -173,7 +173,7 @@ let main argc argv =
     Rulespp.preprocess
       ~allow_undeclared: !opt_allow_undeclared
       ~expand_any: !opt_expand_any
-      ~minimize_protocols: !opt_proto_min
+      ~minimize_protocols: !opt_proto_min (* 0: no_min, 1: min (if '?' included), 2: min (always) *)
       ~relax_protocols: !opt_relax_protocols
       ~discard_codes: !opt_discard_codes
       ~expand_preserve: !opt_expand_preserve

@@ -24,6 +24,10 @@ all::
 # ================================================================================
 
 # RULES
+%.scxml:	%.spec
+	$(RULES2SCXML) $< -o $@
+%.scxml:	%.dsl
+	$(RULES2SCXML) $< -o $@
 %.scxml:	%.rules
 	$(RULES2SCXML) $< -o $@
 
