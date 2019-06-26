@@ -21,7 +21,7 @@ open Rules
 
 (** event / variable *)
 
-let _builtin_events = ["_any"; "_epsilon"; "_skip"]
+let _builtin_events = ["_empty"; "_any"; "_epsilon"; "_skip"]
 
 let _builtin_props = ["_idle"]
 
@@ -50,7 +50,7 @@ let rec find_declared decls =
 	    invalid_arg ("[find_declared] strange variable: " ^ x)
 	| _ -> events, props, terms)
       ([], [], []) decls
-  in events @ ["_epsilon"; "_skip"; "_any"], props @ ["_idle"], terms
+  in events @ ["_empty"; "_epsilon"; "_skip"; "_any"], props @ ["_idle"], terms
 
 (* find_undeclared decls -> (ev_names, prop_vars, tm_vars) *)
 
@@ -274,12 +274,12 @@ let rec pp_expand_any decls =
   let declared, _, _ = find_declared decls in
 
   let user_events =
-    List.filter (fun e -> not @@ List.mem e ["_epsilon"; "_skip"; "_any"]) declared
+    List.filter (fun e -> not @@ List.mem e ["_empty"; "_epsilon"; "_skip"; "_any"]) declared
   in
   let any_expanded =
     if user_events <> []
     then Proto_sum (List.map (fun e -> Proto_event e) user_events)
-    else Proto_event "_epsilon"
+    else Proto_sum [] (* empty *)
   in
   List.map
     (fun decl ->
@@ -299,13 +299,23 @@ and expand_any_protocol any_expanded p =
   | Proto_star p' -> Proto_star (expand_any_protocol any_expanded p')
   | _ -> failwith "[expand_any_protocol]"
 
-(* eliminate_epsilon *)
+(* minimize_protocol *)
 
 let rec pp_minimize_protocols ?(always = false) decls =
   List.fold_left
     (fun rslt -> function
       | Decl_protocol p when always || Protocol.mem_event "_epsilon" p ->
 	  rslt @ [Decl_protocol (Protocol.minimize p)]
+      | decl -> rslt @ [decl])
+    [] decls
+
+(* add_trailer *)
+
+let rec pp_add_trailer decls =
+  List.fold_left
+    (fun rslt -> function
+      | Decl_protocol p when not @@ mem_event "_end" p ->
+	  rslt @ [Decl_protocol (Proto_seq [p; Proto_event "_end"])]
       | decl -> rslt @ [decl])
     [] decls
 
@@ -468,8 +478,9 @@ let rec preprocess
 
   (* protocol *)
   |> (if expand_any then pp_expand_any else identity)
-  |> (if minimize_protocols > 0 then pp_minimize_protocols ~always: (minimize_protocols > 1) else identity)
-  |> (if relax_protocols then pp_relax_protocols else identity)
+  |> pp_add_trailer
+  |> pp_minimize_protocols ~always: (minimize_protocols > 1)
+  (*|> (if relax_protocols then pp_relax_protocols else identity)*)
 
   (* property *)
   (*

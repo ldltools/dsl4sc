@@ -15,11 +15,20 @@
  *)
 
 (** protocol: regular language for specifying event patterns.
-    special built-in events
-    - _epsilon: label-less transition. eliminated by determinization.
-    - _skip: another label-less transition that is retained as it is.
-    - _empty: empty protocol
+
+    identity events
+    - Proto_seq []: epsilon event (1 in Kleene algebra).
+    - Proto_sum []: empty protocol (0 in Kleene algebra).
+
+    built-in events/protocols (macros)
+    - _epsilon (1)
+    - _empty (0): empty.
     - _any: synonymous to "e1 + e2 + ..." where ei ranges over all user-defined events
+
+    special built-in event
+    - _skip: label-less transition that is retained as it is.
+    - _end: termination event
+
   *)
 type protocol =
   | Proto_event of string
@@ -30,8 +39,6 @@ type protocol =
 	(* p1 + p2 + .. *)
   | Proto_star of protocol
 	(* p* *)
-  | Proto_empty
-        (* empty language *)
 
 type t = protocol
 
@@ -41,6 +48,12 @@ val minimize : t -> t
     (** by means of dfa minimization *)
 
 val mem_event : string -> t -> bool
+
+(** helpers *)
+
+val simp : t -> t
+
+val flatten : t -> t
 
 (** pretty-printing *)
 

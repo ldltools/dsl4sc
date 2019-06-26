@@ -135,7 +135,7 @@ let main argc argv =
       (* protocol *)
       | _ when matches 7 "--relax-protocols" ->
 	  opt_relax_protocols := true
-      | _ when matches 7 "--force-proto_min" ->
+      | _ when matches 7 "--force-proto-min" ->
 	  opt_proto_min := 2
       (* property *)
       (* rule *)

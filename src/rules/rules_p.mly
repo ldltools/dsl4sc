@@ -266,8 +266,8 @@ protocol1
 	  { $1 }
 	| protocol1 SEMI protocol2
 	  { match $1, $3 with
-	    | Proto_seq s, _ -> Proto_seq (s @ [$3])
-	    | _, Proto_seq s -> Proto_seq ($1 :: s)
+	    | Proto_seq s, _ when s <> [] -> Proto_seq (s @ [$3])
+	    | _, Proto_seq s when s <> [] -> Proto_seq ($1 :: s)
 	    | _ -> Proto_seq [$1; $3]
 	  }
 	;
@@ -276,7 +276,7 @@ protocol2
 	: protocol3
 	  { $1 }
 	| protocol3 QUESTION
-	  { Proto_sum [$1; Proto_event "_epsilon"] }
+	  { Proto_sum [$1; Proto_seq []] }
 //	| protocol3 QUESTION protocol3
 //	  { Proto_seq [Proto_sum [$1; Proto_event "_epsilon"]; $3] }
 	| protocol3 STAR
@@ -285,7 +285,16 @@ protocol2
 
 protocol3
 	: NAME
-	  { match $1 with "_empty" -> Proto_empty | _ -> Proto_event $1 }
+	  { match $1 with
+	    | "_empty" -> Proto_sum []
+	    | "_epsilon" -> Proto_seq []
+	    | _ -> Proto_event $1
+	  }
+	| CONST
+	  { if $1 = 0 then Proto_sum []
+	    else if $1 = 1 then Proto_seq []
+	    else failwith ("[parsing] unknown event: " ^ string_of_int $1)
+	  }
 //	| neg NAME
 //	  { Proto_prop (PProp_neg (PProp_event $2)) }
 //	| neg protocol3
