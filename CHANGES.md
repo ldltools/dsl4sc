@@ -2,6 +2,8 @@
 
 - **new** [safeguard] attach to existing EcmaScript code a set of pre/post conditions.
   (33c54bc)
+- [rules2ldl] allow terminal epsilons in protocol (e.g., `protocol e?;;`).
+  (ef76b3e)
 - [modelgen] switch the internal SAT solver from toysat to [z3](https://github.com/Z3Prover/z3).
   (015057d)
 
@@ -35,16 +37,17 @@
 - [rulespp] epsilon events  
   epsilon events (`_epsilon`) can appear in protocol definitions.  
   `p?`, where `p` denotes a protocol, can also appear as a shorthand for `p + _epsilon`.
+  (b0c352b)
 
 # v0.10.0 (2018-11-08)
 
-- [rules2scxml] monitor generation  
+- **new** [rules2scxml] monitor generation  
   `rules2scxml --monitor` generates a statechart that works as a monitor.
   the primary difference that this option makes is:
   each incoming event at a state that no transition can process causes an error,
   instead of being ignored and discarded
   (which is the default behavior defined in the SCXML specification).
-- [rules2scml] _implementation_ section  
+- **new** [rules2scml] _implementation_ section  
   dsl4sc scripts can now include "implementation { .. }" sections
   for carrying implementation-specific code.
 - [rules2scxml] dsl4sc namespace (https://github.com/ldltools/dsl4sc)  

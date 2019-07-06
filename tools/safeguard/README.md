@@ -23,3 +23,7 @@ safeguard <code_file> [--spec <spec_file>]
   - `<spec_file>` can be formatted in either dsl4sc or scxml.
   - In case `<spec_file>` is not explicitly passed, _safeguard_ tries auto-detection.
 
+
+## testing
+
+See [this](tests/README.md).

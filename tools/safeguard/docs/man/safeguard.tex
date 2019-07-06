@@ -16,8 +16,6 @@ and attach pre/post conditions to event handlers in the program.
 \section{Options}
 
 \begin{description}
-\item[\Opt{-o} \emph{file}]
-  output to \emph{file}
 \item[\Opt{--spec\Lbr:lang\Rbr} \Arg{file}]
   read \emph{file} in \emph{lang} as spec (\emph{lang} ::= dsl | dfa | scxml)\\
   when this option is not provided, \Prog{safeguard} tries auto-detection.
@@ -25,6 +23,8 @@ and attach pre/post conditions to event handlers in the program.
   read \emph{file} in \emph{lang} as a program code (\emph{lang} ::= js | ts)\\
   note that '\Prog{safeguard} --code \Arg{file}' is synonymous with '\Prog{safeguard} \Arg{file}'.
 %
+\item[\Opt{-o} \emph{file}]
+  output to \emph{file}
 \item[\Opt{-h}, \Opt{--help}]
   show usage
 

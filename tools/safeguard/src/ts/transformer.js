@@ -4,6 +4,7 @@ import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 const assert = require ('assert');
 
+// tracker names (default: "_state" and "_state_pre")
 var _state = null;
 var _state_pre = null;
 
@@ -46,7 +47,7 @@ function gen_conditions (guards, name)
 	  transitions.reduceRight (
 	      (rslt, elt) =>
 		  "(" + _state + " == \"" + elt.state + "\") ? \"" + elt.target + "\" : (" + rslt + ")",
-	      "assert (false)")
+	      "null")
     const next_exp =
 	  transitions.reduceRight (
 	      (rslt, elt) =>
@@ -55,7 +56,8 @@ function gen_conditions (guards, name)
 					  t.stringLiteral (elt.state)),
 		      t.stringLiteral (elt.target),
 		      rslt),
-	      t.callExpression (t.identifier ("assert"), [t.booleanLiteral (false)]));
+	      //t.callExpression (t.identifier ("assert"), [t.booleanLiteral (false)])
+	      t.nullLiteral ());
 
     // [post]
     // (pre(_state) == state1 && _state == target1) || (pre(_state) == state2 && _state = target2) || ..
@@ -87,6 +89,72 @@ function gen_conditions (guards, name)
 	    transitions: {exp: transitions_exp}};
 }
 
+function add_conditions (path, conds, options)
+{
+    assert (path.node.type == "FunctionDeclaration" || path.node.type == "ClassMethod");
+    //console.log ("[add_conditions]", path.node.id.name);
+
+    assert (path.node.body.type == "BlockStatement");
+    var body = path.node.body.body;
+
+    if (options.conditions.includes ("pre"))
+    {
+	const pre = t.callExpression (t.identifier ("assert"), [conds.pre.exp]);
+	body.unshift (t.expressionStatement (pre));
+    }
+
+    if (options.conditions.includes ("update"))
+    {
+	//const state_pre = t.variableDeclarator (t.identifier (_state_pre), t.identifier (_state));
+	//body.push (t.variableDeclaration ("let", [state_pre]));
+	const state_pre = t.assignmentExpression ("=", t.identifier (_state_pre), t.identifier (_state));
+	body.push (t.expressionStatement (state_pre));
+	const update = t.assignmentExpression ("=", t.identifier (_state), conds.next.exp);
+	body.push (t.expressionStatement (update));
+    }
+    if (options.conditions.includes ("post"))
+    {
+	const post = t.callExpression (t.identifier ("assert"), [conds.post.exp]);
+	body.push (t.expressionStatement (post));
+    }
+
+    path.traverse ({
+	ReturnStatement (path) {
+	    let stmts = [path.node];
+
+	    if (options.conditions.includes ("post"))
+	    {
+		const post = t.callExpression (t.identifier ("assert"), [conds.post.exp]);
+		stmts.unshift (t.expressionStatement (post));
+	    }
+	    if (options.conditions.includes ("update"))
+	    {
+		const state_pre = t.assignmentExpression ("=", t.identifier (_state_pre), t.identifier (_state));
+		const update = t.assignmentExpression ("=", t.identifier (_state), conds.next.exp);
+		stmts.unshift (t.expressionStatement (update));
+		stmts.unshift (t.expressionStatement (state_pre));
+	    }
+
+	    path.replaceWith (t.blockStatement (stmts));
+	    path.skip ();	// skip traversal of the generated block statement
+	}
+    });
+}
+
+function add_comments (path, conds)
+{
+    assert (path.node.type == "FunctionDeclaration" || path.node.type == "ClassMethod");
+
+    let node = path.node;
+    if (path.parent.type == "ExportNamedDeclaration") node = path.parent;
+    //console.log (JSON.stringify (node));
+
+    // comments
+    if (!node.leadingComments) node.leadingComments = [];
+    node.leadingComments.push ({type: "CommentLine", value: " expects: " + conds.pre.str});
+    node.leadingComments.push ({type: "CommentLine", value: " ensures: " + conds.post.str});
+}
+
 function gen_decorators (conds)
 {
     const pre_deco =
@@ -109,33 +177,112 @@ function gen_decorators (conds)
 	    transitions: {deco: transitions_deco}};
 }
 
+function add_decorators (path, decos, options)
+{
+    assert (path.node.type == "ClassMethod");
+
+    //console.log (name, JSON.stringify (decos));
+    if (!path.node.decorators) path.node.decorators = [];
+
+    if (options.js_decorators.includes ("expects")) path.node.decorators.push (decos.pre.deco);
+    if (options.js_decorators.includes ("update")) path.node.decorators.push (decos.update.deco);
+    if (options.js_decorators.includes ("ensures")) path.node.decorators.push (decos.post.deco);
+    if (options.js_decorators.includes ("transitions")) path.node.decorators.push (decos.transitions.deco);
+}
+
+function add_trailer (path, spec, code, options, assert_declared = false)
+{
+    assert (code.js_class != null || options.tracker.global);
+
+    const initial = spec.guards.params.initial;
+
+    if (options.tracker.global)
+    {
+	// var _state = <initial>, _state_pre
+	const tracker_decls =
+	      [{
+		  type: "VariableDeclarator",
+		  id: {type: "Identifier", name: _state},
+		  init: {type: "StringLiteral", value: initial}
+	      },
+	       {
+		   type: "VariableDeclarator",
+		   id: {type: "Identifier", name: _state_pre},
+	       }
+	      ]
+	path.node.body.push (t.variableDeclaration ("var", tracker_decls));
+    }
+
+    if (code.js_class == null)
+    {
+	assert (options.tracker.global);
+
+	// function _reset () { _state = <initial>; }
+	const init_stmt = 
+	      t.expressionStatement (t.assignmentExpression ("=", t.identifier (_state),
+							     t.stringLiteral (initial)));
+	path.node.body.push (t.functionDeclaration (t.identifier ("_reset"), [],
+						    t.blockStatement ([init_stmt])));
+	// module.exports._reset = _reset
+	const export_exp =
+	      t.memberExpression (t.memberExpression (t.identifier ("module"), t.identifier ("exports")),
+				  t.identifier ("_reset"));
+	const export_stmt =
+	      t.expressionStatement (t.assignmentExpression ("=", export_exp,
+							     t.identifier ("_reset")));
+	path.node.body.push (export_stmt);
+    }
+
+
+    // assert
+    if (!assert_declared)
+    {
+	// const assert = require ('assert')
+	const assert_decl =
+	      t.variableDeclarator (t.identifier ("assert"),
+				    t.callExpression (t.identifier ("require"),
+						      [t.stringLiteral ("assert")]));
+	path.node.body.push (t.variableDeclaration ("const", [assert_decl]));
+    }
+}
+
 // conf = {spec: {location, guards: {params, body}, ..},
 //         code: {location, class, handlers, ..},
-//         options: {decorators}
+//         options: {guards, decorators, tracker}
 //        }
 export function visitor (conf)
 {
+    // ----------
     // spec
-    const event_guards_params = conf.spec.guards.params;
-    const event_guards = conf.spec.guards.body.filter ((elt) => elt != null);
+    // ----------
+    const spec = conf.spec
+    // location, guards
+    const event_guards_params = spec.guards.params;
+    const event_guards = spec.guards.body.filter ((elt) => elt != null);
     //console.log (JSON.stringify (event_guards));
     const events = event_guards.map ((elt) => elt.event);
     //console.log (JSON.stringify (events));
-    const initial = conf.spec.guards.params.initial;
+    const initial = spec.guards.params.initial;
 
+    // ----------
     // code
-    const class_name = conf.code.class;
+    // ----------
+    // location, class, handlers
+    const code = conf.code;
     // handlers = [{name, event}, ..]
     var handlers = conf.code.handlers ? conf.code.handlers : [];
     handlers = handlers.filter ((elt) => elt != null);
     handlers = handlers.concat (events.map ((elt) => { return {name: elt, event: elt} }));
-    if (class_name)
+    if (code.js_class)
 	handlers = handlers.map ((elt) => {
-	    const name = (elt.name.includes (".")) ? elt.name : (class_name + "." + elt.name);
+	    const name = (elt.name.includes (".")) ? elt.name : (code.js_class + "." + elt.name);
 	    return {name: name, event: elt.event} });
     //console.log ("handlers:", JSON.stringify (handlers))
     const handler_names = handlers.map ((elt) => { return elt.name })
 
+    // ----------
+    // mappings
+    // ----------
     var guards = event_guards.map ((elt) => {
 	// elt = [{event, transitions}, ..]
 	const event = elt.event;
@@ -146,68 +293,86 @@ export function visitor (conf)
     })
     //console.log ("guards:", JSON.stringify (guards));
 
+    // ----------
     // options
+    // ----------
+    // guards, decorators, trakcer
     const options = conf.options;
     //console.log ("options:", options);
-
     // decorators
-    var decorators = {initial: true, expects: true, update: true, ensures: true, transitions: true};
-    if (options && options.decorators)
-    {
-	if (options.decorators.initial != null) decorators.initial = options.decorators.initial;
-	if (options.decorators.expects != null) decorators.expects = options.decorators.expects;
-	if (options.decorators.update != null) decorators.update = options.decorators.update;
-	if (options.decorators.ensures != null) decorators.ensures = options.decorators.ensures;
-	if (options.decorators.transitions != null) decorators.transitions = options.decorators.transitions;
-    }
     //console.log ("decorators:", decorators);
     // tracker
-    const tracker = {name: "_state", local: false, global: false}
-    if (options && options.tracker)
-    {
-	if (options.tracker.name != null) tracker.name = options.tracker.name;
-	if (options.tracker.local != null) tracker.local = options.tracker.local;
-	if (options.tracker.global != null) tracker.global = options.tracker.global;
-    }
-    _state = tracker.name;
+    _state = options.tracker.name;
     _state_pre = _state_pre = _state + "_pre";
 
     var current_class_name = null;
+    var assert_declared = false;
+
     return {
 	Program : {
+	    enter (path) {},
 	    exit (path) {
-		if (!tracker.global) return;
-		const var_prop =
-		      {type: "VariableDeclaration",
-		       declarations: [{
-			   type: "VariableDeclarator",
-			   id: {type: "Identifier", name: _state},
-			   init: {type: "StringLiteral", value: initial}
-		       }],
-		       kind: "var",
-		      }
-		path.node.body.push (var_prop);
+		add_trailer (path, spec, code, options, assert_declared);
 	    }
 	},
+	// NOTE: decorators CANNOT be attached to functions
+	FunctionDeclaration (path) {
+	    if (code.js_class) return;
+
+	    // path.node = {id, params, body}
+	    const name = path.node.id.name;
+	    if (!handler_names.includes (name)) return;
+
+	    const conds = gen_conditions (guards, name);
+
+	    // conditions
+	    add_conditions (path, conds, options)
+
+	    // comments
+	    add_comments (path, conds)
+	},
+
 	ClassDeclaration : {
 	    enter (path) {
 		current_class_name = path.node.id.name;
-		if (class_name && current_class_name != class_name) return;
-		const init_deco =
-		      t.decorator (t.callExpression (t.identifier ("initial"), [t.stringLiteral (initial)]));
-		var node = path.node;
-		if (!node.decorators) node.decorators = [];
-		if (decorators.initial) node.decorators.push (init_deco);
+		if (!code.js_class || current_class_name != code.js_class) return;
+		if (!options.js_decorators) return;
+		// initial
+		if (options.js_decorators.includes ("initial")) 
+		{
+		    const init_deco =
+			  t.decorator (t.callExpression (t.identifier ("initial"), [t.stringLiteral (initial)]));
+		    let node = path.node;
+		    //if (path.parent.type == "ExportNamedDeclaration") node = path.parent;
+		    // ** this causes an error
+		    if (!node.decorators) node.decorators = [];
+		    node.decorators.push (init_deco);
+		}
 	    },
 	    exit (path) {
+		if (current_class_name == code.js_class)
+		{
+		    let body = path.node.body;
+		    assert (body.type == "ClassBody");
+		    // method _reset () { _state = <initial>; }
+		    const init_stmt = 
+			  t.expressionStatement (t.assignmentExpression ("=", t.identifier (_state),
+									 t.stringLiteral (initial)));
+		    body.body.push (t.classMethod ("method", t.identifier ("_reset"), [],
+						   t.blockStatement ([init_stmt])));
+		}
+
 		current_class_name = null;
 	    }
 	},
 	ClassBody (path) {
-	    if (!tracker.local) return;
-	    if (class_name && current_class_name != class_name) return;
-	    //console.log (path.node.body);
-	    const init_prop =
+	    if (!code.js_class || current_class_name != code.js_class) return;
+	    if (options.tracker.global) return;
+
+	    // insert tracker ("_state") declaration (local)
+	    if (!options.tracker.global && !options.js_decorators.includes ("initial"))
+	    {
+		const init_prop =
 		  {type: "ClassProperty",
 		   static: false,
 		   key: {type: "Identifier", name: _state},
@@ -215,39 +380,28 @@ export function visitor (conf)
 		   typeAnnotation: {type: "TSTypeAnnotation",
 				    typeAnnotation: {type: "TSStringKeyword"}},
 		   value: t.stringLiteral (initial)}
-	    path.node.body = [init_prop].concat (path.node.body);
+		//console.log (path.node.body);
+		path.node.body = [init_prop].concat (path.node.body);
+	    }
 	},
 	ClassMethod (path) {
-	    const name = class_name ? (current_class_name + "." + path.node.key.name) : path.node.key.name;
+	    if (!code.js_class || current_class_name != code.js_class) return;
+
+	    const name = code.js_class ? (current_class_name + "." + path.node.key.name) : path.node.key.name;
 	    if (!handler_names.includes (name)) return;
 
+	    // conditions
 	    const conds = gen_conditions (guards, name);
+	    add_conditions (path, conds, options)
+
+	    // comments
+	    add_comments (path, conds)
+
+	    // decorators
+	    if (!options.js_decorators) return;
+
 	    const decos = gen_decorators (conds);
-	    //console.log (name, JSON.stringify (decos));
-
-	    if (!path.node.decorators) path.node.decorators = [];
-	    if (decorators.expects) path.node.decorators.push (decos.pre.deco);
-	    if (decorators.update) path.node.decorators.push (decos.update.deco);
-	    if (decorators.ensures) path.node.decorators.push (decos.post.deco);
-	    if (decorators.transitions) path.node.decorators.push (decos.transitions.deco);
-
-	    // comments
-	    if (!path.node.leadingComments) path.node.leadingComments = [];
-	    path.node.leadingComments.push ({type: "CommentLine", value: " expects: " + conds.pre.str});
-	    path.node.leadingComments.push ({type: "CommentLine", value: " ensures: " + conds.post.str});
-	},
-
-	FunctionDeclaration (path) {
-	    // path.node = {id, params, body}
-	    const name = path.node.id.name;
-	    if (!handler_names.includes (name)) return;
-
-	    const conds = gen_conditions (guards, name);
-
-	    // comments
-	    if (!path.node.leadingComments) path.node.leadingComments = [];
-	    path.node.leadingComments.push ({type: "CommentLine", value: " expects: " + conds.pre.str});
-	    path.node.leadingComments.push ({type: "CommentLine", value: " ensures: " + conds.post.str});
+	    add_decorators (path, decos, options)
 	}
     }
 }

@@ -130,7 +130,7 @@ cat $infile > $rulesfile
 # --------------------------------------------------------------------------------
 
 dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa)
-$RULES2DFA --until $until $infile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
+$RULES2DFA --until $until $rulesfile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
 
 case $until in
 dfa1 | dfa2 | dfa | dfadot)

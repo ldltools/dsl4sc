@@ -8,11 +8,12 @@ SRCS	= main.js transformer.js
 
 all::	$(BUNDLED)
 
-clean::
+clean::;	rm -f *~
 install::	all
 	@mkdir -p $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
 	@test -f $(BUNDLED) || exit 1
 	rsync -avzop $(BUNDLED) $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
+	rsync -avzop decorators.ts $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
 
 $(BUNDLED):	$(SRCS)
 	$(MAKE) setup
@@ -31,7 +32,8 @@ setup::	check
 
 check::
 	@test -f package.json || npm init -y
-	@test $$(npm bin) = $$(readlink -f $$PWD/node_modules/.bin) || exit 1
+	@test -d node_modules || mkdir -p node_modules/.bin
+	@test $$(npm bin) = "$$(readlink -f $$PWD/node_modules/.bin)" || exit 1
 
 #
 setup_node::
