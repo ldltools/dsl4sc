@@ -20,7 +20,6 @@ GUARDGEN=${LIBDIR}/tools/guardgen.sh
 # js/ts
 TRANSPILER=${LIBDIR}/tools/safeguard_helpers/safeguard_ts.js
 NODE=${NODE:-node}
-TSC=${TSC:-$(npm bin)/tsc}
 
 usage ()
 {
@@ -184,6 +183,9 @@ transpile_js ()
       && { cat $decorated; rm -f $decorated; return; }
 
     # decorator expansion using tsc
+    test -d "$(npm bin)" || abort "npm is not properly configured"
+    TSC=$(npm bin)/tsc
+    test -x $TSC || abort "tsc not found"
     $TSC -m amd --allowJS --experimentalDecorators -t ES2016 $decorated --outFile /dev/stdout
     rm -f $decorated
 }

@@ -1,4 +1,4 @@
-# v0.12.0 (2019-??-??)
+# v0.12.0 (2019-07-08)
 
 - **new** [safeguard] attach to existing EcmaScript code a set of pre/post conditions.
   (33c54bc)
