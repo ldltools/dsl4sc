@@ -102,6 +102,8 @@ let report_error (msg : string) =
 %token	AND
 %token	IMPLIES
 
+%token	<char> LTL_UOP LTL_BOP
+
 %token	EQUAL
 %token	NE GT LT GE LE
 
@@ -264,8 +266,8 @@ protocol1
 	  { $1 }
 	| protocol1 SEMI protocol2
 	  { match $1, $3 with
-	    | Proto_seq s, _ -> Proto_seq (s @ [$3])
-	    | _, Proto_seq s -> Proto_seq ($1 :: s)
+	    | Proto_seq s, _ when s <> [] -> Proto_seq (s @ [$3])
+	    | _, Proto_seq s when s <> [] -> Proto_seq ($1 :: s)
 	    | _ -> Proto_seq [$1; $3]
 	  }
 	;
@@ -274,7 +276,7 @@ protocol2
 	: protocol3
 	  { $1 }
 	| protocol3 QUESTION
-	  { Proto_sum [$1; Proto_event "_epsilon"] }
+	  { Proto_sum [$1; Proto_seq []] }
 //	| protocol3 QUESTION protocol3
 //	  { Proto_seq [Proto_sum [$1; Proto_event "_epsilon"]; $3] }
 	| protocol3 STAR
@@ -283,7 +285,16 @@ protocol2
 
 protocol3
 	: NAME
-	  { match $1 with "_empty" -> Proto_empty | _ -> Proto_event $1 }
+	  { match $1 with
+	    | "_empty" -> Proto_sum []
+	    | "_epsilon" -> Proto_seq []
+	    | _ -> Proto_event $1
+	  }
+	| CONST
+	  { if $1 = 0 then Proto_sum []
+	    else if $1 = 1 then Proto_seq []
+	    else failwith ("[parsing] unknown event: " ^ string_of_int $1)
+	  }
 //	| neg NAME
 //	  { Proto_prop (PProp_neg (PProp_event $2)) }
 //	| neg protocol3
@@ -541,19 +552,29 @@ modal_property
 	  { Prop_modal (fst $1, snd $1, ($2, None)) }
 //	| modal_path LPAREN property RPAREN
 //	  { Prop_modal (fst $1, snd $1, $3) }
+	| property3 LTL_BOP property2
+	  { match $2 with
+	    | 'U' when not (modal_p $1) ->
+		Prop_modal (Mod_ex, (Path_star (Path_prop $1, None), None), ($3, None))
+	    | _ -> failwith ("[parsing] unknown temporal operator: " ^ Char.escaped $2)
+	  }
 	;
 
+// modality * labelled_path
 modal_path
 	: LT labelled_ldl_path GT
 	  { (Mod_ex, $2) }
 	| LBRACK labelled_ldl_path RBRACK
 	  { (Mod_all, $2) }
 
-// special cases: <> = <{true}*>, [] = [{true}*]
-	| LT GT
-	  { Mod_ex, (Path_star (Path_prop (Prop_atomic "true"), None), None) }
-	| LBRACK RBRACK
-	  { Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None) }
+// special cases: () = <true>, <> = <{true}*>, [] = [{true}*]
+	| LTL_UOP
+	  { match $1 with
+	    | 'X' -> Mod_ex, (Path_prop (Prop_atomic "true"), None)
+	    | 'F' -> Mod_ex, (Path_star (Path_prop (Prop_atomic "true"), None), None)
+	    | 'G' -> Mod_all, (Path_star (Path_prop (Prop_atomic "true"), None), None)
+	    | _ -> failwith ("[parsing] unknown temporal operator: " ^ Char.escaped $1)
+	  }
 	;
 
 // negation operator

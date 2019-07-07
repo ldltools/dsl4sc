@@ -1,11 +1,12 @@
 # Summary
+
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
 primarily targeted at defining and verifying state transition models for event processing.
 
 Each model in dsl4sc has the following unique characteristics:
 
-- It can include the following 3 different sort of declarations:
+- can include the following 3 different sort of declarations:
   - event **protocol**:
     _regular_ pattern of acceptable event sequences
   - logical **property**:
@@ -13,78 +14,81 @@ Each model in dsl4sc has the following unique characteristics:
   - ECA **rule**:
     triple of _event_, _condition_, and _action_
     that defines how to respond to the specified incoming event.
-- It has a clear semantics in terms of the LDL<sub>f</sub> formalism.
-- it can be verified statically and formally against arbitrary requirements
-  that are also defined in dsl4sc
-- It can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/)
+- has a clear semantics in terms of the LDL<sub>f</sub> formalism.
+- can be verified statically and formally against arbitrary requirements
+  that are also defined in dsl4sc.
+- can derive an executable statechart in [SCXML](https://www.w3.org/TR/scxml/).
 
 # Example: [deuce](examples/deuce/README.md) -- Sharapova vs. Williams
 
-Consider 2 proffessional tennis players, fictitiously called Sharapova and Williams,
+Consider 2 professional tennis players, fictitiously called Sharapova and Williams,
 are fighting for winning a game.
 They are currently at deuce and either needs to win by 2 points ahead of her opponent.
 
-To model what can happen until the game is won,
+To model what can happen through the game,
 let us start with the following protocol definition
 
 ```
 protocol  
-(sharapova + williams)*; game ;;
+(sharapova; williams + williams; sharapova)*;  
+(sharapova; sharapova + williams; williams);  
+game ;;
 ```
 
-This declares that, until the "_game_" event is emitted when the game is won,
-either of the "_sharapova_" and "_williams_" events, indicating which player wins a point,
-repeats 0 or more times.  
+This protocol defines that the game proceeds through 3 stages:
+(1) either takes an adavante but the other immediately evens the game,
+which repeats 0 or more times, and
+(2) either takes 2 points consecutively, and
+(3) the judge declares the game is taken.
 
-Succeedingly, we add the following _property_ that defines
-the players are initially at deuce and either will win the game in the end.
+Succeedingly, to define how _computation_ proceeds through the game,
+we introduce a variable, `state`, which ranges over 0 through 2 and denotes
+if the games is either at deuce (0), advantaged (1), or taken (2).
+In terms of this varible,
+we define a set of formulas, as properties of the model, as follows,
 
 ```
 variable  
-state : nat(4); // nat(4) = {0,1,2,3}  
-  // 0: deuce, 1: advantage with sharapova, 2: advantage with williams, 3: game won  
+state : nat(3); // nat(3) = {0, 1, 2}  
+  // 0: deuce, 1: advantage with either sharapova or williams, 2: ahead by 2 points  
 property  
-state = 0 & [](last -> state = 3); // initial and final conditions
+<{state != 2}*; {state = 2}; {state = 2}> last; // state = 2  only in the last 2 steps  
+state = 0 && [](last -> state = 2); // initial and final conditions  
+[] !(<{state = 0}> state = 0 || <{state = 1}> state = 1); // state = 0/1 never repeats
 ```
-
-Lastly, we add the following rules that define how each event is processed.
-
-```
-rule  
-on sharapova when state = 0 ensure state = 1;  
-on sharapova when state = 1 raise game ensure state = 3;  
-on sharapova when state = 2 ensure state = 0;  
-...
-```
-
-Here, the first rule defines that
-if a "_sharapova_" event is emitted when the game is at deuce (state = 0),
-then it turns out that the advantage is with the player called Sharapova (state = 1).
 
 By combining all of these, we derive a state-transition model illustrated as follows.
 
 ![statechart](examples/deuce/deuce.svg)
 
 Once a model is defined, we can formally verify the model in various ways.
+For examples, we can verify the following formulas all hold.
+
+- `protocol sharapova; sharapova; game ;;` : straight-win (reachable)
+- `property <{state = 0}; {state != 0}*> state = 2;` : straight-win (reachable)
+- `property []<> state = 2;` : liveness
+
 Take a look at [this](examples/deuce/README.md) for the detail.
 
 You can also check out [more examples](examples/README.md) if you are interested.  
 
 
-# Installation on Docker
+# Installation on Docker (recommended)
 
 - run `docker build --target builder -t ldltools/ldlsat-dev .` in the [ldlsat](https://github.com/ldltools/ldlsat) directory
 - run `docker build -t ldltools/dsl4sc .` in this directory
 
 # Installation on Debian/Ubuntu
 ## Prerequisites
-- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.0)  
+To run dsl4sc for static verification, you need the following tools.
+
+- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.1)  
   run: `apt-get install ocaml`  
   Alternatively, you can install a particular version of the compiler using opam  
-  run: `opam switch 4.07.0` for example
+  run: `opam switch 4.07.1` for example
 - [opam](https://opam.ocaml.org) (ocaml package manager)  
   run: `apt-get install opam`
-- ocaml packages: ocamlfind, sedlex, menhir, yojson, ppx\_deriving, ppx\_deriving\_yojson, xml-light, z3  
+- ocaml packages: ocamlfind sedlex menhir yojson ppx\_deriving ppx\_deriving\_yojson xml-light z3  
   for each of these packages,  
   run: `opam install <package>`
 - [ldlsat](https://github.com/ldltools/ldlsat) (v1.0.4 or higher)  
@@ -96,12 +100,14 @@ You can also check out [more examples](examples/README.md) if you are interested
   expand the archive, and build/install the tool as is instructed.
 - [xqilla](http://xqilla.sourceforge.net/) and [xmllint](http://xmlsoft.org/)  
   run: `apt-get install xqilla libxml2-utils`
-- [scxmlrun](https://github.com/ldltools/scxmlrun) (optional, for running/testing generated SCXML files)  
+
+## Prerequisites (optional)
+To test generated SCXML files, you further need to install `scxmlrun`.
+
+- [scxmlrun](https://github.com/ldltools/scxmlrun)  
   run: `git clone https://github.com/ldltools/scxmlrun`  
   build & install the tool by running `make && make install` in the top directory.  
   By default, the binaries will be installed into `/usr/local/bin`.
-- [graphviz](http://www.graphviz.org/) (optional)  
-  run: `apt-get install graphviz`
 
 ## Build
 - run `make && make install` in the top directory  

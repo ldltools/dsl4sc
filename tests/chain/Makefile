@@ -15,6 +15,10 @@ out/%.dfa.dot:	%.dsl
 	rules2scxml $< -o $@ -u dfadot
 out/%.scxml:	%.dsl
 	rules2scxml $< -o $@
+%.ldl:	%.dsl
+	rules2ldl $< -o $@
+%.mso:	%.ldl
+	ldl2mso $< -o $@
 %.puml:	%.scxml
 	scxml2uml.sh $< -o $@ -landscape
 %.svg:	%.puml

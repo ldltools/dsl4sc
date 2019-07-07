@@ -1,0 +1,51 @@
+\documentclass[fancy]{article}
+\setDate{June 2019}
+\begin{document}
+
+\begin{Name}{1}{safeguard}{author}{LDL Tools}{title}
+safeguard - LDL-based requirement enforcement tool
+\end{Name}
+
+\section{Synopsis}
+\Prog{safeguard} <option>* <infile>?
+
+\section{Description}
+\Prog{safeguard} reads a program from <infile>
+and attach pre/post conditions to event handlers in the program.
+
+\section{Options}
+
+\begin{description}
+\item[\Opt{--spec\Lbr:lang\Rbr} \Arg{file}]
+  read \emph{file} in \emph{lang} as spec (\emph{lang} ::= dsl | dfa | scxml)\\
+  when this option is not provided, \Prog{safeguard} tries auto-detection.
+\item[\Opt{--code\Lbr:lang\Rbr} \Arg{file}]
+  read \emph{file} in \emph{lang} as a program code (\emph{lang} ::= js | ts)\\
+  note that '\Prog{safeguard} --code \Arg{file}' is synonymous with '\Prog{safeguard} \Arg{file}'.
+%
+\item[\Opt{-o} \emph{file}]
+  output to \emph{file}
+\item[\Opt{-h}, \Opt{--help}]
+  show usage
+
+\end{description}
+
+\section{See Also}
+rule2scxml
+
+\section{Author}
+LDLTools development team at IBM Research.
+
+\begin{itemize}
+\item URL: \URL{https://ldltools.github.io}
+\item Email: \Email{ldltools@outlook.com}
+\end{itemize}
+
+\section{Copyright}
+(C) Copyright IBM Corp. 2019.
+License Apache 2.0.\\
+
+This is free software: you are free to change and redistribute it.
+There is NO  WARRANTY,  to the extent permitted by law.
+
+\end{document}

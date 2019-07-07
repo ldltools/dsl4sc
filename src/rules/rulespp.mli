@@ -16,6 +16,9 @@
 
 val preprocess :
 
+    (* variables *)
+    ?allow_undeclared: bool ->
+
     (* protocol *)
     ?expand_any: bool ->
     ?minimize_protocols: int ->
@@ -36,7 +39,7 @@ val preprocess :
 
 (** event / variable *)
 
-val pp_add_undeclared : Rules.decl list -> Rules.decl list
+val pp_add_undeclared : ?allow_undeclared: bool -> Rules.decl list -> Rules.decl list
     (* add missing proposition/event/label declarations -- mandatory *)
 
 (** protocol *)

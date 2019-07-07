@@ -40,8 +40,14 @@ and gen_bits_rec nbit (n : int) rslt i =
 let events_to_map (events : string list) =
   assert (not @@ List.mem "_skip" events);
   assert (List.length (List.sort_uniq compare events) = List.length events);
+  
   if events = [] then [] else
-  let es = "_skip" :: List.sort_uniq compare events
+
+  let events =
+    List.filter
+      (fun e -> not @@ List.mem e ["0"; "1"; "_any"; "_empty"; "_end"; "_epsilon"; "_skip"])
+      events
+  in let es = "_skip" :: List.sort_uniq compare events
   in let n = List.length es
   in let nbit = int_of_float @@ ceil @@ log (float_of_int n) /. log 2.0
   in let props, _ =
@@ -61,25 +67,92 @@ let events_to_map (events : string list) =
 
 (** protocol
     ⟦ p ⟧ = <_idle; (protocol_to_path p)> (last & _idle)
+
+    built-in events/protocols (macros)
+    - _epsilon (1)
+    - _empty (0)
+    - _any
+
+    special built-in event ("do-nothing" event)
+    - _skip
+    - _end
  *)
 
 let rec property_of_protocol (map : event_map) (p : Protocol.t) =
-  let _idle = List.assoc "_skip" map
-  in let r : Property.labelled_path = protocol_to_path map p
+  if mem_event "_epsilon" p then failwith "[property_of_protocol] epsilon included";
+  if not @@ mem_event "_end" p then failwith "[property_of_protocol] no \"_end\" event included";
+
+  (* preprocess : p -> Proto_sum choices
+     where each of its elements is a sequence that ends with "_end"
+   *)
+  let choices : Protocol.t list = match p with Proto_sum ps -> ps | _ -> [p]
+  in let choices =
+    let rec distrib p =
+      match p with
+      | Proto_event "_end" -> [p]
+      | Proto_event _ | Proto_seq [] | Proto_seq [_] | Proto_sum _ | Proto_star _ ->
+	  failwith ("[property_of_protocol] distrib1: " ^ string_of_protocol p)
+      | Proto_seq ps ->
+	  let leading = List.rev ps |> List.tl |> List.rev
+	  and last = List.nth ps (List.length ps - 1)
+	  in let sum =
+	    match last with
+	    | Proto_event "_end" -> [last]
+	    | Proto_seq ps' -> distrib last
+	    | Proto_sum ps' -> List.fold_left (fun rslt p' -> rslt @ distrib p') [] ps'
+	    | _ ->
+		failwith ("[property_of_protocol] distrib2: " ^ string_of_protocol last)
+	  in
+	  List.fold_left (fun rslt p' -> rslt @ [Proto_seq (leading @ [p'])]) [] sum
+      | _ -> [p]
+    in List.fold_left (fun rslt p -> rslt @ distrib (flatten p)) [] choices
   in
-  Prop_modal
-    (Mod_ex,
-     (Path_seq [Path_prop _idle, None; r], None),
-     (Prop_conj [Prop_atomic "last"; _idle], None))
+  (*
+  Printf.eprintf "[property_of_protocol] %s\n" (string_of_protocol p);
+  List.iter
+    (fun choice -> Printf.eprintf "[distrib] %s\n" (string_of_protocol choice))
+    choices;
+   *)
+
+  (* protocol to modal path expression
+     - trailing "_end" event is removed
+     - leading "_idle" state is added to the resulting path
+   *)
+  let _idle = List.assoc "_skip" map
+  in let rs : Property.labelled_path list = List.map (protocol_to_path map) choices
+      (* each r in rs ends with "last & _idle" *)
+  in let rs : Property.labelled_path list =
+    List.map
+      (fun (r, _) ->
+	match r with
+	| Path_prop _ -> Path_prop _idle, None
+	| Path_seq ps when List.length ps > 0 ->
+	    let leading = List.rev ps |> List.tl |> List.rev
+	    and last, _ = List.nth ps (List.length ps - 1)
+	    in
+	    Path_seq ((Path_prop _idle, None) :: leading), None
+	| _ -> failwith "property_of_protocol]")
+      rs
+  in
+  (*List.iter (fun r -> Printf.eprintf "[path] %s\n" (string_of_labelled_path r)) rs;*)
+
+  (* generate modal formulas *)
+  let props : Property.t list =
+    List.map
+      (fun r -> Prop_modal (Mod_ex, r, (Prop_conj [Prop_atomic "last"; _idle], None)))
+      rs
+  in Prop_disj props
 
 (* Protocol.t -> Property.labelled_path *)
 and protocol_to_path map (p : Protocol.t) =
-  let r : Property.path =
+  let p = Protocol.flatten p
+  in let _idle = List.assoc "_skip" map
+  in let r : Property.path =
     match p with
-    | Proto_event "_epsilon" ->
-	failwith "[protocol_to_path] protocol include _epsilon"
-    | Proto_event e when List.mem e ["_any"; "_empty"] ->
-	invalid_arg ("[protocol_to_path] invalid event: " ^ e)
+    | Proto_event e when List.mem e ["0"; "1"; "_empty"; "_epsilon"; "_any"] ->
+	invalid_arg ("[protocol_to_path] " ^ e)
+    | Proto_event "_end" -> Path_prop (Prop_conj [Prop_atomic "last"; _idle])
+	  (* _end -> last & _idle *)
     | Proto_event e -> Path_prop (List.assoc e map)
 
     | Proto_seq ps  -> Path_seq (List.map (protocol_to_path map) ps)
@@ -88,6 +161,23 @@ and protocol_to_path map (p : Protocol.t) =
 
     | _ -> failwith "[protocol_to_path]"
   in r, None
+
+(* Protocol.t -> Property.labelled_path *)
+(*
+and protocol_to_path map (p : Protocol.t) =
+  let r : Property.path =
+    match p with
+    | Proto_event e when List.mem e ["0"; "1"; "_empty"; "_epsilon"; "_any"] ->
+	invalid_arg ("[protocol_to_path] " ^ e)
+    | Proto_event e -> Path_prop (List.assoc e map)
+
+    | Proto_seq ps  -> Path_seq (List.map (protocol_to_path map) ps)
+    | Proto_sum ps  -> Path_sum (List.map (protocol_to_path map) ps)
+    | Proto_star p' -> Path_star (protocol_to_path map p')
+
+    | _ -> failwith "[protocol_to_path]"
+  in r, None
+ *)
 
 (** property
     expand built-in properties like _idle

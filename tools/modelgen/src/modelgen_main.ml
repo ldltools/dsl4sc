@@ -84,7 +84,7 @@ let main argc argv =
   let oc = open_out !outfile in at_exit (fun _ -> close_out oc);
 
   (* parse-only *)
-  if !opt_parse_only then (Model.to_channel oc m; raise Exit);
+  if !opt_parse_only then (Model.to_channel ~format: !opt_fmt_out oc m; raise Exit);
 
   (* transformation *)
   let m' =
@@ -92,7 +92,7 @@ let main argc argv =
   in
 
   (* output *)
-  Model.to_channel oc m';
+  Model.to_channel ~format: !opt_fmt_out oc m';
   ()
 ;;
 

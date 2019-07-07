@@ -79,11 +79,11 @@ val minimize : (int list, 'label) t -> (int list, 'label) t
 
 (** partially ppx-generated *)
 
-val pp_fsa :
+val pp :
     (Format.formatter -> 'state -> unit) ->
     (Format.formatter -> 'label -> unit) ->
     Format.formatter -> ('state, 'label) t -> unit
-val show_fsa :
+val show :
     (Format.formatter -> 'state -> unit) ->
     (Format.formatter -> 'label -> unit) ->
     ('state, 'label) t -> string

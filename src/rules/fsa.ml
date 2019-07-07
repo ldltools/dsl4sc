@@ -629,11 +629,11 @@ let fnfa2nfa (m : ('state, 'label) fixed_nfa) =
 
 (* pretty-printing *)
 
-let pp_fsa pp_state pp_label (fmt : Format.formatter) (m : ('state, 'label) nfa) =
+let pp pp_state pp_label (fmt : Format.formatter) (m : ('state, 'label) nfa) =
   let m' : ('state, 'label) fixed_nfa = nfa2fnfa m
   in pp_fixed_nfa pp_state pp_label fmt m'
 
-let show_fsa pp_state pp_label (m : ('state, 'label) nfa) = 
+let show pp_state pp_label (m : ('state, 'label) nfa) = 
    let m' : ('state, 'label) fixed_nfa = nfa2fnfa m
    in show_fixed_nfa pp_state pp_label m'
 

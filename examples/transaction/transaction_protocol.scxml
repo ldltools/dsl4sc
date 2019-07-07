@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel/>
+  <final id="q7">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+  </final>
+  <state id="q8">
+    <transition target="q7" event="_accept">
+      <!--tid t27_1-->
+    </transition>
+  </state>
+  <state id="q6">
+    <transition target="q8" event="rollback">
+      <!--tid t23_1-->
+    </transition>
+  </state>
+  <state id="q4">
+    <transition target="q5" event="tx2">
+      <!--tid t11_1-->
+    </transition>
+    <transition target="q6" event="tx1_err">
+      <!--tid t14_1-->
+    </transition>
+  </state>
+  <state id="q2">
+    <transition target="q4" event="tx1">
+      <!--tid t6_1-->
+    </transition>
+  </state>
+  <state id="q5">
+    <transition target="q7" event="_accept">
+      <!--tid t16_1-->
+    </transition>
+    <transition target="q6" event="tx2_err">
+      <!--tid t20_1-->
+    </transition>
+  </state>
+</scxml>

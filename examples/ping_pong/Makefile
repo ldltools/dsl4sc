@@ -15,10 +15,9 @@ TOP_DIR	= $(shell readlink -f ../..)
 include ../Makefile.common
 
 MODELS	= ping pong
-MODELS	+= monitor monitor2
 
 %.scxml:	%.rules
-	accept_transition=" " rules2scxml $< -o $@
+	rules2scxml $< -o $@ --auto-exit
 
 scxml:	$(MODELS:%=%.scxml)
 svg:	$(MODELS:%=%.svg)

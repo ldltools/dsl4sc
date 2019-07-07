@@ -32,11 +32,12 @@ usage () {
     echo -e "  -p, --parse-only\tparse-only"
     echo -e "  -E, --rulespp-only\tpreprocess-only"
     echo -e "  --until <stage>\tterminate when <stage> gets reached"
-    echo -e "  \t\t\t<stage> ::= spec | ldl | dfa | dfa[1-4] | scxml"
-    echo -e "  --auto-exit\t\tset the transitions to the final states as event-less"
+    echo -e "  \t\t\t<stage> ::= spec | ldl | dfa | dfa[0-3] | scxml"
+    echo -e "  --auto-exit\t\tset the final transitions to be event-less"
+    echo -e "  --exit=<e>\t\tset <e> as the event name for the final transitions"
     echo -e "  --monitor\t\tgenerate monitor"
     echo -e "  -v\t\t\tbecome verbose"
-    echo -e "  -h\t\t\tdisplay this message<outfile>"
+    echo -e "  -h\t\t\tdisplay this message"
 }
 
 infile=/dev/stdin
@@ -70,6 +71,9 @@ do
 	--auto-exit)
 	    # pass down to dfa2scxml.sh
 	    export accept_transition=" "
+	    ;;
+	--exit=*)
+	    export accept_transition=${1##*=}
 	    ;;
 	--monitor)
 	    # pass down to dfa2scxml.sh
@@ -130,10 +134,10 @@ cat $infile > $rulesfile
 # --------------------------------------------------------------------------------
 
 dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa)
-$RULES2DFA --until $until $infile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
+$RULES2DFA --until $until $rulesfile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
 
 case $until in
-dfa1 | dfa2 | dfa | dfadot)
+dfa | dfa0 | dfa1 | dfadot)
     cat $dfafile > $outfile
     rm -f $rulesfile $dfafile
     exit 0 ;;

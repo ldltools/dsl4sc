@@ -1,0 +1,13 @@
+{
+  "name": "safeguard_ts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "setup": "make setup",
+    "test": "make test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

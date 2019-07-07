@@ -6,9 +6,7 @@
 - [ping pong](ping_pong/README.md)
 - [deuce](deuce/README.md)
 - [bounded buffer](bounded_buffer/README.md)
-- vending machine
-- car loan
-- purchase order
+- [transaction](transaction/README.md)
 
 ## More examples
 

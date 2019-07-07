@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="531px" preserveAspectRatio="none" style="width:243px;height:531px;" version="1.1" viewBox="0 0 243 531" width="243px" zoomAndPan="magnify"><defs><filter height="300%" id="f81crnd8d57r4" width="300%" x="-1" y="-1"><feGaussianBlur result="blurOut" stdDeviation="2.0"/><feColorMatrix in="blurOut" result="blurOut2" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0"/><feOffset dx="4.0" dy="4.0" in="blurOut2" result="blurOut3"/><feBlend in="SourceGraphic" in2="blurOut3" mode="normal"/></filter></defs><g><rect fill="#FEFECE" filter="url(#f81crnd8d57r4)" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="50" x="6" y="389"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="6" x2="56" y1="415.2969" y2="415.2969"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="18" x="22" y="406.9951">q6</text><ellipse cx="222" cy="33" fill="#000000" filter="url(#f81crnd8d57r4)" rx="10" ry="10" style="stroke: none; stroke-width: 1.0;"/><ellipse cx="31" cy="510" fill="none" filter="url(#f81crnd8d57r4)" rx="10" ry="10" style="stroke: #000000; stroke-width: 1.0;"/><ellipse cx="31.5" cy="510.5" fill="#000000" rx="6" ry="6" style="stroke: none; stroke-width: 1.0;"/><rect fill="#FEFECE" filter="url(#f81crnd8d57r4)" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="50" x="35" y="8"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="35" x2="85" y1="34.2969" y2="34.2969"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="18" x="51" y="25.9951">q4</text><rect fill="#FEFECE" filter="url(#f81crnd8d57r4)" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="50" x="104" y="135"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="104" x2="154" y1="161.2969" y2="161.2969"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="18" x="120" y="152.9951">q2</text><rect fill="#FEFECE" filter="url(#f81crnd8d57r4)" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="50" x="6" y="262"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="6" x2="56" y1="288.2969" y2="288.2969"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="18" x="22" y="279.9951">q5</text><!--link q4 to q2--><path d="M85.0465,53.4653 C95.1478,62.9696 106.0368,75.0321 113,88 C119.8452,100.748 123.7648,116.2704 126.0078,129.634 " fill="none" id="q4-q2" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="126.8154,134.8302,129.3855,125.3226,126.0474,129.8895,121.4805,126.5514,126.8154,134.8302" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="45" x="120" y="101.0669">(1)ping</text><!--link q2 to q4--><path d="M103.841,149.436 C86.0658,140.4729 63.5931,125.7421 53,105 C46.5453,92.3612 47.1528,76.8517 49.8455,63.4682 " fill="none" id="q2-q4" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="51.0164,58.2626,45.1388,66.1654,49.9191,63.1407,52.9438,67.921,51.0164,58.2626" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="50" x="54" y="101.0669">(1)pong</text><!--link q4 to q5--><path d="M49.0916,58.0045 C45.5451,67.2527 42.0084,77.9365 40,88 C28.2431,146.911 28.2973,217.4949 29.5472,256.7891 " fill="none" id="q4-q5" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="29.7218,261.8887,33.4111,252.757,29.5505,256.8916,25.4158,253.031,29.7218,261.8887" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="42" x="34" y="164.5669">(2)quit</text><!--link q2 to q5--><path d="M109.6384,185.0911 C93.4643,206.0514 70.3892,235.9549 53.4165,257.95 " fill="none" id="q2-q5" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="50.3214,261.961,58.9864,257.2794,53.376,258.0025,52.6529,252.3921,50.3214,261.961" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="42" x="86" y="228.0669">(2)quit</text><!--link q5 to q6--><path d="M31,312.0911 C31,332.7035 31,361.9647 31,383.8484 " fill="none" id="q5-q6" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="31,388.961,35,379.961,31,383.961,27,379.961,31,388.961" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="18" x="32" y="355.0669">(1)</text><!--link *start to q2--><path d="M216.646,41.6086 C208.0435,55.3039 190.4384,82.7764 174,105 C167.6319,113.6092 160.409,122.703 153.6431,130.9632 " fill="none" id="*start-q2" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="150.364,134.9454,159.1729,130.5405,153.5424,131.0856,152.9972,125.4551,150.364,134.9454" style="stroke: #A80036; stroke-width: 1.0;"/><!--link q6 to *end--><path d="M31,439.2229 C31,456.8366 31,479.7774 31,494.6928 " fill="none" id="q6-*end" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="31,499.8002,35,490.8002,31,494.8002,27,490.8002,31,499.8002" style="stroke: #A80036; stroke-width: 1.0;"/><!--
+@startuml 
+state q4
+state q2
+state q5
+q4 - -> q2:(1)ping
+q4 - -> q5:(2)quit
+q2 - -> q4:(1)pong
+q2 - -> q5:(2)quit
+q5 - -> q6:(1) 
+[*] - -> q2
+state q6
+q6 - -> [*]
+state q4 {
+}
+state q2 {
+}
+state q5 {
+}
+@enduml
+
+PlantUML version 1.2017.15(Tue Jul 04 01:45:34 JST 2017)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 1.8.0_191-8u191-b12-2ubuntu0.18.04.1-b12
+Operating System: Linux
+OS Version: 4.15.0-46-generic
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

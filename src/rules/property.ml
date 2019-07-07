@@ -700,6 +700,7 @@ and print_path out ?(fancy=false) r =
       out "{"; print_property out ~fancy f; out "}"
 
   (* seq *)
+  | Path_seq [] -> out "1"
   | Path_seq [r'] when path_prec (fst r') <= path_prec r ->
       print_labelled_path out r'
   | Path_seq [r'] ->
@@ -714,6 +715,7 @@ and print_path out ?(fancy=false) r =
       print_path out (Path_seq rs)
 
   (* sum *)
+  | Path_sum [] -> out "0"
   | Path_sum [r'] when path_prec (fst r') <= path_prec r ->
       print_labelled_path out r'
   | Path_sum [r'] ->
