@@ -44,9 +44,10 @@ usage_advanced ()
     echo -e "  --parse-only\t\t\tparse code, print its ast, and terminate"
     echo -e "  --conditions=<c>,<c>,..\tspecify conditions to attach (<c> ::= pre | post | ..)"
     echo
-    echo -e "  --js-decorators=<d>,<d>,..\tspecify decorators"
-    echo -e "  --js-keep-decorators\t\tretain decorators with no expansion"
-    echo -e "  --js-class <class>\t\tspecify class that carries event handlers"
+    echo -e "  --js-class=<class>\t\tspecify class that carries event handlers"
+    echo -e "  --js-initializer=<init>\tname the initializer function"
+    echo -e "  --js-decorators=<d>,<d>,..\tuse decorators (experimental)"
+    echo -e "  --js-keep-decorators\t\tretain decorators without expanding"
     echo
 }
 
@@ -132,6 +133,12 @@ do
 	    safeguard_conditions=
 	    ;;
 
+	--js-class=*)
+	    safeguard_js_class=${1:11}
+	    ;;
+	--js-initializer=*)
+	    safeguard_js_initializer=${1:17}
+	    ;;
 	--js-decorators=*)
 	    safeguard_js_decorators=${1:16}
 	    ;;
@@ -140,10 +147,6 @@ do
 	    ;;
 	--js-keep-decorators)
 	    safeguard_js_decorators_keep=true
-	    ;;
-	--js-class)
-	    safeguard_js_class=$2
-	    shift
 	    ;;
 
 	-*)
@@ -199,7 +202,7 @@ then
     if test -f $codefile
     then
 	stem=${codefile%.*}
-	for suffix in dsl dfa scxml
+	for suffix in spec dsl rules dfa scxml
 	do
 	    test -f ${stem}.$suffix && { specfile=${stem}.$suffix; spectype=$suffix; }
 	done
@@ -252,10 +255,11 @@ confgen ()
 
 # env variables to look up
 # - safeguard_conditions: array
-# - safeguard_tracker_name: name
-# - safeguard_tracker_global: true/false
+# - safeguard_tracker: string
+# - safeguard_tracker_global: bool
+# - safeguard_initializer: string
 #
-# - safeguard_js_class: name
+# - safeguard_js_class: string
 # - safeguard_js_decorators: array
 
 # pre/post-conditions
@@ -277,8 +281,11 @@ then
 fi
 
 # tracker
-safeguard_tracker_name=${safeguard_tracker_name-"_state"}
-safeguard_tracker_global=${safeguard_tracker_global-true}
+safeguard_tracker=${safeguard_tracker-"_state"}
+safeguard_tracker_global=${safeguard_tracker_global-"null"}
+
+# initializer
+safeguard_initializer=${safeguard_initializer-"_reset"}
 
 # js-specific
 local js_class=${safeguard_js_class-""}
@@ -318,7 +325,8 @@ $(test ."${js_class}" = . || echo "\"js_class\" : \"${js_class}\",")
 "options" : {
 "conditions" : [ ${conditions_str} ],\
 $(test ${#js_decorators[@]} -gt 0 && echo -en "\n\"js_decorators\" : [${js_decorators_str}],")
-"tracker" : {"name" : "${safeguard_tracker_name}", "global" : ${safeguard_tracker_global}}
+"tracker" : {"name" : "${safeguard_tracker}", "global" : ${safeguard_tracker_global}},
+"initializer" : {"name" : "${safeguard_initializer}"}
 }
 }
 EOF

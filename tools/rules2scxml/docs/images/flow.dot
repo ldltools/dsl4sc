@@ -1,4 +1,5 @@
-// $Id: $
+// $Id: flow.dot,v 1.1 2019/07/06 23:15:18 sato Exp sato $
+
 digraph flow {
   rankdir=LR
   node				[shape=box]
@@ -6,31 +7,31 @@ digraph flow {
 // --------------------------------------------------------------------------------
 // file nodes
 // --------------------------------------------------------------------------------
-  rules				[label=<<I>SC</I>.rules>]
+  rules				[label=<<I>S</I>.rules>]
 
   {rank=same
-   spec				[label=<<I>SC</I>.rules>]
-   rules_xml			[label=<<I>SC</I>.rules.xml>]
+   spec				[label=<<I>S</I>.rules>]
+   rules_xml			[label=<<I>S</I>.xml>]
   }
 
-  ldl				[label=<<I>SC</I>.ldl>]
+  ldl				[label=<<I>S</I>.ldl>]
 
   {rank=same
-   mso				[label=<<I>SC</I>.mso>]
+   mso				[label=<<I>S</I>.mso>]
   }
 
   {rank=same
    rankdir=TB
-   dfa				[label=<<I>SC</I>_dfa.xml>]
+   dfa				[label=<<I>S</I>_dfa0.xml>]
    dummy1			[label="", shape=point, color=white]
-   dfa2				[label=<<I>SC</I>_dfa2.xml>]
-   dfa3				[label=<<I>SC</I>_dfa3.xml>]
-   dfa4				[label=<<I>SC</I>_dfa4.xml>]
+   dfa2				[label=<<I>S</I>_dfa.xml>]
+   dfa3				[label=<<I>S</I>_dfa2.xml>]
+   dfa4				[label=<<I>S</I>_dfa3.xml>]
   }
 
   {rank=same
-   dfadot			[label=<<I>SC</I>_dfa.dot>]
-   scxml			[label=<<I>SC</I>.scxml>]
+   dfadot			[label=<<I>S</I>_dfa0.dot>]
+   scxml			[label=<<I>S</I>.scxml>]
   }
 
 // --------------------------------------------------------------------------------
@@ -45,8 +46,8 @@ digraph flow {
   ldl -> mso			[label=ldl2mso]
   mso -> dfa			[label="mso2dfa.sh"]
   dfa -> dummy1			[arrowhead=none]
-  dummy1 -> dfa2		[label=<(<I>preprocess</I>)>]
-  dfa2 -> dfa3			[label="dfa2dfa        ", labelfloat=true]
+  dummy1 -> dfa2		[label=<(<I>combine</I>)>]
+  dfa2 -> dfa3			[label="modelgen          ", labelfloat=true]
   dfa3 -> dfa4			[label=<(<I>postprocess</I>)>]
   dfa4 -> scxml			[label=<(<I>print</I>)>]
 
@@ -57,6 +58,7 @@ digraph flow {
 
 //
   rules -> scxml		[label="rules2scxml.sh", style=dotted]
-  dummy1 -> scxml		[label="dfa2scxml.sh", style=dotted]
+  rules -> dfa2			[label="rules2dfa.sh", style=dotted]
+  dfa2 -> scxml			[label="dfa2scxml.sh", style=dotted]
 
 }

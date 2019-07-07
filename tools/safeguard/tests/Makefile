@@ -47,7 +47,7 @@ veryclean::	clean
 all::	out/ping_pong_guarded.js
 
 ping_pong.scxml:	ping_pong.spec
-	accept_transition=quit $(RULES2SCXML) $< -o $@
+	$(RULES2SCXML) $< -o $@ --exit=quit
 out/ping_pong_guarded.js:	ping_pong.js ping_pong.scxml
 	@mkdir -p out
 	$(SAFEGUARD) $< -o $@
@@ -65,7 +65,7 @@ deuce.scxml:	deuce.spec
 	$(RULES2SCXML) $< -o $@ --auto-exit
 out/deuce_guarded.js:	deuce.js deuce.scxml
 	@mkdir -p out
-	$(SAFEGUARD) $< -o $@ --js-class Deuce
+	$(SAFEGUARD) $< -o $@ --js-class=Deuce
 
 test::	test_deuce
 test_deuce::	deuce.test.js out/deuce_guarded.js
@@ -76,7 +76,7 @@ test_deuce::	deuce.test.js out/deuce_guarded.js
 
 out/deuce_decorated.ts:	deuce.js deuce.scxml
 	@mkdir -p out
-	$(SAFEGUARD) $< -o $@ --js-class Deuce --js-decorators=expects,ensures,update --js-keep-decorators
+	$(SAFEGUARD) $< -o $@ --js-class=Deuce --js-decorators=expects,ensures,update --js-keep-decorators
 
 # decorator expansion
 # ** note: typescript compiler needs to be properly set up.

@@ -218,18 +218,19 @@ function add_trailer (path, spec, code, options, assert_declared = false)
 	assert (options.tracker.global);
 
 	// function _reset () { _state = <initial>; }
+	const initializer = options.initializer.name;
 	const init_stmt = 
 	      t.expressionStatement (t.assignmentExpression ("=", t.identifier (_state),
 							     t.stringLiteral (initial)));
-	path.node.body.push (t.functionDeclaration (t.identifier ("_reset"), [],
+	path.node.body.push (t.functionDeclaration (t.identifier (initializer), [],
 						    t.blockStatement ([init_stmt])));
 	// module.exports._reset = _reset
 	const export_exp =
 	      t.memberExpression (t.memberExpression (t.identifier ("module"), t.identifier ("exports")),
-				  t.identifier ("_reset"));
+				  t.identifier (initializer));
 	const export_stmt =
 	      t.expressionStatement (t.assignmentExpression ("=", export_exp,
-							     t.identifier ("_reset")));
+							     t.identifier (initializer)));
 	path.node.body.push (export_stmt);
     }
 
@@ -301,9 +302,16 @@ export function visitor (conf)
     //console.log ("options:", options);
     // decorators
     //console.log ("decorators:", decorators);
+
     // tracker
     _state = options.tracker.name;
     _state_pre = _state_pre = _state + "_pre";
+    if (!code.js_class) {
+	assert (options.tracker.global != false);
+	options.tracker.global = true;
+    }
+    if (code.js_class && options.tracker.global == null)
+	options.tracker.global = true;
 
     var current_class_name = null;
     var assert_declared = false;
@@ -358,7 +366,8 @@ export function visitor (conf)
 		    const init_stmt = 
 			  t.expressionStatement (t.assignmentExpression ("=", t.identifier (_state),
 									 t.stringLiteral (initial)));
-		    body.body.push (t.classMethod ("method", t.identifier ("_reset"), [],
+		    const initializer = options.initializer.name;
+		    body.body.push (t.classMethod ("method", t.identifier (initializer), [],
 						   t.blockStatement ([init_stmt])));
 		}
 
@@ -370,18 +379,21 @@ export function visitor (conf)
 	    if (options.tracker.global) return;
 
 	    // insert tracker ("_state") declaration (local)
-	    if (!options.tracker.global && !options.js_decorators.includes ("initial"))
+	    if (!options.tracker.global
+		&& (!options.js_decorators || !options.js_decorators.includes ("initial")))
 	    {
-		const init_prop =
+		//console.log (path.node.body);
+		const init_prop1 =
 		  {type: "ClassProperty",
 		   static: false,
 		   key: {type: "Identifier", name: _state},
 		   computed: false,
-		   typeAnnotation: {type: "TSTypeAnnotation",
-				    typeAnnotation: {type: "TSStringKeyword"}},
-		   value: t.stringLiteral (initial)}
-		//console.log (path.node.body);
-		path.node.body = [init_prop].concat (path.node.body);
+		   //typeAnnotation: {type: "TSTypeAnnotation", typeAnnotation: {type: "TSStringKeyword"}},
+		   value: t.stringLiteral (initial)
+		  }
+		const init_prop2 = t.classProperty (t.identifier (_state_pre));
+		path.node.body.unshift (init_prop2);
+		path.node.body.unshift (init_prop1);
 	    }
 	},
 	ClassMethod (path) {

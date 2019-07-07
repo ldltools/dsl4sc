@@ -32,7 +32,7 @@ usage () {
     echo -e "  -p, --parse-only\tparse-only"
     echo -e "  -E, --rulespp-only\tpreprocess-only"
     echo -e "  --until <stage>\tterminate when <stage> gets reached"
-    echo -e "  \t\t\t<stage> ::= spec | ldl | mso | dfa[1-2] | dfadot | dfa"
+    echo -e "  \t\t\t<stage> ::= spec | ldl | mso | dfa | dfa0 | dfadot"
     echo -e "  --monitor\t\tgenerate monitor"
     echo -e "  -v\t\t\tbecome verbose"
     echo -e "  -h\t\t\tdisplay this message<outfile>"
@@ -126,20 +126,20 @@ ${RULES2LDL} $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} cr
 test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm -f $rulesfile $ldlfile $mapfile; exit 0; }
 
 # --------------------------------------------------------------------------------
-# ldl -> dfa1
+# ldl -> dfa0
 # --------------------------------------------------------------------------------
-dfa1file=$(tempfile -d /tmp/.dsl4sc -s .dfa1)
-#echo "ldl2scxml.ldl2dfa : $infile -> ${dfa1file}" > /dev/stderr
+dfa0file=$(tempfile -d /tmp/.dsl4sc -s .dfa0)
+#echo "ldl2scxml.ldl2dfa : $infile -> ${dfa0file}" > /dev/stderr
 test -x ${LDL2DFA} || { echo "** ${LDL2DFA} not found"; exit 1; }
-${LDL2DFA} $ldlfile -o ${dfa1file} -u $until || { echo "** ${LDL2DFA} crashed" > /dev/stderr; rm -f ${dfa1file}; exit 1; }
+${LDL2DFA} $ldlfile -o ${dfa0file} -u $until || { echo "** ${LDL2DFA} crashed" > /dev/stderr; rm -f ${dfa0file}; exit 1; }
 
 case $until in
     ldl | mso)
-	cat ${dfa1file} > $outfile; rm -f ${dfa1file}; exit 0 ;;
-    dfa1)
-	xmllint --format ${dfa1file} > $outfile; rm -f ${dfa1file}; exit 0 ;;
+	cat ${dfa0file} > $outfile; rm -f ${dfa0file}; exit 0 ;;
+    dfa0)
+	xmllint --format ${dfa0file} > $outfile; rm -f ${dfa0file}; exit 0 ;;
     dfadot)
-	cat ${dfa1file} > $outfile; rm -f ${dfa1file}; exit 0 ;;
+	cat ${dfa0file} > $outfile; rm -f ${dfa0file}; exit 0 ;;
 esac
 
 rm -f $ldlfile
@@ -154,8 +154,8 @@ ${RULESPP} $rulesfile -o $xmlrulesfile -t xml || { echo "** ${RULESPP} crashed" 
 rm -f $rulesfile
 
 # --------------------------------------------------------------------------------
-# dfa1 + map + rules in xml -> dfa2
-# (dfa2 combines dfa, map (event->bits), and rules that carry code)
+# dfa0 + map + rules in xml -> dfa
+# (dfa combines dfa0, map (event->bits), and rules that carry code)
 # --------------------------------------------------------------------------------
 
 decode_events=$LIBDIR/decode_events.xq
@@ -168,17 +168,17 @@ main2="local:include_rules (.)"
 main3="local:include_rules (local:decode_events (.))"
 
 case $until in
-    dfa2-1) main=${main1} ;;
-    dfa2-2) main=${main2} ;;
+    dfa-1 | dfa1-1) main=${main1} ;;
+    dfa-2 | dfa1-2) main=${main2} ;;
     *) main=${main3} ;;
 esac
 
 test -f "$mapfile" || { echo "** spurious map ($mapfile)" > /dev/stderr; exit 1; }
 test -f "$xmlrulesfile" || { echo "** spurious rules ($xmlrulesfile)" > /dev/stderr; exit 1; }
 
-dfa2file=$(tempfile -d /tmp/.dsl4sc -s .dfa2)
-#echo "preprocess : $infile -> ${dfa2file}"
-cat <<EOF | xqilla /dev/stdin -i ${dfa1file} -o ${dfa2file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa2file}; exit 1; }
+dfa1file=$(tempfile -d /tmp/.dsl4sc -s .dfa1)
+#echo "preprocess : $infile -> ${dfa1file}"
+cat <<EOF | xqilla /dev/stdin -i ${dfa0file} -o ${dfa1file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa1file}; exit 1; }
 declare default element namespace "https://github.com/ldltools/dsl4sc";
 declare variable \$alist := doc("`readlink -f $mapfile`")//bits;
 `cat ${decode_events}`
@@ -189,15 +189,15 @@ declare variable \$scripts := doc("`readlink -f $xmlrulesfile`")//scripts/script
 $main
 EOF
 
-rm -f ${dfa1file} $mapfile $xmlrulesfile
+rm -f ${dfa0file} $mapfile $xmlrulesfile
 
 case $until in
-    dfa | dfa2*)
-	xmllint --format ${dfa2file} > $outfile
+    dfa | dfa1*)
+	xmllint --format ${dfa1file} > $outfile
 	;;
     *)
-	cat ${dfa2file} > $outfile
+	cat ${dfa1file} > $outfile
 esac	
 
-rm -f ${dfa2file}
+rm -f ${dfa1file}
 true
