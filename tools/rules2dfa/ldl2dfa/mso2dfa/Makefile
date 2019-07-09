@@ -9,6 +9,7 @@ HELPER_DIRS	= mso2dfa_helpers
 
 all::
 clean::
+veryclean::
 
 install::
 	@mkdir -p $(LIBDIR)

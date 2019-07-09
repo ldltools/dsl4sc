@@ -9,6 +9,7 @@ SRCS	= main.js transformer.js
 all::	$(BUNDLED)
 
 clean::;	rm -f *~
+veryclean::	clean
 install::	all
 	@mkdir -p $(PREFIX)/lib/dsl4sc/tools/safeguard_helpers
 	@test -f $(BUNDLED) || exit 1

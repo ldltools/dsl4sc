@@ -9,6 +9,7 @@ HELPERS	:=	$(shell echo guardgen_helpers/*.xq)
 
 all::
 clean::;	rm -f *~
+veryclean::	clean
 
 install::	all install_bins install_scripts
 install_bins::

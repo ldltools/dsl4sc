@@ -2,6 +2,8 @@
 # $Id: $
 
 all::
+clean::
+veryclean::
 
 TOP_DIR		= $(shell readlink -f ..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml
@@ -78,7 +80,7 @@ CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= unix.cma bigarray.cma bigstring.cma sexplib.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
 CMAS		+= xml-light.cma
-CMAS		+= gen.cma sedlexing.cma
+CMAS		+= gen.cma sedlex.cma
 CMAS		+= ldlsat.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
@@ -147,6 +149,43 @@ $(BUILD_DIR)/_export/dsl4sc.cmx:	$(CMXS) $(BUILD_DIR)/_export/dsl4sc.cmi
 $(BUILD_DIR)/_export/dsl4sc.cmxa:	$(BUILD_DIR)/_export/dsl4sc.cmx
 	$(CAMLOPT) -o $@ -a $<
 
+# parser
+$(BUILD_DIR)/rules/rules_p.cmi: $(BUILD_DIR)/rules/rules.cmi
+$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi
+$(BUILD_DIR)/rules/rules_p.cmx:	$(BUILD_DIR)/rules/rules.cmx
+
+# lexer
+$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi
+$(BUILD_DIR)/rules/rules_l.cmo: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules/rules_l.cmi
+	$(CAMLC) $(CAMLCFLAGS) $(FOR_PACK) -o $@ -c $<
+$(BUILD_DIR)/rules/rules_l.cmx: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules/rules_l.cmi
+	$(CAMLOPT) $(CAMLOPTFLAGS) $(FOR_PACK) -o $@ -c $<
+	touch -r $(BUILD_DIR)/rules/rules_l.cmo $(BUILD_DIR)/rules/rules_l.cmi
+$(BUILD_DIR)/rules/rules_l.ml:	rules/rules_l.ml
+	$(OPAM_PREFIX)/lib/sedlex/ppx/ppx.exe --impl $< -o $@ --dump-ast
+
+# ppx
+$(BUILD_DIR)/ppx:
+	$(CAMLOPT) $(CAML_INC_FLAGS) \
+	-I $(OPAM_PREFIX)/lib/ppx_driver \
+	-I $(OPAM_PREFIX)/lib/ppx_core \
+	-I $(OPAM_PREFIX)/lib/ppx_optcomp \
+	-predicates ppx_driver -o $@ -linkpkg \
+	-package ppx_deriving -package ppx_deriving.show -package ppx_deriving_yojson \
+	{ppx_deriving_runtime,ppx_deriving_yojson_runtime}.cmxa \
+	{ppx_core,ppx_optcomp,ppx_driver,ppx_driver_runner}.cmxa
+
+#
+Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mly)
+	@n=0; missing=0;\
+	while test $$n -lt 10; do \
+	 test -s Makefile.depend || { sleep 1s; continue; };\
+	 grep -q '^# generated at' Makefile.depend || { sleep 1s; continue; };\
+	 line=`tail -1 Makefile.depend | grep '^# generated at'`;\
+	 test ."$$line" = . && exit 0;\
+	 break;\
+	done
+
 #
 install::	install_bins install_libs
 install_bins::	all
@@ -162,38 +201,8 @@ install_libs::	all
 	rsync -avzop $(SRCS_mli) $(PREFIX)/lib/dsl4sc
 	rsync -avzop $(BUILD_DIR)/_export/dsl4sc.{cmi,cma,cmxa,a} $(PREFIX)/lib/dsl4sc
 
-clean::
-veryclean::
-
 ci::
 	for d in `find . -type d`; do \
 	  test -d $$d/RCS || continue;\
 	  (cd $$d; echo *.ml* | xargs ci -m.);\
 	done
-
-#
-Makefile.depend::	$(SRCS_mli) $(SRCS_ml) $(SRCS_mly)
-	@n=0; missing=0;\
-	while test $$n -lt 10; do \
-	 test -s Makefile.depend || { sleep 1s; continue; };\
-	 grep -q '^# generated at' Makefile.depend || { sleep 1s; continue; };\
-	 line=`tail -1 Makefile.depend | grep '^# generated at'`;\
-	 test ."$$line" = . && exit 0;\
-	 break;\
-	done
-	echo "$(BUILD_DIR)/rules/rules_p.cmi: $(BUILD_DIR)/rules/rules.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_p.cmo: $(BUILD_DIR)/rules/rules.cmi $(BUILD_DIR)/rules/rules_p.cmi" >> $@;\
-	echo "$(BUILD_DIR)/rules/rules_p.cmx: $(BUILD_DIR)/rules/rules.cmx $(BUILD_DIR)/rules/rules_p.cmi $(BUILD_DIR)/rules/rules_l.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi" >> $@
-	echo "$(BUILD_DIR)/rules/rules_l.cmo: $(BUILD_DIR)/rules/rules_p.cmo" >> $@
-	echo "$(BUILD_DIR)/rules/rules_l.cmx: $(BUILD_DIR)/rules/rules_p.cmx" >> $@
-
-$(BUILD_DIR)/ppx:
-	$(CAMLOPT) $(CAML_INC_FLAGS) \
-	-I $(OPAM_PREFIX)/lib/ppx_driver \
-	-I $(OPAM_PREFIX)/lib/ppx_core \
-	-I $(OPAM_PREFIX)/lib/ppx_optcomp \
-	-predicates ppx_driver -o $@ -linkpkg \
-	-package ppx_deriving -package ppx_deriving.show -package ppx_deriving_yojson \
-	{ppx_deriving_runtime,ppx_deriving_yojson_runtime}.cmxa \
-	{ppx_core,ppx_optcomp,ppx_driver,ppx_driver_runner}.cmxa
