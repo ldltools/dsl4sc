@@ -14,7 +14,7 @@ chain%r.dsl:
 out/%.dfa.dot:	%.dsl
 	rules2scxml $< -o $@ -u dfadot
 out/%.scxml:	%.dsl
-	rules2scxml $< -o $@
+	rules2scxml $< -o $@ --auto-exit
 %.ldl:	%.dsl
 	rules2ldl $< -o $@
 %.mso:	%.ldl

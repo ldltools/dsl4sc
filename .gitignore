@@ -7,10 +7,11 @@ README.html
 CHANGES.html
 .DS_Store
 *~
-*.cm*
 *.afw
+*.bak
+*.cm*
 *.dfa
 *.dot
-*.png
 *.json
-*.bak
+*.mso
+*.png

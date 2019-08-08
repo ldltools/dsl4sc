@@ -10,7 +10,7 @@ digraph flow {
   rules				[label=<<I>S</I>.rules>]
 
   {rank=same
-   spec				[label=<<I>S</I>.rules>]
+   spec				[label=<<I>S</I>.spec>]
    rules_xml			[label=<<I>S</I>.xml>]
   }
 

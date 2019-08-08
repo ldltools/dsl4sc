@@ -6,7 +6,7 @@ primarily targeted at defining and verifying state transition models for event p
 
 Each model in dsl4sc has the following unique characteristics:
 
-- can include the following 3 different sort of declarations:
+- can include the following 3 different sorts of declarations:
   - event **protocol**:
     _regular_ pattern of acceptable event sequences
   - logical **property**:
@@ -49,12 +49,16 @@ we define a set of formulas, as properties of the model, as follows,
 
 ```
 variable  
-state : nat(3); // nat(3) = {0, 1, 2}  
+state : nat(3);  
+  // nat(3) = {0, 1, 2}  
   // 0: deuce, 1: advantage with either sharapova or williams, 2: ahead by 2 points  
 property  
-<{state != 2}*; {state = 2}; {state = 2}> last; // state = 2  only in the last 2 steps  
-state = 0 && [](last -> state = 2); // initial and final conditions  
-[] !(<{state = 0}> state = 0 || <{state = 1}> state = 1); // state = 0/1 never repeats
+state = 0 && [](last -> state = 2);  
+  // initial and final conditions  
+<{state != 2}*; {state = 2}; {state = 2}> last;  
+  // state = 2  only in the last 2 steps  
+[] !(<{state = 0}> state = 0 || <{state = 1}> state = 1);  
+  // state = 0/1 never repeats
 ```
 
 By combining all of these, we derive a state-transition model illustrated as follows.
@@ -82,11 +86,11 @@ You can also check out [more examples](examples/README.md) if you are interested
 ## Prerequisites
 To run dsl4sc for static verification, you need the following tools.
 
-- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.07.1)  
+- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.08.1)  
   run: `apt-get install ocaml`  
-  Alternatively, you can install a particular version of the compiler using opam  
-  run: `opam switch 4.07.1` for example
-- [opam](https://opam.ocaml.org) (ocaml package manager)  
+  Alternatively, you can install a particular version of the compiler using `opam`  
+  run: `opam switch 4.08.1` for example
+- [opam](https://opam.ocaml.org) (ocaml package manager v2.0)  
   run: `apt-get install opam`
 - ocaml packages: ocamlfind sedlex menhir yojson ppx\_deriving ppx\_deriving\_yojson xml-light z3  
   for each of these packages,  
@@ -124,7 +128,7 @@ In addition to the tools listed above, you also need the following GNU tools:
   run: `brew install gnu-sed gawk`
 - GNU make (v4.1 or higher)  
   run: `brew install remake`  
-  and build with `MAKE=remake remake` instead of `make`
+  and build by `MAKE=remake remake` instead of `make`
 
 # Testing
 

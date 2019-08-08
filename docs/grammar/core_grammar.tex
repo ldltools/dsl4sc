@@ -95,7 +95,7 @@
   % ================================================================================
   % rule_decl/spec
   \textit{rule\_decl} &::= \token{rule}\;
-  \textit{rule}^+
+  \left( \textit{rule}\; \texttt{;} \right)^+
 %  \left(\textit{rule}\; \texttt{;}\right)^+
   \\
   %
@@ -112,10 +112,10 @@
   % rule
   \textit{rule} &::=
   \token{on}\; \textit{event\_name}\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\qquad
   \token{when}\; \textit{condition}\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\qquad
   \textit{action}\;^+
   %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
@@ -128,15 +128,16 @@
   % ----------
   \textit{action} &::=
   \token{ensure}\; \textit{proposition}\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
   \\&\quad
   \mid\;
   \token{raise}\; \textit{event\_name}\; \left(\texttt{+}\; \textit{event\_name}\; \right)^\ast\;
-  \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
-  \\&\quad
-  \mid\;
-  \token{do}\;
-    \token{\{}\; \textit{code}\; \token{\}}
+  %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?
+  \\
+%  \\&\quad
+%  \mid\;
+%  \token{do}\;
+%    \token{\{}\; \textit{code}\; \token{\}}
   %  \texttt{(}\;
   %  \textit{action}\; \left(\texttt{,}\; \textit{action}\right)^\ast\;
   %  \texttt{)}

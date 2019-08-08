@@ -20,8 +20,8 @@
 <g id="node2" class="node">
 <title>spec</title>
 <polygon fill="none" stroke="#000000" points="184,-315 130,-315 130,-279 184,-279 184,-315"/>
-<text text-anchor="start" x="138" y="-294.3" font-family="Times,serif" font-style="italic" font-size="14.00" fill="#000000">S</text>
-<text text-anchor="start" x="145" y="-294.3" font-family="Times,serif" font-size="14.00" fill="#000000">.rules</text>
+<text text-anchor="start" x="139.5" y="-294.3" font-family="Times,serif" font-style="italic" font-size="14.00" fill="#000000">S</text>
+<text text-anchor="start" x="146.5" y="-294.3" font-family="Times,serif" font-size="14.00" fill="#000000">.spec</text>
 </g>
 <!-- rules&#45;&gt;spec -->
 <g id="edge1" class="edge">

@@ -47,6 +47,13 @@ var _state = "q2", _state_pre;
 ## [deuce.js](deuce.js)
 
 
+# Prerequisites for testing
+
+- tsc
+
+- jest
+
+
 # Testing
 
 ```

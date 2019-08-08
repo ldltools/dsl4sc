@@ -158,7 +158,7 @@ $(BUILD_DIR)/rules/rules_p.cmx:	$(BUILD_DIR)/rules/rules.cmx
 $(BUILD_DIR)/rules/rules_l.cmi: $(BUILD_DIR)/rules/rules_p.cmi
 $(BUILD_DIR)/rules/rules_l.cmo: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules/rules_l.cmi
 	$(CAMLC) $(CAMLCFLAGS) $(FOR_PACK) -o $@ -c $<
-$(BUILD_DIR)/rules/rules_l.cmx: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules/rules_l.cmi
+$(BUILD_DIR)/rules/rules_l.cmx: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules/rules_l.cmi $(BUILD_DIR)/rules/rules_p.cmx
 	$(CAMLOPT) $(CAMLOPTFLAGS) $(FOR_PACK) -o $@ -c $<
 	touch -r $(BUILD_DIR)/rules/rules_l.cmo $(BUILD_DIR)/rules/rules_l.cmi
 $(BUILD_DIR)/rules/rules_l.ml:	rules/rules_l.ml
@@ -198,8 +198,7 @@ install_libs::	all
 #	rsync -avzop $(LIBS) $(PREFIX)/lib/dsl4sc
 #	rsync -avzop $(CMIS) $(PREFIX)/lib/dsl4sc
 #	rsync -avzop $(SRCS_mli) $(PREFIX)/lib/dsl4sc
-	rsync -avzop $(SRCS_mli) $(PREFIX)/lib/dsl4sc
-	rsync -avzop $(BUILD_DIR)/_export/dsl4sc.{cmi,cma,cmxa,a} $(PREFIX)/lib/dsl4sc
+	rsync -avzop $(BUILD_DIR)/_export/dsl4sc.{mli,cmi,cma,cmxa,a} $(PREFIX)/lib/dsl4sc
 
 ci::
 	for d in `find . -type d`; do \

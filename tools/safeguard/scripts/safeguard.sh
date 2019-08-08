@@ -152,7 +152,12 @@ do
 	    abort "unknown option: $1"
 	    ;;
 	*)
-	    codefile=$1
+	    if test .$codefile = .
+	    then codefile=$1
+	    elif test .$specfile = .
+	    then specfile=$1
+	    else abort "invalid argument: \"$1\""
+	    fi
     esac
     shift
 done
