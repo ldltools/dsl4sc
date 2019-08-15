@@ -46,6 +46,7 @@ usage_advanced ()
     echo -e "  --js-class=<class>\t\tspecify class that carries event handlers"
     echo -e "  --js-initializer=<init>\tname the initializer function"
     echo -e "  --js-decorators=<d>,<d>,..\tuse decorators (experimental)"
+    echo -e "  --js-decorators-lib=<file>\timport decorators from <file>"
     echo -e "  --js-keep-decorators\t\tretain decorators without expanding"
     echo
 }
@@ -147,6 +148,9 @@ do
 	--js-keep-decorators)
 	    safeguard_js_decorators_keep=true
 	    ;;
+	--js-decorators-lib=*)
+	    safeguard_js_decorators_lib=${1:20}
+	    ;;
 
 	-*)
 	    abort "unknown option: $1"
@@ -178,8 +182,9 @@ transpile_js ()
       && { $NODE $TRANSPILER $conffile || abort "error in transpilation"; return; }
 
     # add decorators
-    local decorators=${LIBDIR}/tools/safeguard_helpers/decorators
-    test -f ${decorators}.ts || abort "$decorators not found"
+    #local decorators=${LIBDIR}/tools/safeguard_helpers/decorators
+    local decorators=${safeguard_js_decorators_lib-${LIBDIR}/tools/safeguard_helpers/decorators}
+    test -f ${decorators}.ts -o $verbose -eq 0 || echo "[safeguard] file \"$decorators\" not found" 1>&2
     local decorated=$(tempfile -d /tmp/.dsl4sc -s .ts)
     echo "import { ${safeguard_js_decorators-} } from '$decorators'" > $decorated
     $NODE $TRANSPILER $conffile >> $decorated || { rm -f $decorated; abort "error in transpilation"; }
