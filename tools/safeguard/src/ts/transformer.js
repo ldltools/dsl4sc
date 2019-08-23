@@ -8,8 +8,18 @@ const assert = require ('assert');
 var _state = null;
 var _state_pre = null;
 
+// tracker expression
+// returns
+// - <name> if <name> is declared globally
+// - this.<name> otherwise
+function tracker_exp (name, global = true)
+{
+    return (global ? t.identifier (name)
+	           : t.memberExpression (t.thisExpression (), t.identifier (name)))
+}
+
 // generate pre/post nodes
-function gen_conditions (guards, name)
+function gen_conditions (guards, name, options)
 {
     const guard = guards.find ((elt) => elt.handler == name);
     const transitions = guard.transitions.filter ((elt) => elt != null)
@@ -26,6 +36,9 @@ function gen_conditions (guards, name)
 	  })
     const transitions_exp = t.objectExpression (transitions_props);
 
+    const _state_exp = tracker_exp (_state, options.tracker.global)
+    const _state_pre_exp = tracker_exp (_state_pre, options.tracker.global)
+
     // [pre]
     // _state == state1 || _state == state2 || ...
     const pre_str =
@@ -36,9 +49,9 @@ function gen_conditions (guards, name)
 	  transitions.slice (1).reduce (
 	      (rslt, elt) =>
 		  t.logicalExpression ("||", rslt,
-				       t.binaryExpression ("==", t.identifier (_state),
+				       t.binaryExpression ("==", _state_exp,
 							   t.stringLiteral (elt.state))),
-	      t.binaryExpression ("==", t.identifier (_state),
+	      t.binaryExpression ("==", _state_exp,
 				  t.stringLiteral (transitions[0].state)));
 
     // [next]
@@ -52,7 +65,7 @@ function gen_conditions (guards, name)
 	  transitions.reduceRight (
 	      (rslt, elt) =>
 		  t.conditionalExpression (
-		      t.binaryExpression ("==", t.identifier (_state),
+		      t.binaryExpression ("==", _state_exp,
 					  t.stringLiteral (elt.state)),
 		      t.stringLiteral (elt.target),
 		      rslt),
@@ -68,8 +81,8 @@ function gen_conditions (guards, name)
 	      "(" + _state_pre + " == \"" + transitions[0].state + "\" && " + _state + " == \"" + transitions[0].target + "\")")
     const guard_to_exp =
 	  (elt) => {
-	      const eq1 = t.binaryExpression ("==", t.identifier (_state_pre), t.stringLiteral (elt.state))
-	      const eq2 = t.binaryExpression ("==", t.identifier (_state), t.stringLiteral (elt.target))
+	      const eq1 = t.binaryExpression ("==", _state_pre_exp, t.stringLiteral (elt.state))
+	      const eq2 = t.binaryExpression ("==", _state_exp, t.stringLiteral (elt.target))
 	      return t.logicalExpression ("&&", eq1, eq2)
 	  }
     const post_exp =
@@ -97,6 +110,9 @@ function add_conditions (path, conds, options)
     assert (path.node.body.type == "BlockStatement");
     var body = path.node.body.body;
 
+    const _state_exp = tracker_exp (_state, options.tracker.global)
+    const _state_pre_exp = tracker_exp (_state_pre, options.tracker.global)
+
     if (options.conditions.includes ("pre"))
     {
 	const pre = t.callExpression (t.identifier ("assert"), [conds.pre.exp]);
@@ -107,9 +123,9 @@ function add_conditions (path, conds, options)
     {
 	//const state_pre = t.variableDeclarator (t.identifier (_state_pre), t.identifier (_state));
 	//body.push (t.variableDeclaration ("let", [state_pre]));
-	const state_pre = t.assignmentExpression ("=", t.identifier (_state_pre), t.identifier (_state));
+	const state_pre = t.assignmentExpression ("=", _state_pre_exp, _state_exp);
 	body.push (t.expressionStatement (state_pre));
-	const update = t.assignmentExpression ("=", t.identifier (_state), conds.next.exp);
+	const update = t.assignmentExpression ("=", _state_exp, conds.next.exp);
 	body.push (t.expressionStatement (update));
     }
     if (options.conditions.includes ("post"))
@@ -129,8 +145,8 @@ function add_conditions (path, conds, options)
 	    }
 	    if (options.conditions.includes ("update"))
 	    {
-		const state_pre = t.assignmentExpression ("=", t.identifier (_state_pre), t.identifier (_state));
-		const update = t.assignmentExpression ("=", t.identifier (_state), conds.next.exp);
+		const state_pre = t.assignmentExpression ("=", _state_pre_exp, _state_exp);
+		const update = t.assignmentExpression ("=", _state_exp, conds.next.exp);
 		stmts.unshift (t.expressionStatement (update));
 		stmts.unshift (t.expressionStatement (state_pre));
 	    }
@@ -306,6 +322,7 @@ export function visitor (conf)
     // tracker
     _state = options.tracker.name;
     _state_pre = _state_pre = _state + "_pre";
+    const _state_exp = tracker_exp (_state, options.tracker.global)
     if (!code.js_class) {
 	assert (options.tracker.global != false);
 	options.tracker.global = true;
@@ -331,7 +348,7 @@ export function visitor (conf)
 	    const name = path.node.id.name;
 	    if (!handler_names.includes (name)) return;
 
-	    const conds = gen_conditions (guards, name);
+	    const conds = gen_conditions (guards, name, options);
 
 	    // conditions
 	    add_conditions (path, conds, options)
@@ -364,7 +381,7 @@ export function visitor (conf)
 		    assert (body.type == "ClassBody");
 		    // method _reset () { _state = <initial>; }
 		    const init_stmt = 
-			  t.expressionStatement (t.assignmentExpression ("=", t.identifier (_state),
+			  t.expressionStatement (t.assignmentExpression ("=", _state_exp,
 									 t.stringLiteral (initial)));
 		    const initializer = options.initializer.name;
 		    body.body.push (t.classMethod ("method", t.identifier (initializer), [],
@@ -403,7 +420,7 @@ export function visitor (conf)
 	    if (!handler_names.includes (name)) return;
 
 	    // conditions
-	    const conds = gen_conditions (guards, name);
+	    const conds = gen_conditions (guards, name, options);
 	    add_conditions (path, conds, options)
 
 	    // comments

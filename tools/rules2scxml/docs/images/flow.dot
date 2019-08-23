@@ -7,31 +7,31 @@ digraph flow {
 // --------------------------------------------------------------------------------
 // file nodes
 // --------------------------------------------------------------------------------
-  rules				[label=<<I>S</I>.rules>]
+  rules				[label=<<I>P</I>.rules>]
 
   {rank=same
-   spec				[label=<<I>S</I>.spec>]
-   rules_xml			[label=<<I>S</I>.xml>]
+   spec				[label=<<I>P</I>.spec>]
+   rules_xml			[label=<<I>P</I>.xml>]
   }
 
-  ldl				[label=<<I>S</I>.ldl>]
+  ldl				[label=<<I>P</I>.ldl>]
 
   {rank=same
-   mso				[label=<<I>S</I>.mso>]
+   mso				[label=<<I>P</I>.mso>]
   }
 
   {rank=same
    rankdir=TB
-   dfa				[label=<<I>S</I>_dfa0.xml>]
+   dfa				[label=<<I>P</I>_dfa0.xml>]
    dummy1			[label="", shape=point, color=white]
-   dfa2				[label=<<I>S</I>_dfa.xml>]
-   dfa3				[label=<<I>S</I>_dfa2.xml>]
-   dfa4				[label=<<I>S</I>_dfa3.xml>]
+   dfa2				[label=<<I>P</I>_dfa.xml>]
+   dfa3				[label=<<I>P</I>_dfa2.xml>]
+   dfa4				[label=<<I>P</I>_dfa3.xml>]
   }
 
   {rank=same
-   dfadot			[label=<<I>S</I>_dfa0.dot>]
-   scxml			[label=<<I>S</I>.scxml>]
+   dfadot			[label=<<I>P</I>_dfa0.dot>]
+   scxml			[label=<<I>P</I>.scxml>]
   }
 
 // --------------------------------------------------------------------------------
