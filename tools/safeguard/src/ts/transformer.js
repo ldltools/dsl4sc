@@ -322,13 +322,13 @@ export function visitor (conf)
     // tracker
     _state = options.tracker.name;
     _state_pre = _state_pre = _state + "_pre";
-    const _state_exp = tracker_exp (_state, options.tracker.global)
     if (!code.js_class) {
 	assert (options.tracker.global != false);
 	options.tracker.global = true;
     }
     if (code.js_class && options.tracker.global == null)
 	options.tracker.global = true;
+    const _state_exp = tracker_exp (_state, options.tracker.global)
 
     var current_class_name = null;
     var assert_declared = false;
