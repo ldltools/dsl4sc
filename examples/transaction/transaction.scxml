@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel/>
+  <final id="q7">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!tx1_done &amp; !tx2_done | tx1_done &amp; tx2_done</formula>
+  </final>
+  <state id="q8">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!tx1_done &amp; !tx2_done</formula>
+    <transition target="q7" event="tx_done">
+      <!--tid t41_1-->
+    </transition>
+  </state>
+  <state id="q6">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">tx1_done &amp; !tx2_done | tx1_done &amp; tx2_done</formula>
+    <transition target="q8" event="rollback">
+      <!--tid t35_1-->
+      <!--transition: curr_world: tx1_done & !tx2_done | tx1_done & tx2_done label: !tx1_done & !tx2_done next_world: !tx1_done & !tx2_done-->
+      <!--rule: r3 event: rollback certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: !tx1_done & !tx2_done-->
+    </transition>
+  </state>
+  <state id="q4">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">tx1_done &amp; !tx2_done</formula>
+    <transition target="q5" event="tx2">
+      <!--tid t17_1-->
+      <!--transition: curr_world: tx1_done & !tx2_done label: tx1_done & tx2_done next_world: tx1_done & tx2_done-->
+      <!--rule: r2 event: tx2 certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: tx2_done-->
+    </transition>
+    <transition target="q6" event="tx1_err">
+      <!--tid t21_1-->
+    </transition>
+  </state>
+  <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!tx1_done &amp; !tx2_done</formula>
+    <transition target="q4" event="tx1">
+      <!--tid t9_1-->
+      <!--transition: curr_world: !tx1_done & !tx2_done label: tx1_done & !tx2_done next_world: tx1_done & !tx2_done-->
+      <!--rule: r1 event: tx1 certainty: 1-->
+      <!--rule.when: true-->
+      <!--rule.ensure: tx1_done-->
+    </transition>
+  </state>
+  <state id="q5">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">tx1_done &amp; tx2_done</formula>
+    <transition target="q7" event="tx_done">
+      <!--tid t26_1-->
+    </transition>
+    <transition target="q6" event="tx2_err">
+      <!--tid t32_1-->
+    </transition>
+  </state>
+</scxml>

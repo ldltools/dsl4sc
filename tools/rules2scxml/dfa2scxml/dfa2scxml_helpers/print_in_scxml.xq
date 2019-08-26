@@ -23,6 +23,7 @@ declare function local:list_states ($states, $transitions)
   let $tr_seq := $q/dsl4sc:transition
 
   return
+    (: $q = final state :)
     if (exists ($q/@final))
     then
       element final {
@@ -39,9 +40,12 @@ declare function local:list_states ($states, $transitions)
         else
           ()
       }
+
+    (: $q = non-final state :)
     else
     element state {
       $q/@id,
+      $q/dsl4sc:formula,
 
       for $tr in $tr_seq
 

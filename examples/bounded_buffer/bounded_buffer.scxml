@@ -5,6 +5,7 @@
     <data id="buff" expr="[]"/>
   </datamodel>
   <state id="q7">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">_n_0 &amp; _n_1</formula>
     <transition target="q4" event="_accept">
       <!--tid t29_1-->
     </transition>
@@ -18,6 +19,7 @@
     </transition>
   </state>
   <state id="q6">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!_n_0 &amp; _n_1</formula>
     <transition target="q4" event="_accept">
       <!--tid t21_1-->
     </transition>
@@ -42,6 +44,7 @@
     <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
   </final>
   <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!_n_0 &amp; !_n_1</formula>
     <transition target="q4" event="_accept">
       <!--tid t6_1-->
     </transition>
@@ -55,6 +58,7 @@
     </transition>
   </state>
   <state id="q5">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">_n_0 &amp; !_n_1</formula>
     <transition target="q4" event="_accept">
       <!--tid t13_1-->
     </transition>

@@ -12,7 +12,7 @@ the 2 processes exchange the following events.
 - _ping ({"count" : 0})_ or _pong ({"count" : 0})_ depending on the parity of _n_
 - _quit_
 
-![ping\_pong](ping_pong.svg)
+![ping\_pong](ping_pong_sd.svg)
 
 
 ## (1) [*ping*](ping.rules)

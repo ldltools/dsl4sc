@@ -5,6 +5,7 @@
     <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
   </final>
   <state id="q4">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q2" event="ping">
       <!--tid t10_1-->
       <!--transition: curr_world: true label: true next_world: true-->
@@ -25,6 +26,7 @@
     </transition>
   </state>
   <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q4" event="pong">
       <!--tid t5_1-->
       <!--transition: curr_world: true label: true next_world: true-->
@@ -51,6 +53,7 @@
     </transition>
   </state>
   <state id="q5">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q6" event=" ">
       <!--tid t12_1-->
     </transition>

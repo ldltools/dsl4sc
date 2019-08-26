@@ -17,7 +17,7 @@ test::
 	rm -f out/test*.scxml
 	shelltest tests.conf
 
-EXAMPLES =	echo ping_pong deuce bounded_buffer
+EXAMPLES =	echo ping_pong deuce bounded_buffer transaction
 define TESTRULE
 test::	test_$(1)
 test_$(1):

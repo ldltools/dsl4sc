@@ -5,6 +5,12 @@ and (2) their formal specification in dsl4sc,
 _safeguard_ generates pre/post-conditions for the handlers in the program, and
 then outputs a new JavaScript program with these conditions attached with.
 
+## example [ping_pong](../../examples/ping_pong)
+
+
+
+
+
 ## usage
 
 ```

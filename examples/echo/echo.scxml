@@ -2,11 +2,13 @@
 <scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
   <datamodel/>
   <state id="q4">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q5" event=" ">
       <!--tid t9_1-->
     </transition>
   </state>
   <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q4" event="quit">
       <!--tid t5_1-->
     </transition>

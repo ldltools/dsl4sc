@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+  <datamodel/>
+  <final id="q7">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+  </final>
+  <state id="q6">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!pinged</formula>
+    <transition target="q7" event=" ">
+      <!--tid t21_1-->
+    </transition>
+  </state>
+  <state id="q4">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">pinged</formula>
+    <transition target="q2" event="pong">
+      <!--tid t12_1-->
+    </transition>
+    <transition target="q6" event="quit">
+      <!--tid t15_1-->
+    </transition>
+  </state>
+  <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">!pinged</formula>
+    <transition target="q4" event="ping">
+      <!--tid t7_1-->
+    </transition>
+    <transition target="q5" event="quit">
+      <!--tid t9_1-->
+    </transition>
+  </state>
+  <state id="q5">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">pinged</formula>
+    <transition target="q7" event=" ">
+      <!--tid t18_1-->
+    </transition>
+  </state>
+</scxml>

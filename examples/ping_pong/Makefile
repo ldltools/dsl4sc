@@ -14,9 +14,11 @@ install::
 TOP_DIR	= $(shell readlink -f ../..)
 include ../Makefile.common
 
-MODELS	= ping pong
+MODELS	= ping pong ping_pong
 
 %.scxml:	%.rules
+	rules2scxml $< -o $@ --auto-exit
+%.scxml:	%.spec
 	rules2scxml $< -o $@ --auto-exit
 
 scxml:	$(MODELS:%=%.scxml)

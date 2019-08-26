@@ -5,16 +5,19 @@
     <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
   </final>
   <state id="q8">
-    <transition target="q7" event="_accept">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <transition target="q7" event="tx_done">
       <!--tid t27_1-->
     </transition>
   </state>
   <state id="q6">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q8" event="rollback">
       <!--tid t23_1-->
     </transition>
   </state>
   <state id="q4">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q5" event="tx2">
       <!--tid t11_1-->
     </transition>
@@ -23,12 +26,14 @@
     </transition>
   </state>
   <state id="q2">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
     <transition target="q4" event="tx1">
       <!--tid t6_1-->
     </transition>
   </state>
   <state id="q5">
-    <transition target="q7" event="_accept">
+    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <transition target="q7" event="tx_done">
       <!--tid t16_1-->
     </transition>
     <transition target="q6" event="tx2_err">

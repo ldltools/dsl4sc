@@ -1,0 +1,12 @@
+@startuml
+actor initiator
+participant ping
+participant pong
+
+initiator -> ping : ping (3)
+ping -> pong : pong (2)
+pong -> ping : ping (1)
+ping -> pong : pong (0)
+pong -> ping : quit
+
+@enduml

@@ -7,6 +7,8 @@ const assert = require ('assert');
 // tracker names (default: "_state" and "_state_pre")
 var _state = null;
 var _state_pre = null;
+var _state_exp = null;
+var _state_pre_exp = null;
 
 // tracker expression
 // returns
@@ -35,9 +37,6 @@ function gen_conditions (guards, name, options)
 	      return t.objectProperty (t.stringLiteral (elt.state), t.stringLiteral (elt.target));
 	  })
     const transitions_exp = t.objectExpression (transitions_props);
-
-    const _state_exp = tracker_exp (_state, options.tracker.global)
-    const _state_pre_exp = tracker_exp (_state_pre, options.tracker.global)
 
     // [pre]
     // _state == state1 || _state == state2 || ...
@@ -109,9 +108,6 @@ function add_conditions (path, conds, options)
 
     assert (path.node.body.type == "BlockStatement");
     var body = path.node.body.body;
-
-    const _state_exp = tracker_exp (_state, options.tracker.global)
-    const _state_pre_exp = tracker_exp (_state_pre, options.tracker.global)
 
     if (options.conditions.includes ("pre"))
     {
@@ -328,7 +324,8 @@ export function visitor (conf)
     }
     if (code.js_class && options.tracker.global == null)
 	options.tracker.global = true;
-    const _state_exp = tracker_exp (_state, options.tracker.global)
+    _state_exp = tracker_exp (_state, options.tracker.global)
+    _state_pre_exp = tracker_exp (_state_pre, options.tracker.global)
 
     var current_class_name = null;
     var assert_declared = false;

@@ -3,6 +3,9 @@
 protocol
 (pong; ping)*; pong?; quit ;;
   // regular pattern of the incoming events
+  // which always starts with "ping",
+  // followed by alternating "pong" and "ping" events,
+  // and ends with either "ping" or "pong".
 
 rule
 
