@@ -162,7 +162,8 @@ $(BUILD_DIR)/rules/rules_l.cmx: $(BUILD_DIR)/rules/rules_l.ml $(BUILD_DIR)/rules
 	$(CAMLOPT) $(CAMLOPTFLAGS) $(FOR_PACK) -o $@ -c $<
 	touch -r $(BUILD_DIR)/rules/rules_l.cmo $(BUILD_DIR)/rules/rules_l.cmi
 $(BUILD_DIR)/rules/rules_l.ml:	rules/rules_l.ml
-	$(OPAM_PREFIX)/lib/sedlex/ppx/ppx.exe --impl $< -o $@ --dump-ast
+#	$(OPAM_PREFIX)/lib/sedlex/ppx/ppx.exe --impl $< -o $@ --dump-ast
+	$(OPAM_PREFIX)/lib/sedlex/ppx/ppx.exe --impl $< -o $@
 
 # ppx
 $(BUILD_DIR)/ppx:

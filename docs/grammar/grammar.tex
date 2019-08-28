@@ -137,7 +137,7 @@
   %
   \\&\qquad
   \left(\;
-  \token{when}\; \textit{condition}\;
+  \token{when}\; \textit{context}\;
   \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \right)^?
   %
@@ -146,13 +146,13 @@
   %\left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\
   % ----------
-  \textit{condition} &::= \textit{proposition}\;
+  \textit{context} &::= \textit{proposition}\;
   \mid\;
-  \texttt{<}\; \textit{ldl\_path}\; \texttt{>}\; \textit{condition}
+  \texttt{<}\; \textit{ldl\_path}\; \texttt{>}\; \textit{context}
   \\
   % ----------
   \textit{action} &::=
-  \token{ensure}\; \textit{proposition}\;
+  \token{ensure}\; \textit{ldl\_formula}\;
   \left( \token{\{}\; \textit{code}\; \token{\}} \right)^?\;
   \\&\quad
   \mid\;

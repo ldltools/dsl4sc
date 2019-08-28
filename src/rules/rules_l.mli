@@ -27,8 +27,3 @@ val token : lexbuf -> Rules_p.token
 (** parser (adapter) *)
 
 val parse : (Rules_p.token, 'ast) MenhirLib.Convert.traditional -> lexbuf -> 'ast
-
-(*
-val rules : lexbuf -> Rules.rules
-val decl_seq : lexbuf -> Rules.decl list
-*)

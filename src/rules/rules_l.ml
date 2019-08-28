@@ -62,7 +62,7 @@ let intertoken_space = [%sedlex.regexp? Plus atmosphere]
 
 let any_string = [%sedlex.regexp? Star (Compl ('\n' | '\r'))]
 
-(** lexing *)
+(** lexbuf operations *)
 
 let create_lexbuf ?(file = "") (buf : Sedlexing.lexbuf) =
   let p : Lexing.position =
@@ -85,10 +85,79 @@ let update_lnum (buf : lexbuf) =
 
 let lexeme {_buf} = Sedlexing.Utf8.lexeme _buf
 
+let mode = ref 0
+    (* token invokes different operations depending on the mode value
+       00: top level
+       10: event
+       20: protocol
+       30: variable
+       40: property
+       51: event part of a rule
+       52: when part
+       53/54/55: ensure/raise/preserve part
+       56: do part
+       90: script
+     *)
+
+(** enclosed_string *)
+
 (* token : lexbuf -> Rules_p.token *)
 let token_queue = Queue.create ()
-let mode = ref 0
+    (* enqueue in enclosed_string (token = RBRACE or STRING)
+       dequeue in token
+     *)
+
+(* property info *)
+type pinfo_t =
+    { tokens: (Rules_p.token * string) Queue.t;
+      mutable depth_paren: int;
+      mutable depth_box: int;
+      mutable depth_dia: int;
+    }
+let pinfo : pinfo_t =
+  { tokens = Queue.create ();
+    depth_paren = 0;
+    depth_box = 0;
+    depth_dia = 0;
+  }
+
+let pinfo_reset () =
+  Queue.clear pinfo.tokens;
+  pinfo.depth_paren <- 0;
+  pinfo.depth_box <- 0;
+  pinfo.depth_dia <- 0;
+  ()
+
 let pdepth = ref 0
+    (* '(' and ')' incr/decr pdeth, respectively *)
+
+(* checks if '{' in the current lexing position starts an enclosed string '{<STRING>}' or not.
+  -- tricky and incomplete. needs to be updated.
+ *)
+let enclosed_string_p (buf : lexbuf) =
+  if lexeme buf <> "{" then false else
+  let _ = () in
+
+  (* case: not in the 'when' or 'ensure' block *)
+  if not (List.mem !mode [52; 53]) then true else
+
+  (* case: in '(..)' or '[..]' *)
+  if pinfo.depth_paren <> 0 || pinfo.depth_box <> 0 then false else
+  let _ = () in
+
+  (* case: no '<' precedes '{' *)
+  let lt_precedes =
+    try Queue.iter (function LT, _ -> raise Exit | _ -> ()) pinfo.tokens; false with Exit -> true
+  in
+  if not lt_precedes then true else
+
+  (* otherwise -- incorrect
+     'pinfo.depth_dia <> 0' does not always indicate that '{' appears outside the formula part.
+     for instance, consider 'ensure x < y { ... }', for which 'pinfo.depth_dia = 1' holds.
+   *)
+  if pinfo.depth_dia <> 0 then false else true
+
+(** lexing *)
 
 let rec token (buf : lexbuf) =
   if not @@ Queue.is_empty token_queue
@@ -106,11 +175,12 @@ let rec token (buf : lexbuf) =
     | 40 -> property buf
 
     | 51 -> rule_event buf
-    | 52 -> property buf
+    | 52 -> rule_when buf
     | 53 -> rule_ensure buf
     | 54 -> rule_raise buf
     | 55 -> rule_preserve buf
     | 56 -> rule_do buf
+
     | 90 -> rule_do buf
 
     | _ -> failwith ("[token] unrecognized mode: " ^ string_of_int !mode)
@@ -127,13 +197,12 @@ and toplevel (buf : lexbuf) =
   | "rule"		-> RULE
   | "on"		-> mode := 51; ON
   | "except"		-> EXCEPT
-  | "when"		-> mode := 52; pdepth := 0; WHEN
-  | "ensure"		-> mode := 53; pdepth := 0; ENSURE
+  | "when"		-> mode := 52; pinfo_reset (); WHEN
+  | "ensure"		-> mode := 53; pinfo_reset (); ENSURE
   | "raise"		-> mode := 54; RAISE
   | "preserve"		-> mode := 55; PRESERVE
   | "do"		-> mode := 56; DO
 
-  | "implementation"
   | "script"		-> mode := 90; SCRIPT
 
   | newline		-> update_lnum buf; toplevel buf
@@ -155,6 +224,7 @@ and common (buf : lexbuf) =
   | "protocol"
   | "variable"
   | "property"		-> mode := 0; Sedlexing.rollback _buf; token buf
+
   | "rule"
   | "on"
   | "except"
@@ -163,7 +233,7 @@ and common (buf : lexbuf) =
   | "raise"
   | "preserve"
   | "do"		-> mode := 0; Sedlexing.rollback _buf; token buf
-  | "implementation"
+
   | "script"		-> mode := 0; Sedlexing.rollback _buf; token buf
 
   (* NAME *)
@@ -214,11 +284,12 @@ and protocol (buf : lexbuf) =
   | '+'			-> PLUS
   | '*'			-> STAR
   | '?'			-> QUESTION
-
   | ";;"		-> SEMISEMI
   | ';'			-> SEMI
+
   | '{'			-> enclosed_string buf
   | '}'			-> RBRACE
+
   | _			-> common buf
 
 and variable (buf : lexbuf) =
@@ -228,9 +299,11 @@ and variable (buf : lexbuf) =
   | ':'			-> COLON
   | '('			-> LPAREN
   | ')'			-> RPAREN
+  | ';'			-> SEMI
+
   | '{'			-> enclosed_string buf
   | '}'			-> RBRACE
-  | ';'			-> SEMI
+
   | _			-> common buf
 
 and property (buf : lexbuf) =
@@ -242,22 +315,17 @@ and property (buf : lexbuf) =
 
   (* terms *)
   | '='			-> EQUAL
-  | "!="		-> NE
-  | "~="		-> NE
+  | "!=" | "~="		-> NE
   | "<="		-> LE
   | ">="		-> GE
   | '-'			-> MINUS
   | '/'			-> SLASH
 
   (* logical connectives *)
-  | '!'			-> NOT
-  | '~'			-> NOT
-  | "&&"		-> AND
-  | '&'			-> AND
-  | "||"		-> OR
-  | '|'			-> OR
-  | "->"		-> IMPLIES
-  | "=>"		-> IMPLIES
+  | '!' | '~'		-> NOT
+  | "&&" | '&'		-> AND
+  | "||" | '|'		-> OR
+  | "->" | "=>"		-> IMPLIES
 
   (* modal *)
   | 'X' | "()"		-> LTL_UOP 'X'
@@ -276,11 +344,10 @@ and property (buf : lexbuf) =
   | '<'			-> LT
   | '>'			-> GT
 
-  | '('			-> incr pdepth; LPAREN
-  | ')'			-> decr pdepth; RPAREN
-  | '{'			-> if !pdepth = 0 && List.mem !mode [52; 53]
-			   then enclosed_string buf
-			   else LBRACE
+  | '('			-> LPAREN
+  | ')'			-> RPAREN
+
+  | '{'			-> LBRACE
   | '}'			-> RBRACE
 
   | _			-> common buf
@@ -291,14 +358,56 @@ and rule_event (buf : lexbuf) =
   | ','			-> COMMA
   | '('			-> LPAREN
   | ')'			-> RPAREN
+
   | '{'			-> enclosed_string buf
   | '}'			-> RBRACE
+
   | _			-> common buf
+
+and rule_when (buf : lexbuf) =
+  let _buf : Sedlexing.lexbuf = buf._buf in
+  match%sedlex _buf with
+  | ';'			-> SEMI
+
+  | "()"		-> LTL_UOP 'X'
+  | "<>"		-> LTL_UOP 'F'
+
+  | '('			-> pinfo.depth_paren <- pinfo.depth_paren + 1; LPAREN
+  | ')'			-> pinfo.depth_paren <- pinfo.depth_paren - 1; RPAREN
+  | '[' | ']'		-> raise Rules_p.Error
+  | '<'			-> pinfo.depth_dia <- pinfo.depth_dia + 1; LT
+  | '>'			-> pinfo.depth_dia <- pinfo.depth_dia - 1; GT
+
+  | '{'			-> if enclosed_string_p buf
+			   (* {<STRING>} *)
+			   then enclosed_string buf
+			   else LBRACE
+  | '}'			-> RBRACE
+
+  | _			-> property buf
 
 and rule_ensure (buf : lexbuf) =
   let _buf : Sedlexing.lexbuf = buf._buf in
   match%sedlex _buf with
   | ';'			-> SEMI
+
+  | "()"		-> LTL_UOP 'X'
+  | "<>"		-> LTL_UOP 'F'
+  | "[]"		-> LTL_UOP 'G'
+
+  | '('			-> pinfo.depth_paren <- pinfo.depth_paren + 1; LPAREN
+  | ')'			-> pinfo.depth_paren <- pinfo.depth_paren - 1; RPAREN
+  | '['			-> pinfo.depth_box <- pinfo.depth_box + 1; LBRACK
+  | ']'			-> pinfo.depth_box <- pinfo.depth_box - 1; RBRACK
+  | '<'			-> pinfo.depth_dia <- pinfo.depth_dia + 1; LT
+  | '>'			-> pinfo.depth_dia <- pinfo.depth_dia - 1; GT
+
+  | '{'			-> if enclosed_string_p buf
+			   (* {<STRING>} *)
+			   then enclosed_string buf
+			   else LBRACE
+  | '}'			-> RBRACE
+
   | _			-> property buf
 
 and rule_raise (buf : lexbuf) =
@@ -307,9 +416,11 @@ and rule_raise (buf : lexbuf) =
   | '+'			-> PLUS
   | '('			-> LPAREN
   | ')'			-> RPAREN
+  | ';'			-> SEMI
+
   | '{'			-> enclosed_string buf
   | '}'			-> RBRACE
-  | ';'			-> SEMI
+
   | _			-> common buf
 
 and rule_preserve (buf : lexbuf) =
@@ -322,9 +433,11 @@ and rule_preserve (buf : lexbuf) =
 and rule_do (buf : lexbuf) =
   let _buf : Sedlexing.lexbuf = buf._buf in
   match%sedlex _buf with
+  | ';'			-> SEMI
+
   | '{'			-> enclosed_string buf
   | '}'			-> RBRACE
-  | ';'			-> SEMI
+
   | _			-> common buf
 
 and enclosed_string (buf : lexbuf) =
@@ -373,13 +486,23 @@ and comment_rec n (buf : lexbuf) =
 (** parsing *)
 
 let parse (p : (Rules_p.token, 'ast) MenhirLib.Convert.traditional) (buf : lexbuf) =
+  (* lexer *)
+  (* note
+     - each time 'sedlex%match _buf' is called
+       first, the lexer potition is marked (Sedlexing.mark) for later backtracking,
+       and then it is advanced by 1 (Sedlexing.next)
+     - if there exists a match (except '_'), the advanced positions are fixed.
+     - if it matches with '_', the marked positions are restored (Sedlexing.backgrack).
+   *)
   let l : unit -> Rules_p.token * Lexing.position * Lexing.position = fun () ->
-    let pos1 = buf._pos in
-    let tk = token buf in
-    let pos2 = buf._pos in
-    tk, pos1, pos2 in
-  let p' : (unit -> Rules_p.token * Lexing.position * Lexing.position) -> 'ast =
-    MenhirLib.Convert.Simplified.traditional2revised p in
+    let tok = token buf and pos1, pos2 = Sedlexing.lexing_positions buf._buf in
+    (*eprintf "(pos1=%d,pos2=%d,%S)" pos1.pos_cnum pos2.pos_cnum (lexeme buf); flush stderr;*)
+    Queue.push (tok, lexeme buf) pinfo.tokens;
+    tok, pos1, pos2
+  (* parser *)
+  and p' : (unit -> Rules_p.token * Lexing.position * Lexing.position) -> 'ast =
+    MenhirLib.Convert.Simplified.traditional2revised p
+  in
   try
     p' l
   with

@@ -1,4 +1,4 @@
-// {even}; {!even}; {even}; ... (modal)
+// {even}; {!even}; {even}; ... -- w. a rule carries a modal context (<even>!even)
 protocol (e; e)*;;
 property
 even;
@@ -8,7 +8,7 @@ even;
 rule
 //on e when <{!even}>even do { console.log ("even (<!even>even)"); } ensure !even
 on e when even do { console.log ("even"); } ensure !even
-on e when (<{even}>!even) do { console.log ("odd (<even>!even)"); } ensure even
+on e when <{even}>!even do { console.log ("odd (<even>!even)"); } ensure even
 
 // ** note
 // the generated DFA has 2 alternating states -- state 3 for a and state 4 for !a.

@@ -125,6 +125,17 @@ let rec applicable r (w1, w2) =
   let rid, _, (pre, _), (a, _), (post, _) = r
   in
 
+  (* propositionalize pre/post conditions *)
+  let rec remove_ex f =
+    match f with
+    | _ when propositional f -> f
+    | Ldl_modal (Mod_ex, _, g) -> remove_ex g
+    | _ -> invalid_arg ("[remove_ex] " ^ string_of_formula f)
+  in
+  let pre = if propositional pre then pre else remove_ex pre
+  and post = if propositional post then post else Ldl_atomic "true"
+  in
+
   assert (propositional pre && propositional post);
   assert (propositional w1 && propositional w2);
 
@@ -397,7 +408,7 @@ let gen_id (prefix : string) =
 
 (* in_channel -> t *)
 let from_channel (ic : in_channel) =
-  if !verbose > 0 then eprintf "** from_channel\n";
+  if !verbose > 0 then eprintf "* [Model.from_channel]\n";
 
   let xml = Xml.parse_in ic
   in let legal_names = 
@@ -637,7 +648,7 @@ and escape_rec str prev curr len (rslt : string list) =
 
 (* print_states *)
 let print_states_in_xml out (m : t) =
-  if !verbose > 0 then eprintf "** print_states\n";
+  if !verbose > 0 then eprintf "* [Model.print_states]\n";
 
   out "<states>\n";
   let final : int list = detect_final m in
@@ -658,7 +669,7 @@ let print_states_in_xml out (m : t) =
 
 (* print_transitions *)
 let rec print_transitions_in_xml out (m : t) =
-  if !verbose > 0 then eprintf "** print_transitions\n";
+  if !verbose > 0 then eprintf "* [Model.print_transitions]\n";
 
   out "<transitions>\n";
   let final = detect_final m in
@@ -702,7 +713,7 @@ and subst_event_name (m : t) (initial: int) (final : int list) (i, j) e =
 (* print_rules *)
 (* alist = [(rid, [tid; ...]); ..] *)
 let rec print_rules_in_xml out (m : t) =
-  if !verbose > 0 then eprintf "** print_rules (%d)\n" (List.length m.rules);
+  if !verbose > 0 then eprintf "* [Model.print_rules (%d)]\n" (List.length m.rules);
   print_rules_in_xml_helper out m m.rules_map m.rules
 
 (* print_rules_in_xml_helper out m alist rs
@@ -795,7 +806,7 @@ and print_rule_in_xml out tid_seq alist (r : rule) =
   ()
 
 let rec to_channel ?(format = "xml") oc m =
-  if !verbose > 0 then eprintf "** to_channel\n";
+  if !verbose > 0 then eprintf "* [Model.to_channel]\n";
 
   match format with
   | "caml" ->
@@ -809,7 +820,7 @@ and to_channel_xml oc m =
   let elts = m.elements in
 
   (* output dfa (in xml) *)
-  let out s = output_string oc s; flush oc
+  let out s = output_string oc s; flush_all ()
   in
   out "<dfa xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
   out (Xml.to_string (List.assoc "variables" elts)); out "\n";

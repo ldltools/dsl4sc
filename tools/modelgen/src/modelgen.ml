@@ -110,7 +110,7 @@ and last_p m i =
 (** restore_possible_worlds *)
 
 let rec restore_possible_worlds (m : Model.t) =
-  if !verbose > 0 then eprintf "** restore_possible_worlds (restore possible worlds)\n";
+  if !verbose > 0 then eprintf "* [Modelgen.restore_possible_worlds] (restore possible worlds)\n";
   let qs : (int * Model.state) list = Fsa.alist_of_states m.fsa
   and edges = Fsa.alist_of_delta m.fsa in
   List.iter (update_state m edges) qs;
@@ -157,7 +157,7 @@ and update_state m es (i, (id, accepting, f)) =
  *)
 
 let rec split_transitions (m : Model.t) =
-  if !verbose > 0 then (eprintf "** split_transitions\n"; flush_all ());
+  if !verbose > 0 then (eprintf "* [Modelgen.split_transitions]\n"; flush_all ());
   let final : int list = Model.detect_final m in
   (*eprintf "** final:"; List.iter (eprintf " %d") final; eprintf "\n";*)
   let edges = Fsa.alist_of_delta m.fsa in
@@ -199,10 +199,11 @@ and split_transition (m : Model.t) final (i, nexts) =
 (** chart_rules *)
 
 let rec chart_rules (m : model) =
- let alist1 : (string * string) list = find_applicable_rules m
-    (* alist1 = [(rid, tid); ..] *)
+  if !verbose > 0 then (eprintf "* [Modelgen.chart rules]\n"; flush_all ());
+  let alist1 : (string * string) list = find_applicable_rules m
+      (* alist1 = [(rid, tid); ..] *)
   in let alist2 : (string * string list) list = aggregate_transitions alist1
-    (* alist2 = [(rid, [tid; ..]); ..] *)
+      (* alist2 = [(rid, [tid; ..]); ..] *)
   in
   (*if !verbose > 0 then (eprintf "** merge done\n"; flush_all ());*)
   m.rules_map <- alist2;
@@ -210,7 +211,7 @@ let rec chart_rules (m : model) =
 
 and find_applicable_rules (m : Model.t) =
   if !verbose > 0 then
-    (eprintf "** find applicable rules for the transitions from each state\n"; flush_all ());
+    (eprintf "* [Modelgen.find_applicable_rules] for the transitions from each state\n"; flush_all ());
 
   let rs =
     if !verbose > 1 then eprintf "  simp: %d rules\n" (List.length m.rules);
@@ -282,9 +283,7 @@ and rule_applicable m r (i, j) =
   b, certainty_opt
 
 and aggregate_transitions (alist : (string * string) list) =
-  (*
-  if !verbose > 0 then (eprintf "** aggregate_transitions: (generate alist of rule-to-transitions)\n"; flush_all ());
-   *)
+  if !verbose > 0 then (eprintf "* [Modelgen.aggregate_transitions] (generate alist of rule-to-transitions)\n"; flush_all ());
   let alist2 : (string * string) list =
     List.sort
       (fun (rid1, _) (rid2, _) ->

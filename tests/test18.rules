@@ -1,0 +1,17 @@
+// {even}; {!even}; {even}; ... -- w. a rule that carries modal context/action
+protocol (e; e)*;;
+property
+even;
+//[{true}*][{even}]!even;
+//[{true}*][{!even}]even;
+
+rule
+//on e when <{!even}>even do { console.log ("even (<!even>even)"); } ensure !even
+on e when even do { console.log ("even"); } ensure !even
+on e when <{even}>!even do { console.log ("odd (<even>!even)"); } ensure <{even}>(last | !even)
+
+// ** note
+// last -> even
+// since an extra-rule:
+//   [{true}*] (!(<{even}> !even | <{!even}> even) | <{true}> !(!_b0))
+// implies that 'even' (in the intial state) cannot be altered in the final state
