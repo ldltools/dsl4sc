@@ -132,8 +132,14 @@ let rec applicable r (w1, w2) =
     | Ldl_modal (Mod_ex, _, g) -> remove_ex g
     | _ -> invalid_arg ("[remove_ex] " ^ string_of_formula f)
   in
-  let pre = if propositional pre then pre else remove_ex pre
-  and post = if propositional post then post else Ldl_atomic "true"
+  let pre =
+    if propositional pre
+    then pre
+    else remove_ex pre
+  and post =
+    if propositional post
+    then post
+    else Ldl_atomic "true"
   in
 
   assert (propositional pre && propositional post);

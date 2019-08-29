@@ -35,6 +35,8 @@ let opt_skip_p18n = ref false
 let opt_keep_terms = ref false
 let opt_skip_ldlgen = ref false
 
+let opt_strict = ref false
+
 let synopsis prog =
   printf "%s (version %s)\n" (Filename.basename prog) (Version.get ());
   printf "usage: %s <option>* <rules_file>\n" (Filename.basename prog);
@@ -199,8 +201,16 @@ let main argc argv =
 	  infile := "/dev/stdin";
       | "-o" | "--output" ->
 	  outfile := argv.(!i+1); incr i;
+      | "--map"  ->
+	  opt_map_out := argv.(!i+1); incr i;
+
+      | "-s" ->
+	  opt_fmt_in := argv.(!i+1); incr i;
+      | "--json" ->
+	  opt_fmt_in := "json"
       | "-t" ->
 	  opt_fmt_out := argv.(!i+1); incr i;
+
       | "-V" | "--version" ->
 	  printf "%s\n" (Version.get ());
 	  raise Exit
@@ -213,20 +223,12 @@ let main argc argv =
       | "-hh" ->
 	  synopsis argv.(0); extra_synopsis (); exit 0
 
-      | "-f" ->
-	  opt_fmt_in := argv.(!i+1); incr i;
-      | "--json" ->
-	  opt_fmt_in := "json"
-      | "--map"  ->
-	  opt_map_out := argv.(!i+1); incr i;
-
+      | "-p" | "--parse-only" ->
+	  opt_parse_only := true
       | "-u" | "--until"  ->
 	  let stage = argv.(!i+1) in
 	  opt_until := stage; incr i;
 
-      (* rules_p *)
-      | "-p" | "--parse-only" ->
-	  opt_parse_only := true
       (* rulespp *)
       | "--skip-rulespp" | "--no-rulespp" ->
 	  opt_skip_rulespp := true
@@ -240,6 +242,9 @@ let main argc argv =
 	  opt_keep_terms := true
       | "--skip-ldlgen" | "--no-ldlgen" ->
 	  opt_skip_ldlgen := true
+
+      | "--strict" ->
+	  opt_strict := true
 
       | _  when argv.(!i).[0] = '-' ->
 	  failwith ("unknown option: " ^ argv.(!i))
@@ -265,7 +270,10 @@ let main argc argv =
   let decls =
     if !opt_skip_rulespp
     then decls
-    else Rulespp.preprocess ~discard_codes: true decls
+    else Rulespp.preprocess
+	~allow_undeclared: (not !opt_strict)
+	~discard_codes: true
+	decls
   in
 
   (* decls -> rules *)

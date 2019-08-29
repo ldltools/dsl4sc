@@ -201,16 +201,18 @@ declare function local:print_in_scxml ($doc)
 
   return
 
-  <scxml version="1.0"
-	 datamodel="ecmascript">
-  { attribute initial { $initial } }
+  element scxml
+  { attribute version { "1.0" },
+    attribute datamodel { "ecmascript" },
+    attribute initial { $initial },
+    namespace dsl4sc { "https://github.com/ldltools/dsl4sc" },
 
-  <datamodel>
-    {for $d in $data
-     return element data { attribute id {$d/@id}, attribute expr {$d/@expr} }}
-    {(:$extra_data:)()}
-  </datamodel>
+    element datamodel
+    { for $d in $data
+      return element data { attribute id {$d/@id}, attribute expr {$d/@expr} }
+    },
 
-  {local:list_states ($states, $transitions)}
-  </scxml>
+    local:list_states ($states, $transitions)
+  }
+
 };

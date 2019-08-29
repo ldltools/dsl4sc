@@ -35,6 +35,8 @@ let opt_relax_protocols = ref false
 let opt_expand_preserve = ref true
 let opt_discard_codes = ref false
 
+let opt_strict = ref false
+
 (* deprecated *)
 (*
 let opt_mark_conditions = ref false
@@ -109,10 +111,13 @@ let main argc argv =
 	  infile := "/dev/stdin";
       | "-o" | "--output" ->
 	  outfile := argv.(!i+1); incr i;
-      | "-t" ->
-	  opt_fmt_out := argv.(!i+1); incr i;
+
+      | "-s" ->
+	  opt_fmt_in := argv.(!i+1); incr i;
       | "--json" ->
 	  opt_fmt_in := "json"
+      | "-t" ->
+	  opt_fmt_out := argv.(!i+1); incr i;
 
       | "-V" | "--version" ->
 	  printf "%s\n" (Version.get ());
@@ -146,9 +151,11 @@ let main argc argv =
       | _ when matches 9 "--no-discard-codes" ->
 	  opt_discard_codes := false
 
+      | "--strict" ->
+	  opt_strict := true
+
       | _  when argv.(!i).[0] = '-' ->
 	  failwith ("unknown option: " ^ argv.(!i))
-
       | _ ->
 	  infile :=argv.(!i)
     in incr i
@@ -171,7 +178,7 @@ let main argc argv =
   (* decls -> decls' *)
   let decls' =
     Rulespp.preprocess
-      ~allow_undeclared: !opt_allow_undeclared
+      ~allow_undeclared: (!opt_allow_undeclared && not !opt_strict)
       ~expand_any: !opt_expand_any
       ~minimize_protocols: !opt_proto_min (* 0: no_min, 1: min (if '?' included), 2: min (always) *)
       ~relax_protocols: !opt_relax_protocols

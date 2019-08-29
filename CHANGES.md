@@ -1,3 +1,11 @@
+# v0.13.0 (2019-??-??)
+
+- **new** [rules2scxml] allow modal contexts/actions (when/ensure).  
+  note that `Rules_l.enclosed_string_p` and `Model.applicable` still need further updates.
+  (8bf478a)
+- migrate to opam2/ocaml4.08.1/sedlex2.1.
+  (c147bbf)
+
 # v0.12.0 (2019-07-08)
 
 - **new** [safeguard] attach to existing EcmaScript code a set of pre/post conditions.
@@ -20,7 +28,7 @@
   (b098d28)
 - [rulespp] recognize term variables in "preserve" rules correctly.
   (39bcf14)
-- [rules2ldl] p18n of _nat (n)_ where _n_ is not a power of 2.
+- [rules2ldl] propositionalization (p18n) of _nat (n)_ where _n_ is not a power of 2.
   (7b85a4c)
 
 # v0.11.1 (2018-12-30)

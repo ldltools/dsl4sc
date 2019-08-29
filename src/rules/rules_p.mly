@@ -814,9 +814,12 @@ rule	: ON rule_e WHEN rule_c rule_a
 	| ON rule_e rule_a
 	  // condition = true
 	  { $2 @ $3 }
+	| except_rule
+	  { $1 }
+	;
 
-// special case
-	| preserve_rule_except
+except_rule
+	: preserve_rule_except
 	  { $1 }
 	;
 
@@ -843,8 +846,6 @@ rule_c	: labelled_property
 
 rule_a	: action_seq
 	  { [Elt_action $1] }
-	| preserve_rule_a
-	  { $1 }
 	;
 
 // ------
@@ -862,6 +863,8 @@ action	: action1
 	  { $1, None }
 	| action1 LBRACE STRING RBRACE
 	  { $1, Some $3 }
+	| action_preserve
+	  { $1, None }
 	| DO LBRACE STRING RBRACE
 	  { Act_do, Some $3 }
 	;
@@ -945,8 +948,22 @@ event_sum1
 	;
 
 // ----------------------
-// special case: preserve
+// action preserve
 // ----------------------
+action_preserve
+	: PRESERVE property
+	  { Act_preserve [$2] }
+	| PRESERVE preserve_args
+	  { Act_preserve $2 }
+	;
+
+preserve_args
+	: property COMMA property
+	  { [$1; $3] }
+	| preserve_args COMMA property
+	  { $1 @ [$3] }
+	;
+
 preserve_rule_except
 	: preserve_rule_e preserve_rule_c preserve_rule_a
 	  { $1 @ $2 @ $3 }
@@ -975,30 +992,12 @@ preserve_rule_c
 	;
 
 preserve_rule_a
-	: preserve
-	  { $1 }
+	: action_preserve
+	  { [Elt_action [$1, None]] }
 //	| DO preserve
 //	  { $2 }
 //	| SLASH labelled_ldl_path SLASH
 //	  { [Elt_path $2] }
-	;
-
-preserve
-	: PRESERVE property
-	  { [Elt_action [(Act_preserve [$2]), None]] }
-	| PRESERVE preserve_args
-	  { [Elt_action [(Act_preserve $2), None]] }
-//	| PRESERVE preserve_args
-//	  { [Elt_action [(Act_preserve $2), None]] }
-// 	| PRESERVE LPAREN args RPAREN
-//	  { [Elt_action [(Act_preserve $3), None]] }
-	;
-
-preserve_args
-	: property COMMA property
-	  { [$1; $3] }
-	| preserve_args COMMA property
-	  { $1 @ [$3] }
 	;
 
 //preserve_args
