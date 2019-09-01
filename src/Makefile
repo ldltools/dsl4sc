@@ -62,8 +62,8 @@ ifdef DEBUG
 CAMLCFLAGS	+= -g -w +A
 CAMLOPTFLAGS	+= -g -w +A
 else
-CAMLCFLAGS	+= -noassert -w -A
-CAMLOPTFLAGS	+= -noassert -w -A
+CAMLCFLAGS	+= -noassert -w -A+P
+CAMLOPTFLAGS	+= -noassert -w -A+P
 endif
 
 ifdef PROF

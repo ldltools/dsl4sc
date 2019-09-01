@@ -27,7 +27,9 @@ declare function local:list_states ($states, $transitions)
     if (exists ($q/@final))
     then
       element final {
-        $q/@id, $q/node (),
+        $q/@id,
+	element dsl4sc:formula { $q/dsl4sc:formula/node () },
+
         if (data ($q/@id) = "_rejected")
         then
           <onentry>
@@ -45,7 +47,7 @@ declare function local:list_states ($states, $transitions)
     else
     element state {
       $q/@id,
-      $q/dsl4sc:formula,
+      element dsl4sc:formula { $q/dsl4sc:formula/node () },
 
       for $tr in $tr_seq
 

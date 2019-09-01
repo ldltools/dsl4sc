@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:dsl4sc="https://github.com/ldltools/dsl4sc" version="1.0" datamodel="ecmascript" initial="q2">
   <datamodel/>
   <state id="q4">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q5" event=" ">
       <!--tid t9_1-->
     </transition>
   </state>
   <state id="q2">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q4" event="quit">
       <!--tid t5_1-->
     </transition>
@@ -22,6 +22,6 @@
     </transition>
   </state>
   <final id="q5">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
   </final>
 </scxml>

@@ -24,11 +24,12 @@ let opt_o = ref "unspecified"
 let opt_o_channel = ref stdout
 let opt_fmt_in = ref "unspecified"
 let opt_fmt_out = ref "unspecified"
+let opt_map_out = ref "/dev/null"
 let opt_verbose = ref false
 
-let opt_map_out = ref "/dev/null"
 let opt_until = ref "ldl"
 let opt_parse_only = ref false
+
 let opt_skip_rulespp = ref false
 let opt_skip_specpp = ref false
 let opt_skip_p18n = ref false
@@ -177,12 +178,14 @@ let output_map oc (m : Spec2ldl.event_map) = function
   | "xml" | "unspecified" ->
       output_string oc "<mappings xmlns=\"https://github.com/ldltools/dsl4sc\">\n";
       List.iter
-	(function e, Property.Prop_conj fs ->
-	  fprintf oc "<bits type=\"event\" name=%S>" e;
-	  List.iter
-	    (fun f -> fprintf oc "<bit>%s</bit>" (Property.string_of_property f))
-	    fs;
-	  fprintf oc "</bits>\n")
+	(function
+	  | e, Property.Prop_conj fs ->
+	      fprintf oc "<bits type=\"event\" name=%S>" e;
+	      List.iter
+		(fun f -> fprintf oc "<bit>%s</bit>" (Property.string_of_property f))
+		fs;
+	      fprintf oc "</bits>\n"
+	  | _ -> ())
 	m;
       output_string oc "</mappings>\n"
   | fmt ->
@@ -225,6 +228,8 @@ let main argc argv =
 
       | "-p" | "--parse-only" ->
 	  opt_parse_only := true
+      | "-E" ->
+	  opt_until := "rules"
       | "-u" | "--until"  ->
 	  let stage = argv.(!i+1) in
 	  opt_until := stage; incr i;

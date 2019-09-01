@@ -91,7 +91,7 @@ let rec include_term_variable_p r =
 
 let rec print_rule out ?(fancy=false) (r : rule) =
   (* event *)
-  let ev : event = fst r.event in
+  let ev, ev_opt = r.event in
   let _ =
     match ev with
     | Ev_name e -> out "on "; out e;
@@ -102,6 +102,8 @@ let rec print_rule out ?(fancy=false) (r : rule) =
 	out "except on ";
 	out e; List.iter (fun e -> out ", "; out e) rest;
     | _ -> failwith "[print_rule]"
+  and _ =
+    match ev_opt with Some str -> out " {"; out str; out "}" | _ -> ()
   in ();
   out " ";
 

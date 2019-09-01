@@ -52,9 +52,12 @@ val pp_minimize_protocols : ?always: bool -> Rules.decl list -> Rules.decl list
 
 (** rule *)
 
-val pp_expand_preserve : string list -> Rules.decl list -> Rules.decl list
-    (** pp_preserve_expand events decls
-	events are looked up when rules are of the form "except on e1, e2, .."
+val pp_expand_trigger : Rules.decl list -> Rules.decl list
+    (** expand "on e1, e2, .." rules to "on e1; on e2; .."  rules
+     *)
+
+val pp_expand_preserve : Rules.decl list -> Rules.decl list
+    (** expand "preserve" rules to their equivalent "ensure" rules
      *)
 
 val pp_discard_codes  : Rules.decl list -> Rules.decl list

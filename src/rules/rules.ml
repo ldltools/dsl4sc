@@ -330,7 +330,7 @@ and print_rule_in_xml out ?(id = None) ((r, annot_opt) : rule_spec) =
 	    out "<ensure>";
 	    escape out (Property.string_of_property @@ Property.propositionalize p);
 	    out "</ensure>";
-	    rslt
+	    rslt @ (match code_opt with None -> [] | Some code -> [" assert (" ^ code ^ "); "])
 	| Rule.Act_raise [e] ->
 	    out "<raise event=\""; out e; out "\"/>";
 	    rslt @ (match code_opt with None -> [] | Some code -> [code])
@@ -340,10 +340,10 @@ and print_rule_in_xml out ?(id = None) ((r, annot_opt) : rule_spec) =
 	    out "</choice>";
 	    rslt @ (match code_opt with None -> [] | Some code -> [code])
 	| Rule.Act_do ->
-	    rslt @ (match code_opt with None -> [] | Some code -> [code])
+	    rslt @ (match code_opt with None -> [] | Some code -> [code ^ ";"])
 	| _ -> rslt)
-      [] acts in
-
+      [] acts
+  in
   out "<script>";
   List.iter (escape out) scripts;
   out "</script>";

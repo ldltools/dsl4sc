@@ -195,8 +195,8 @@ and toplevel (buf : lexbuf) =
   | "property"		-> mode := 40; PROPERTY
 
   | "rule"		-> RULE
-  | "on"		-> mode := 51; ON
   | "except"		-> EXCEPT
+  | "on"		-> mode := 51; ON
   | "when"		-> mode := 52; pinfo_reset (); WHEN
   | "ensure"		-> mode := 53; pinfo_reset (); ENSURE
   | "raise"		-> mode := 54; RAISE
@@ -507,18 +507,18 @@ let parse (p : (Rules_p.token, 'ast) MenhirLib.Convert.traditional) (buf : lexbu
     p' l
   with
   | Invalid_argument msg ->
-      let p = buf._pos in
-      eprintf ";; invalid arg: lnum=%d, bol=%d, cnum=%d\n" p.pos_lnum p.pos_bol p.pos_cnum;
+      let p, _ = Sedlexing.lexing_positions buf._buf in
+      eprintf "[Rules_l.parse] invalid arg: lnum=%d, bol=%d, cnum=%d\n" p.pos_lnum p.pos_bol p.pos_cnum;
       invalid_arg msg
   | ParseError msg ->
-      let p = buf._pos in
-      eprintf "** Error on parsing %s(<%s>)"
+      let p, _ = Sedlexing.lexing_positions buf._buf in
+      eprintf "[Rules_l.parse] ** ParseError: %s(<%s>)"
 	(if p.pos_fname = "" then "" else "\"" ^ p.pos_fname ^ "\" ") msg;
       let lnum, bol, col, pos = p.pos_lnum, p.pos_bol, p.pos_cnum - p.pos_bol, p.pos_cnum in
       eprintf " at line:%d, column:%d, position:%d\n" lnum col pos;
       flush_all ();
       exit 1
   | Rules_p.Error ->
-      let p = buf._pos in
-      eprintf ";; Rules_p.Error: lnum=%d, bol=%d, cnum=%d\n" p.pos_lnum p.pos_bol p.pos_cnum;
+      let p, _ = Sedlexing.lexing_positions buf._buf in
+      eprintf "[Rules_l.parse] Error: lnum=%d, bol=%d, cnum=%d\n" p.pos_lnum p.pos_bol p.pos_cnum;
       exit 1

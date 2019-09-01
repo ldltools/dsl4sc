@@ -252,7 +252,10 @@ and action_to_property map (acts : Rule.action) =
 	    [Prop_modal (Mod_ex,
 			 (Path_prop (Prop_atomic "true"), None),
 			 (Prop_disj (List.map (fun e -> List.assoc e map) es), None))]
-	| _ -> [])
+	| Act_preserve ps ->
+	    invalid_arg "[action_to_property] preserve"
+	| Act_do ->
+	    invalid_arg "[action_to_property] do")
       [] acts
   in Prop_conj conj
 

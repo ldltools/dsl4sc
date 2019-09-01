@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" datamodel="ecmascript" initial="q2">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:dsl4sc="https://github.com/ldltools/dsl4sc" version="1.0" datamodel="ecmascript" initial="q2">
   <datamodel/>
   <final id="q7">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
   </final>
   <state id="q6">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q7" event=" ">
       <!--tid t15_1-->
     </transition>
   </state>
   <state id="q4">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q5" event="pong">
       <!--tid t9_1-->
       <!--transition: curr_world: true label: true next_world: true-->
@@ -32,7 +32,7 @@
     </transition>
   </state>
   <state id="q2">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q4" event="ping">
       <!--tid t5_1-->
       <!--transition: curr_world: true label: true next_world: true-->
@@ -50,7 +50,7 @@
     </transition>
   </state>
   <state id="q5">
-    <formula xmlns="https://github.com/ldltools/dsl4sc">true</formula>
+    <dsl4sc:formula>true</dsl4sc:formula>
     <transition target="q4" event="ping">
       <!--tid t13_1-->
       <!--transition: curr_world: true label: true next_world: true-->

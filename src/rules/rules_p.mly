@@ -64,7 +64,9 @@ and expand_prop_spec_rec rslt = function
       expand_prop_spec_rec rslt' rest
 
 let report_error (msg : string) =
-  failwith @@ "[Rules_p] parse error: " ^ msg
+  output_string stderr @@ "[Rules_p.report_error] " ^ msg ^ "\n"; flush stderr;
+  (*failwith @@ "[Rules_p] parse error: " ^ msg*)
+  raise Error
 
 %}
 
@@ -288,6 +290,7 @@ protocol3
 	  { match $1 with
 	    | "_empty" -> Proto_sum []
 	    | "_epsilon" -> Proto_seq []
+	    | "any" -> Proto_event "_any"
 	    | _ -> Proto_event $1
 	  }
 	| CONST
@@ -814,20 +817,29 @@ rule	: ON rule_e WHEN rule_c rule_a
 	| ON rule_e rule_a
 	  // condition = true
 	  { $2 @ $3 }
-	| except_rule
-	  { $1 }
-	;
-
-except_rule
-	: preserve_rule_except
-	  { $1 }
+	| EXCEPT ON rule_e_except WHEN rule_c rule_a
+	  { $3 @ $5 @ $6 }
+	| EXCEPT ON rule_e_except rule_a
+	  { $3 @ $4 }
+	| error
+	  { report_error "rule" }
 	;
 
 // event/condition/action
 rule_e	: args
-	  { List.map (fun arg -> Elt_event (Ev_name arg)) $1 }
+	  { [Elt_event (Ev_name_seq $1)] }
 	| args LBRACE STRING RBRACE
-	  { (List.map (fun arg -> Elt_event (Ev_name arg)) $1) @ [Elt_event_opt $3] }
+	  { if List.length $1 = 1
+	    then [Elt_event (Ev_name (List.hd $1)); Elt_event_opt $3]
+	    else report_error "multiple events cannot share code"
+	  }
+	;
+
+rule_e_except
+	: args
+	  { [Elt_event (Ev_name_seq_compl $1)] }
+	| args LBRACE STRING RBRACE
+	  { report_error "'except-on' rule cannot carry code" }
 	;
 
 args	: NAME
@@ -963,48 +975,5 @@ preserve_args
 	| preserve_args COMMA property
 	  { $1 @ [$3] }
 	;
-
-preserve_rule_except
-	: preserve_rule_e preserve_rule_c preserve_rule_a
-	  { $1 @ $2 @ $3 }
-	;
-
-preserve_rule_e
-//	: ON args
-//	  { List.map (fun arg -> Elt_event (Ev_name arg)) $1 }
-//	| ON LPAREN args RPAREN
-//	  { [Elt_event (Ev_name_seq $3)] }
-//	| ON HAT NAME
-//	  { [Elt_event (Ev_name_seq_compl [$3])] }
-//	| ON HAT LPAREN args RPAREN
-//	  { [Elt_event (Ev_name_seq_compl $4)] }
-	: EXCEPT ON args
-	  { [Elt_event (Ev_name_seq_compl $3)] }
-	| EXCEPT ON LPAREN args RPAREN
-	  { [Elt_event (Ev_name_seq_compl $4)] }
-	;
-
-preserve_rule_c
-	:
-	  { [] }
-	| WHEN labelled_property
-	  { [Elt_condition $2] }
-	;
-
-preserve_rule_a
-	: action_preserve
-	  { [Elt_action [$1, None]] }
-//	| DO preserve
-//	  { $2 }
-//	| SLASH labelled_ldl_path SLASH
-//	  { [Elt_path $2] }
-	;
-
-//preserve_args
-//	: NAME COMMA NAME
-//	  { [Prop_atomic $1; Prop_atomic $3] }
-//	| preserve_args COMMA NAME
-//	  { $1 @ [Prop_atomic $3] }
-//	;
  
 %%
