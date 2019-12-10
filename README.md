@@ -1,4 +1,4 @@
-# Summary
+># Summary
 
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
@@ -86,10 +86,10 @@ You can also check out [more examples](examples/README.md) if you are interested
 ## Prerequisites
 To run dsl4sc for static verification, you need the following tools.
 
-- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.08.1)  
+- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.09.0)  
   run: `apt-get install ocaml`  
   Alternatively, you can install a particular version of the compiler using `opam`  
-  run: `opam switch 4.08.1` for example
+  run: `opam switch 4.09.0` for example
 - [opam](https://opam.ocaml.org) (ocaml package manager v2.0)  
   run: `apt-get install opam`
 - ocaml packages: ocamlfind sedlex menhir yojson ppx\_deriving ppx\_deriving\_yojson xml-light z3  
@@ -124,8 +124,8 @@ In addition to the tools listed above, you also need the following GNU tools:
 
 - GNU common utilities  
   run: `brew install coreutils debianutils`
-- GNU sed/awk  
-  run: `brew install gnu-sed gawk`
+- GNU sed/awk/bash  
+  run: `brew install gnu-sed gawk bash`
 - GNU make (v4.1 or higher)  
   run: `brew install remake`  
   and build by `MAKE=remake remake` instead of `make`

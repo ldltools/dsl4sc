@@ -4,12 +4,14 @@
 TOP_DIR		?= $(shell readlink -f ..)
 PREFIX		?= $(TOP_DIR)/_build/install
 
+RULES2SCXML	?= rules2scxml
 RULESPP		?= rulespp
 RULES2LDL	?= rules2ldl
-RULES2SCXML	?= rules2scxml
-LDL2SCXML	?= ldl2scxml
+LDL2MSO		?= ldl2mso
 
 SCXMLRUN	?= scxmlrun
+SCXML2PUML	?= scxml2puml.sh
+PLANTUML	?= plantuml.sh
 
 SHELL		:= /bin/bash
 MONA		?= mona
@@ -20,69 +22,78 @@ XMLLINT		?= xmllint
 all::
 
 # ================================================================================
-# RULES
+# DSL
 # ================================================================================
 
-# RULES
-%.scxml:	%.spec
-	$(RULES2SCXML) $< -o $@
 %.scxml:	%.dsl
 	$(RULES2SCXML) $< -o $@
-%.scxml:	%.rules
-	$(RULES2SCXML) $< -o $@
 
-%.ldl %.map:	%.rules
-	$(RULES2LDL) $< -o $*.ldl --map $*.map || { rm -f $*.ldl $*.map; exit 1; }
-%.rules.xml:	%.rules
+%.dsl.xml:	%.rules
 	$(RULESPP) $< -o $@.tmp -t xml || { rm -f $@; exit 1; }
 	$(XMLLINT) --format $@.tmp > $@ && rm -f $@.tmp
 
-.PRECIOUS:	%.rules %.ldl %.map
+# obsolete
+%.dsl:	%.spec
+	cat $< > $@
+%.dsl:	%.rules
+	cat $< > $@
+
+.PRECIOUS:	%.dsl %.scxml
 
 # ================================================================================
 # LDL
 # ================================================================================
 
-%.mso:	%.ldl
-	$(LDL2SCXML) $< -o $@ -u mso || { rm -f $@; exit 1; }
+%.ldl %.map:	%.dsl
+	$(RULES2LDL) $< -o $*.ldl --map $*.map || { rm -f $*.ldl $*.map; exit 1; }
+
+.PRECIOUS:	%.ldl %.map
+
+# ================================================================================
+# MSO
+# ================================================================================
+%.mso:	%.dsl
+	$(RULES2SCXML) $< -o $@ -u mso || { rm -f $@; exit 1; }
 %.mso.dot:	%.mso
 	$(MONA) -gw $< > $@
 
-%.dfa.xml:	%.ldl
-	$(LDL2SCXML) $< -o $@ -u dfa || { rm -f $@; exit 1; }
-%.dfa.dot:	%.ldl
-	$(LDL2SCXML) $< -o $@ -u dfadot || { rm -f $@; exit 1; }
+.PRECIOUS:	%.mso
 
-# obsolete -- use "rules2scxml" instead
-# <transition label=..> -> <transition event="..">
-# <transition event="e"> carry <rule><event name="e"/></rule> elements
-#%.dfa2.xml:	%.ldl %.map %.rules
-#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ --u dfa2 || { rm -f $@; exit 1; }
-#
-#%.scxml:	%.ldl %.map %.rules
-#	$(LDL2SCXML) --map $*.map --rules $*.rules $*.ldl -o $@ || { rm -f $@; exit 1; }
+# ================================================================================
+# DFA
+# ================================================================================
+
+%.dfa.xml:	%.dsl
+	$(RULES2SCXML) $< -o $@ -u dfa || { rm -f $@; exit 1; }
+%.dfa.dot:	%.dsl
+	$(RULES2SCXML) $< -o $@ -u dfadot || { rm -f $@; exit 1; }
+
+# ================================================================================
+# DOT/UML
+# ================================================================================
 
 # DOT -- optional
 %.png:	%.dot
-	dot -Tpng $< > $@
+	dot $< -Tpng > $@
 %.svg:	%.dot
-	dot -Tsvg $< > $@
+	dot $< -Tsvg > $@
+%.eps:	%.dot
+	dot $< -Tps > $@
 
 # UML -- optional
 LANDSCAPE	?= 0
 %.puml:	%.scxml
 #	scxml2uml.sh $< -o $@ -nocond
 	landscape=`test $(LANDSCAPE) -ne 0 && echo -e "\x2dlandscape"`; \
-	scxml2uml.sh $< -o $@ $$landscape
+	$(SCXML2PUML) $< -o $@ $$landscape
+%.png:	%.puml
+	$(PLANTUML) $< -tpng
 %.svg:	%.puml
-	plantuml.sh $< -tsvg
-%.png:	%.svg
-	convert $< $@
+	$(PLANTUML) $< -tsvg
+%.eps:	%.puml
+	$(PLANTUML) $< -teps
+%.tex:	%.puml
+	$(PLANTUML) $< -tlatex:nopreamble
+	mv -f $*.latex $@
 
-.PRECIOUS:	%.ldl %.mso
-.PRECIOUS:	%.dfa.xml %.dfa2.xml
-.PRECIOUS:	%.scxml
-.PRECIOUS:	%.dfa.dot %.mso.dot
-.PRECIOUS:	%.puml %.svg
-
-
+.PRECIOUS:	%dot %.puml

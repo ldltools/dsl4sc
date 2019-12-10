@@ -7,9 +7,9 @@ veryclean::
 
 TOP_DIR		= $(shell readlink -f ..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml
-PREFIX		?= $(TOP_DIR)/_build/install
-LDLSATLIBDIR	?= /usr/local/lib/ldlsat
-#LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
+#PREFIX		?= $(TOP_DIR)/_build/install
+PREFIX		?= /usr/local
+LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
 SRC_DIRS	= ./rules ./spec
 
 OPAM_PREFIX	= $(shell opam config var prefix)

@@ -5,7 +5,7 @@ PREFIX		?= $(TOP_DIR)/_build/install
 SUBDIRS		= src
 
 all::
-	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 
 install::	all
 	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done

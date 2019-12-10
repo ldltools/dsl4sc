@@ -4,7 +4,7 @@ PREFIX		?= $(shell readlink -f ../_build/install)
 SUBDIRS		= rules2dfa modelgen rules2scxml safeguard
 
 all::
-	for d in $(SUBDIRS); do $(MAKE) -C $$d $@; done
+	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
 
 install::	all
 	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
