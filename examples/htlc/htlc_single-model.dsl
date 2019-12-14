@@ -10,24 +10,25 @@ newContract;
 ;;
 
 variable
-//  state : nat(5);
-//  // 0:ready, 1:locked, 2:timed_out, 3:withdrawn, 4:refunded
-
-// state : nat(3); // 0(not done), 1:done(withdrawn), 2:undone(refunded)
-// lock_state : nat(3); // 0(init), 1(locked), 2(timedout)
+state : nat(3);
+  // 0:not done, 1:done(withdrawn), 2:undone(refunded)
+lock : nat(3);
+  // 0:not locked, 1:locked(asset_locked), 2:timedout
 
 property
-  <{state=0};({state=1} + {state=2})*; ({state=3} + {state=4})>last;
+state = 0 & lock = 0;
+//<{state=0};({state=1} + {state=2})*; ({state=3} + {state=4})>last;
 
 rule
-on newContract ensure state = 1;
+on newContract ensure state = 0 & lock = 1;
 
-on withdraw ensure state = 1;
-on withdraw_end ensure state = 3;
-on withdraw_err_expired ensure state = 2;
+on withdraw ensure state = 0 & lock = 1;
+on withdraw_end ensure state = 1 & lock = 0;
+  // lock updated
+on withdraw_err_expired ensure state = 0 & lock = 2;
+  // lock updated
 
-on refund when state = 1 ensure state = 1;
-on refund when state = 2 ensure state = 2;
-on refund_end ensure state = 4;
-on refund_err_premature ensure state = 1;
-
+on refund when state = 0 & lock = 1 ensure state = 0 & lock = 1;
+on refund when state = 0 & lock = 2 ensure state = 0 & lock = 2;
+on refund_end ensure state = 2 & lock = 0;
+on refund_err_premature ensure state = 0 & lock = 1;

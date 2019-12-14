@@ -17,6 +17,7 @@
 
 RULESPP=rulespp
 RULES2LDL=rules2ldl
+LDL2MSO=ldl2mso
 BINDIR=$(readlink -f `dirname $0`/../lib/dsl4sc/tools)
 RULES2DFA=$BINDIR/rules2dfa.sh
 DFA2SCXML=$BINDIR/dfa2scxml.sh
@@ -111,7 +112,6 @@ fi
 
 if test ${opt_rulespp_only} -eq 1
 then
-    test ${opt_skip_rulespp} -eq 1 && { cat $infile > $outfile; exit 0; }
     $RULESPP $infile -o $outfile
     exit 0
 fi
@@ -122,6 +122,9 @@ spec)
     exit 0 ;;
 ldl)
     ${RULES2LDL} $infile -o $outfile
+    exit 0 ;;
+mso)
+    ${RULES2LDL} $infile | ${LDL2MSO} -o $outfile
     exit 0 ;;
 esac
 

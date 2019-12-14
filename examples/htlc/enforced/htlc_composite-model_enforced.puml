@@ -1,0 +1,81 @@
+@startuml
+' left to right direction
+' hide empty description
+
+state "q2" as q2
+' q2 : !_Cash_state_0,!_Cash_state_1,!_Cash_state_2,!_Cash_state_3,!_Sec_state_0,!_Sec_state_1,!_Sec_state_2,!_Sec_state_3
+q2 : Cash_state=0,Cash_lock=0,Sec_state=0,Sec_lock=0,Cash_done=F,Sec_done=F,error=F
+
+state "q4" as q4
+' q4 : !_Cash_state_0,!_Cash_state_1,!_Cash_state_2,!_Cash_state_3,_Sec_state_0,!_Sec_state_1,!_Sec_state_2,!_Sec_state_3
+q4 : 0,1,0,0,F,F,F
+
+state "q5" as q5
+' q5 : _Cash_state_0,!_Cash_state_1,!_Cash_state_2,!_Cash_state_3,_Sec_state_0,!_Sec_state_1,!_Sec_state_2,!_Sec_state_3
+q5 : 0,1,0,1,F,F,F
+
+state "q6" as q6
+q6 : 0,1,0,1,F,F,F
+
+state "q7" as q7
+q7 : 0,2,0,1,F,F,T
+
+state "q8" as q8
+q8 : 1,0,0,1,T,F,F
+
+state "q9" as q9
+q9 : 0,2,0,1,F,F,T
+
+state "q10" as q10
+q10 : 1,0,0,1,T,F,F
+
+state "q11" as q11
+q11 : 2,0,0,1,F,F,F
+
+state "q11'" as q11_ng
+q11_ng : 2,0,0,1,F,F,T
+
+state "q12" as q12_ok
+q12_ok : 1,0,1,0,T,T,F
+q12_ok : 2,0,2,0,F,F,F
+
+state "q12'" as q12_ng
+q12_ng : 1,0,0,2,T,F,T
+
+state "q13" as q13
+q13 : 2,0,0,1,F,F,F
+
+state "q13'" as q13_ng
+q13_ng : 2,0,0,1,F,F,T
+
+state "last" as q14
+' q14 : true
+
+
+
+[*] -right-> q2
+q2 -right-> q4 : Sec.newContract
+q4 -down-> q5 : Cash.newContract
+q5 --> q6 : Cash.withdraw
+q6 -down-> q8 : Cash.withdraw_end
+q8 --> q10 : Sec.withdraw
+q10 --> q12_ok : Sec.withdraw_end
+
+q6 -left-> q7 : Cash.withdraw_err_expired
+
+q7 --> q9 : Cash.refund
+q9 --> q11 : Cash.refund_end
+q10 --> q12_ng : Sec.withdraw_err_expired
+q13 -left-> q11_ng : Sec.refund_err_premature
+q11_ng --> q13_ng : Sec.refund
+q13_ng --> q12_ok : Sec.refund_end
+q13_ng --> q11_ng : Sec.refund_err_premature
+q13 --> q12_ok : Sec.refund_end
+q11 --> q13 : Sec.refund
+
+q12_ok -right-> q14
+q12_ng -left-> q14
+q14 --> [*]
+
+
+@enduml

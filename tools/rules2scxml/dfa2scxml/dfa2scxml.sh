@@ -159,6 +159,25 @@ dfa3*)
 esac
 
 # --------------------------------------------------------------------------------
+# dfa3 -> puml
+# --------------------------------------------------------------------------------
+
+print_in_puml=$LIBDIR/print_in_puml.xq
+
+_print_in_puml () {
+local infile=$1
+local outfile=$2
+test -f ${print_in_puml} || { echo "${print_in_puml} not found" > /dev/stderr; exit 1; }
+#echo "** print_in_puml $infile $outfile" > /dev/stderr
+cat <<EOF | xqilla /dev/stdin -i $infile -o $outfile || { echo "** xqilla crashed" > /dev/stderr; exit 1; }
+`cat ${print_in_puml}`
+local:print_in_puml (.)
+EOF
+}
+
+test $until = "puml" && { _print_in_puml ${dfa3file} $outfile; rm -f ${dfa3file}; exit 0; }
+
+# --------------------------------------------------------------------------------
 # dfa3 -> scxml (printing)
 #
 # - <dfa> -> <scxml>

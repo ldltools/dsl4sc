@@ -1,0 +1,55 @@
+@startuml
+'left to right direction
+'hide empty description
+
+
+state "q2" as q2
+'q2 : !_lock_0,!_lock_1,!_state_0,!_state_1
+q2 : state=0,lock=0
+
+state "q4" as q4
+'q4 : _lock_0,!_lock_1,!_state_0,!_state_1
+q4 : 0,1
+
+state "q5" as q5
+'q5 : _lock_0,!_lock_1,!_state_0,!_state_1
+q5 : 0,1
+
+state "q6" as q6
+'q6 : _lock_0,!_lock_1,!_state_0,!_state_1
+q6 : 0,1
+
+state "q7" as q7
+'q7 : !_lock_0,!_lock_1,!_state_0,_state_1
+'q7 : !_lock_0,!_lock_1,_state_0,!_state_1
+q7 : 2,0
+q7 : 1,0
+
+state "q8" as q8
+'q8 : !_lock_0,_lock_1,!_state_0,!_state_1
+q8 : 0,2
+
+state "last" as q9
+'q9 : true
+
+state "q10" as q10
+'q10 : !_lock_0,_lock_1,!_state_0,!_state_1
+q10 : 0,2
+
+
+[*] -left-> q2
+q2 -down-> q4 : newContract
+q4 -right-> q6 : withdraw
+q6 -right-> q8 : withdraw_err_expired
+q10 --> q7 : refund_end
+q8 -down-> q10 : refund
+q6 --> q7 : withdraw_end
+q4 -down-> q5 : refund
+q5 --> q4 : refund_err_premature
+q5 --> q7 : refund_end
+
+q7 -right-> q9
+q9 -right-> [*]
+
+
+@enduml

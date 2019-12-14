@@ -15,32 +15,29 @@ install::
 TOP_DIR	= $(shell readlink -f ../..)
 include ../Makefile.common
 
-SPECS	=	tx_single-spec tx_composite-spec tx_composite_err-spec
+SPECS	=	tx_single-spec tx_composite-spec\
+		htlc_composite-spec
 MODELS	=	tx_composite-model\
 		htlc_single-model htlc_composite-model
-
-MODELS	+=	tx_composite-model_enforced
 
 all::;	@mkdir -p out
 all::	$(SPECS:%=out/%.dfa.xml)
 all::	$(MODELS:%=out/%.scxml)
 
+images::	all
 images::	$(SPECS:%=out/%.dfa.png)
 images::	$(MODELS:%=out/%.png) $(MODELS:%=out/%.eps) $(MODELS:%=out/%.tex)
 
-#
-extended/%-model_enforced.dsl:	extended/%-model_enforced.dsl.cpp %-model.dsl %-spec.dsl
-	gcc $< -E | grep -v '^#' > $@
-
-#
-out/%.dsl:	extended/%.dsl
-	cp $< $@
 out/%.dsl:	%.dsl
 	cp $< $@
 
 %.scxml:	%.dsl
 	$(RULES2SCXML) $< -o $@ --auto-exit
+%.puml:		%.dsl
+	$(RULES2SCXML) $< -o $@ --auto-exit -u puml
 
-#
-test:
-	shelltest tx.conf
+.PRECIOUS:	out/%.dsl out/%.scxml
+
+# spec enforcement
+all images test::
+	make -C enforced $@

@@ -64,7 +64,7 @@ all::
 # ================================================================================
 
 %.dfa.xml:	%.dsl
-	$(RULES2SCXML) $< -o $@ -u dfa || { rm -f $@; exit 1; }
+	$(RULES2SCXML) $< -o $@ -u dfa3 || { rm -f $@; exit 1; }
 %.dfa.dot:	%.dsl
 	$(RULES2SCXML) $< -o $@ -u dfadot || { rm -f $@; exit 1; }
 
@@ -81,11 +81,12 @@ all::
 	dot $< -Tps > $@
 
 # UML -- optional
-LANDSCAPE	?= 0
-%.puml:	%.scxml
-#	scxml2uml.sh $< -o $@ -nocond
-	landscape=`test $(LANDSCAPE) -ne 0 && echo -e "\x2dlandscape"`; \
-	$(SCXML2PUML) $< -o $@ $$landscape
+#LANDSCAPE	?= 0
+#%.puml:	%.scxml
+#	landscape=`test $(LANDSCAPE) -ne 0 && echo -e "\x2dlandscape"`; \
+#	$(SCXML2PUML) $< -o $@ $$landscape
+%.puml:	%.dsl
+	$(SCXML2PUML) $< -o $@ -u puml
 %.png:	%.puml
 	$(PLANTUML) $< -tpng
 %.svg:	%.puml
