@@ -55,8 +55,9 @@ CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
 CAMLCFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
 CAMLOPTFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
 
-CAMLCFLAGS	+= -unsafe-string
-CAMLOPTFLAGS	+= -unsafe-string
+# ocaml 4.10 no longer supports unsafe-string
+#CAMLCFLAGS	+= -unsafe-string
+#CAMLOPTFLAGS	+= -unsafe-string
 
 ifdef DEBUG
 CAMLCFLAGS	+= -g -w +A
@@ -79,6 +80,7 @@ CMAS		+= result.cma ppx_deriving_runtime.cma ppx_deriving_yojson_runtime.cma
 CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= unix.cma bigarray.cma bigstring.cma sexplib.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
+CMAS		+= menhirLib.cma
 CMAS		+= xml-light.cma
 CMAS		+= gen.cma sedlex.cma
 CMAS		+= ldlsat.cma
@@ -100,9 +102,9 @@ all::	$(LIBS) $(BINS)
 
 # rulespp
 $(BUILD_DIR)/rulespp.byte:	$(LIBS.byte) $(BUILD_DIR)/rules/rulespp_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo $^
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) $^
 $(BUILD_DIR)/rulespp.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rulespp_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 $(BUILD_DIR)/rules/rulespp_main.cmo:	rules/rulespp_main.ml $(BUILD_DIR)/_export/dsl4sc.cmi
 	$(CAMLC) $(CAMLCFLAGS) -I $(BUILD_DIR)/_export -o $@ -c $<
 $(BUILD_DIR)/rules/rulespp_main.cmx:	rules/rulespp_main.ml $(BUILD_DIR)/_export/dsl4sc.cmi
@@ -110,9 +112,9 @@ $(BUILD_DIR)/rules/rulespp_main.cmx:	rules/rulespp_main.ml $(BUILD_DIR)/_export/
 
 # rules2ldl
 $(BUILD_DIR)/rules2ldl.byte:	$(LIBS.byte) $(BUILD_DIR)/rules/rules2ldl_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo $^
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) $^
 $(BUILD_DIR)/rules2ldl.opt:	$(LIBS.opt) $(BUILD_DIR)/rules/rules2ldl_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) $^
 $(BUILD_DIR)/rules/rules2ldl_main.cmo:	rules/rules2ldl_main.ml $(BUILD_DIR)/_export/dsl4sc.cmi
 	$(CAMLC) $(CAMLCFLAGS) -I $(BUILD_DIR)/_export -o $@ -c $<
 $(BUILD_DIR)/rules/rules2ldl_main.cmx:	rules/rules2ldl_main.ml $(BUILD_DIR)/_export/dsl4sc.cmi

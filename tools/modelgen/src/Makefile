@@ -7,7 +7,7 @@ TOP_DIR		= $(shell readlink -f ../../..)
 BUILD_DIR	= $(TOP_DIR)/_build/caml/tools/modelgen
 PREFIX		?= /usr/local
 
-LDLSATLIBDIR	?= /usr/local/lib/ldlsat
+LDLSATLIBDIR	?= $(PREFIX)/lib/ldlsat
 DSL4SCLIBDIR	= $(TOP_DIR)/_build/caml/_export
 SRC_DIRS	= .
 
@@ -48,6 +48,7 @@ CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/gen
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/sedlex
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/menhirLib
 CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/z3
+CAML_INC_FLAGS	+= -I $(OPAM_PREFIX)/lib/zarith
 
 CAML_INC_FLAGS	+= -I $(LDLSATLIBDIR)
 CAML_INC_FLAGS	+= -I $(DSL4SCLIBDIR)
@@ -55,8 +56,8 @@ CAML_INC_FLAGS	+= -I $(DSL4SCLIBDIR)
 CAMLCFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
 CAMLOPTFLAGS	= $(CAML_PKG_FLAGS) $(CAML_INC_FLAGS)
 
-CAMLCFLAGS	+= -unsafe-string
-CAMLOPTFLAGS	+= -unsafe-string
+#CAMLCFLAGS	+= -unsafe-string
+#CAMLOPTFLAGS	+= -unsafe-string
 
 ifdef DEBUG
 CAMLCFLAGS	+= -g -w +A
@@ -72,14 +73,15 @@ CAMLOPTFLAGS	+= -p
 endif
 
 CMAS		=
-CMAS		+= nums.cma
+#CMAS		+= nums.cma
 CMAS		+= result.cma ppx_deriving_runtime.cma ppx_deriving_yojson_runtime.cma
 CMAS		+= easy_format.cma biniou.cma yojson.cma
 #CMAS		+= unix.cma bigarray.cma bigstring.cma sexplib.cma
 #CMAS		+= ppx_sexp_conv_expander.cma ppx_sexp_conv.cma
+CMAS		+= menhirLib.cma
 CMAS		+= xml-light.cma
 CMAS		+= gen.cma sedlex.cma
-CMAS		+= z3ml.cma
+CMAS		+= zarith.cma z3ml.cma
 CMAS		+= ldlsat.cma
 CMXAS		= $(CMAS:%.cma=%.cmxa)
 
@@ -100,14 +102,14 @@ all::	$(BINS)
 #Z3LIB.byte	= -dllib z3ml
 #Z3LIB.byte	= -custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lz3
 #Z3LIB.opt	= -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lz3
-Z3LIB.byte	= -custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lpthread -cclib -lz3
-Z3LIB.opt	= -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lpthread -cclib -lz3
+Z3LIB.byte	= -custom -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lpthread -cclib -lz3ml
+Z3LIB.opt	= -ccopt -Wl,-rpath -ccopt $(OPAM_PREFIX)/lib/z3 -cclib -lstdc++ -cclib -lpthread -cclib -lz3ml
 
 $(BUILD_DIR)/modelgen.byte:	$(LIBS.byte) $(BUILD_DIR)/modelgen_main.cmo
-	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) menhirLib.cmo dsl4sc.cma $(Z3LIB.byte) $^
+	$(CAMLC) $(CAMLCFLAGS) -o $@ $(CMAS) dsl4sc.cma $(Z3LIB.byte) $^
 
 $(BUILD_DIR)/modelgen.opt:	$(LIBS.opt) $(BUILD_DIR)/modelgen_main.cmx
-	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) menhirLib.cmx dsl4sc.cmxa $(Z3LIB.opt) $^
+	$(CAMLOPT) $(CAMLOPTFLAGS) -o $@ $(CMXAS) dsl4sc.cmxa $(Z3LIB.opt) $^
 
 # library
 $(BUILD_DIR)/modelgen.cma:	$(CMOS)

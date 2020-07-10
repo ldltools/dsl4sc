@@ -1,4 +1,4 @@
-># Summary
+# Summary
 
 [*dsl4sc*](https://github.com/ldltools/dsl4sc) is a domain-specific language,
 based on [LDL<sub>f</sub>](https://www.cs.rice.edu/~vardi/),
@@ -86,10 +86,10 @@ You can also check out [more examples](examples/README.md) if you are interested
 ## Prerequisites
 To run dsl4sc for static verification, you need the following tools.
 
-- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.09.0)  
+- [ocaml](https://ocaml.org) (v4.05 or higher. tested with 4.10.0)  
   run: `apt-get install ocaml`  
   Alternatively, you can install a particular version of the compiler using `opam`  
-  run: `opam switch 4.09.0` for example
+  run: `opam switch create 4.10.0` for example
 - [opam](https://opam.ocaml.org) (ocaml package manager v2.0)  
   run: `apt-get install opam`
 - ocaml packages: ocamlfind sedlex menhir yojson ppx\_deriving ppx\_deriving\_yojson xml-light z3  
@@ -100,7 +100,7 @@ To run dsl4sc for static verification, you need the following tools.
   build & install the tool by running `make && make install` in the top directory.  
   By default, its library modules will be installed to `/usr/local/lib/ldlsat`.
 - [mona](http://www.brics.dk/mona/) (v1.4)  
-  run: `wget http://www.brics.dk/mona/download/mona-1.4-17.tar.gz`  
+  run: `wget http://www.brics.dk/mona/download/mona-1.4-18.tar.gz`  
   expand the archive, and build/install the tool as is instructed.
 - [xqilla](http://xqilla.sourceforge.net/) and [xmllint](http://xmlsoft.org/)  
   run: `apt-get install xqilla libxml2-utils`

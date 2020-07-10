@@ -102,13 +102,13 @@ let rec input_spec ic = function
 	    really_input ic str 0 1024;
 	  done
 	with End_of_file -> () in
-      let str' = Bytes.concat "" !lst in
+      let str' = Bytes.concat (Bytes.of_string "") !lst in
       let str' = Bytes.sub str' 0 (Bytes.index str' (Char.chr 0)) in
-      spec_from_string str' "unspecified"
+      spec_from_string (Bytes.to_string str') "unspecified"
   | fmt ->
       failwith ("input_spec: unknown format (" ^ fmt ^ ")")
 
-and spec_from_string str = function
+and spec_from_string (str : string) = function
   | "spec" | "rules" ->
       (*Rules_p.rules Rules_l.token (Lexing.from_string str)*)
       let lbuf : Rules_l.lexbuf = Rules_l.create_lexbuf (Sedlexing.Utf8.from_string str)
@@ -117,10 +117,10 @@ and spec_from_string str = function
       let json =  Yojson.Safe.from_string str in
       (match Rules.rules_of_yojson json with
 	Ok f -> f | Error msg -> failwith msg)
-  | "unspecified" when Bytes.length str < 6 ->
+  | "unspecified" when String.length str < 6 ->
       spec_from_string str "spec"
   | "unspecified" ->
-      let ch = (Bytes.sub str 0 1).[0] in
+      let ch = (String.sub str 0 1).[0] in
       if ch = '[' || ch = '{' then
 	spec_from_string str "json"
       else
