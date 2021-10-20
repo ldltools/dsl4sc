@@ -112,14 +112,17 @@ then
 fi
 
 mkdir -p /tmp/.dsl4sc
-rulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules)
+#rulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules)
+rulesfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.rules)
 cat $infile > $rulesfile
 
 # --------------------------------------------------------------------------------
 # rules -> ldl + map (b.w. event names and ldl propositions)
 # --------------------------------------------------------------------------------
-ldlfile=$(tempfile -d /tmp/.dsl4sc -s .ldl)
-mapfile=$(tempfile -d /tmp/.dsl4sc -s .map)
+#ldlfile=$(tempfile -d /tmp/.dsl4sc -s .ldl)
+#mapfile=$(tempfile -d /tmp/.dsl4sc -s .map)
+ldlfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.ldl)
+mapfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.map)
 test $verbose -eq 1 && echo "** ${RULES2LDL} : $rulesfile -> (${ldlfile}, ${mapfile})" > /dev/stderr
 ${RULES2LDL} $rulesfile -o $ldlfile --map $mapfile || { echo "** ${RULES2LDL} crashed" > /dev/stderr; rm -f $rulesfile $ldlfile $mapfile; exit 1; }
 
@@ -128,7 +131,8 @@ test $until = "ldl" && { ${LDL2MSO} $ldlfile --parse-only -t ldl > $outfile; rm 
 # --------------------------------------------------------------------------------
 # ldl -> dfa0
 # --------------------------------------------------------------------------------
-dfa0file=$(tempfile -d /tmp/.dsl4sc -s .dfa0)
+#dfa0file=$(tempfile -d /tmp/.dsl4sc -s .dfa0)
+dfa0file=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa0)
 #echo "ldl2scxml.ldl2dfa : $infile -> ${dfa0file}" > /dev/stderr
 test -x ${LDL2DFA} || { echo "** ${LDL2DFA} not found"; exit 1; }
 ${LDL2DFA} $ldlfile -o ${dfa0file} -u $until || { echo "** ${LDL2DFA} crashed" > /dev/stderr; rm -f ${dfa0file}; exit 1; }
@@ -147,7 +151,8 @@ rm -f $ldlfile
 # --------------------------------------------------------------------------------
 # rules -> rules in xml (which carries code fragments)
 # --------------------------------------------------------------------------------
-xmlrulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules.xml)
+#xmlrulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules.xml)
+xmlrulesfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.rules.xml)
 test $verbose -eq 1 && echo "** ${RULESPP} : $rulesfile -> $xmlrulesfile" > /dev/stderr
 ${RULESPP} $rulesfile -o $xmlrulesfile -t xml || { echo "** ${RULESPP} crashed" > /dev/stderr; rm -f $rulesfile $xmlrulesfile; exit 1; }
 
@@ -176,7 +181,8 @@ esac
 test -f "$mapfile" || { echo "** spurious map ($mapfile)" > /dev/stderr; exit 1; }
 test -f "$xmlrulesfile" || { echo "** spurious rules ($xmlrulesfile)" > /dev/stderr; exit 1; }
 
-dfa1file=$(tempfile -d /tmp/.dsl4sc -s .dfa1)
+#dfa1file=$(tempfile -d /tmp/.dsl4sc -s .dfa1)
+dfa1file=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa1)
 #echo "preprocess : $infile -> ${dfa1file}"
 cat <<EOF | xqilla /dev/stdin -i ${dfa0file} -o ${dfa1file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa1file}; exit 1; }
 declare default element namespace "https://github.com/ldltools/dsl4sc";

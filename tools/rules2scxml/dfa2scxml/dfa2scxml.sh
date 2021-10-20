@@ -91,7 +91,8 @@ test ${generate_monitor} -ne 0 && reject_invalid_events=1
 # - <applicable> includes the transitions to which each rule can be applied.
 # --------------------------------------------------------------------------------
 dfa1file=$infile
-dfa2file=$(tempfile -d /tmp/.dsl4sc -s .dfa2)
+#dfa2file=$(tempfile -d /tmp/.dsl4sc -s .dfa2)
+dfa2file=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa2)
 ${MODELGEN} ${dfa1file} -o ${dfa2file} || { echo "** ${MODELGEN} crashed"; rm -f ${dfa1file} ${dfa2file}; exit 1; }
 
 rm -f ${dfa1file}
@@ -136,7 +137,8 @@ case $until in
     *) main=${main99} ;;
 esac
 
-dfa3file=$(tempfile -d /tmp/.dsl4sc -s .dfa3)
+#dfa3file=$(tempfile -d /tmp/.dsl4sc -s .dfa3)
+dfa3file=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa3)
 cat <<EOF | xqilla /dev/stdin -i ${dfa2file} -o ${dfa3file} || { echo "** xqilla crashed" > /dev/stderr; rm -f ${dfa2file} ${dfa3file}; exit 1; }
 declare default element namespace "https://github.com/ldltools/dsl4sc";
 declare variable \$accept_transition := "${accept_transition}";
@@ -187,7 +189,8 @@ test $until = "puml" && { _print_in_puml ${dfa3file} $outfile; rm -f ${dfa3file}
 print_in_scxml=$LIBDIR/print_in_scxml.xq
 test -f ${print_in_scxml} || { echo "${print_in_scxml} not found" > /dev/stderr; exit 1; }
 
-scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
+#scxmlfile=$(tempfile -d /tmp/.dsl4sc -s .scxml)
+scxmlfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.scxml)
 
 # -----
 # unescape each scripts/script element of ${dfa3file} -- quick dirty work-around

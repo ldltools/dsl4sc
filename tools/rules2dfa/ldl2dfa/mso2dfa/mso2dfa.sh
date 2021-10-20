@@ -50,14 +50,16 @@ mkdir -p /tmp/.dsl4sc
 # mso -(mona)-> state machine description
 # $infile -> $msooutfile
 # --------------------------------------------------------------------------------
-monaoutfile=$(tempfile -d /tmp/.dsl4sc -s .monaout)
+#monaoutfile=$(tempfile -d /tmp/.dsl4sc -s .monaout)
+monaoutfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.monaout)
 sed '/^#/d' $infile | mona -w -q /dev/stdin > ${monaoutfile} || { rm -f ${monaoutfile}; echo "** mona crashed" > /dev/stderr; exit 1; }
 
 # --------------------------------------------------------------------------------
 # dfa0 (in xml) generation
 # $monaoutfile -> $dfa0file
 # --------------------------------------------------------------------------------
-dfa0file=$(tempfile -d /tmp/.dsl4sc -s .dfa0)
+#dfa0file=$(tempfile -d /tmp/.dsl4sc -s .dfa0)
+dfa0file=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa0)
 
 #
 print_props ()

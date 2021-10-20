@@ -18,7 +18,10 @@ clean::
 
 veryclean::	clean
 	for d in $(SUBDIRS); do $(MAKE) -C $$d PREFIX=$(PREFIX) $@; done
-	rm -rf _build/*
+	rm -rf _build
+
+tar:	veryclean
+	(dir=`basename $$PWD`; cd ..; tar cvJf dsl4sc`date +%y%m%d`.tar.xz --exclude=.git --exclude=_build --exclude=RCS --exclude=obsolete $$dir)
 
 # docker
 
@@ -55,14 +58,3 @@ check-latest-$(1):
 	@docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "$(1):latest" || { echo "** image \"$(1):latest\" not found"; exit 1; }
 endef
 $(foreach repo,$(DOCKER_REPO)-dev $(DOCKER_REPO),$(eval $(call GENRULES,$(repo))))
-
-# admin
-
-#
-tar:	veryclean
-	(dir=`basename $$PWD`; cd ..; tar cvJf dsl4sc`date +%y%m%d`.tar.xz --exclude=.git --exclude=_build --exclude=RCS --exclude=obsolete $$dir)
-
-GITHOME ?= $(HOME)/git/github.com/ldltools/dsl4sc
-rsync::	clean
-	test -d $(GITHOME) || exit 1
-	rsync -avzop --exclude=_build --exclude=.git --exclude=out --exclude=obsolete --exclude=node_modules ./ $(GITHOME)

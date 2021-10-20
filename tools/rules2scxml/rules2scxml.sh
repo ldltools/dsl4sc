@@ -129,14 +129,16 @@ mso)
 esac
 
 mkdir -p /tmp/.dsl4sc
-rulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules)
+#rulesfile=$(tempfile -d /tmp/.dsl4sc -s .rules)
+rulesfile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.rules)
 cat $infile > $rulesfile
 
 # --------------------------------------------------------------------------------
 # rules -> dfa
 # --------------------------------------------------------------------------------
 
-dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa)
+#dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa)
+dfafile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa)
 $RULES2DFA --until $until $rulesfile -o $dfafile || { echo "** $RULES2DFA crashed" > /dev/stderr; rm -f $dfafile; exit 1; }
 
 case $until in

@@ -61,7 +61,8 @@ test $until = "ldl" && { ${LDL2MSO} $infile -o $outfile --parse-only -t ldl; exi
 # --------------------------------------------------------------------------------
 # ldl -> mso
 # --------------------------------------------------------------------------------
-msofile=$(tempfile -d /tmp/.dsl4sc -s .mso)
+#msofile=$(tempfile -d /tmp/.dsl4sc -s .mso)
+msofile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.mso)
 ${LDL2MSO} $infile -o $msofile || { echo "** ${LDL2MSO} crashed" > /dev/stderr; rm -f $msofile; exit 1; }
 
 test $until = "mso" && { cat $msofile > $outfile; rm -f $msofile; exit 0; }
@@ -69,7 +70,8 @@ test $until = "mso" && { cat $msofile > $outfile; rm -f $msofile; exit 0; }
 # --------------------------------------------------------------------------------
 # mso -> dfa
 # --------------------------------------------------------------------------------
-dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa.xml)
+#dfafile=$(tempfile -d /tmp/.dsl4sc -s .dfa.xml)
+dfafile=$(mktemp /tmp/.dsl4sc/fileXXXXXX --suffix=.dfa.xml)
 #echo "ldl2dfa.mso2dfa : $msofile -> $dfafile" > /dev/stderr
 ${MSO2DFA} $msofile -o $dfafile || { echo "** ${MSO2DFA} crashed" > /dev/stderr; rm -f $msofile $dfafile; exit 1; }
 rm -f $msofile

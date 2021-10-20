@@ -28,7 +28,7 @@ CMD ["/bin/bash"]
 # ====================
 # final image
 # ====================
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 RUN echo "dash dash/sh boolean false" | debconf-set-selections;\
     dpkg-reconfigure -f noninteractive dash;\
